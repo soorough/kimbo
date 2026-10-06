@@ -7,6 +7,7 @@ import { HttpError } from "./errors.js";
 import { mealRoutes } from "./routes/meals.js";
 import { profileRoutes } from "./routes/profiles.js";
 import { reportRoutes } from "./routes/reports.js";
+import { todayRoutes } from "./routes/today.js";
 
 export interface Deps {
   db: Db;
@@ -48,5 +49,6 @@ export async function createApp(deps: Deps, opts: { logger?: boolean } = {}) {
   profileRoutes(app, deps);
   mealRoutes(app, deps);
   reportRoutes(app, deps);
+  todayRoutes(app, deps);
   return app;
 }

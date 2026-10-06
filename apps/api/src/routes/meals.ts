@@ -3,12 +3,15 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { Deps } from "../app.js";
 import { search } from "../domain/catalogue.js";
 import { resolveConfirmedItems } from "../domain/confirm-meal.js";
+import { focusForDay } from "../domain/focus-history.js";
+import { mealSupportsFocus, supportedMessage } from "../domain/focus-match.js";
 import { buildDraft } from "../domain/meal-draft.js";
 import { addDays, localDate, startOfLocalDay, suggestMealType } from "../domain/time.js";
 import { badRequest, notFound } from "../errors.js";
 import { parse, requireProfile } from "../http.js";
 import { deleteMeal, getMeal, insertMeal, listMeals, replaceMeal, toApiMeal, type MealWrite } from "../repo/meals.js";
 import type { ProfileRow } from "../repo/profiles.js";
+import { listFocusAssignments } from "../repo/reports.js";
 
 /** Small grace for device clocks running slightly ahead of the server. */
 const FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
@@ -80,8 +83,11 @@ function toMealWrite(deps: Deps, req: FastifyRequest): MealWrite {
 }
 
 async function respondWithMeal(deps: Deps, profile: ProfileRow, id: string, write: MealWrite) {
-  const meal = await getMeal(deps.db, profile.id, profile.timezone, id);
+  const meal = (await getMeal(deps.db, profile.id, profile.timezone, id))!;
+  const focus = focusForDay(await listFocusAssignments(deps.db, profile.id), meal.localDate, profile.timezone);
+  const focusResult = focus ? mealSupportsFocus(meal, focus) : null;
   const events: KimboEvent[] = [];
   if (write.wasCorrected) events.push({ type: "correction_accepted", message: "Thanks for the fix — saved just as you ate it." });
-  return { meal: toApiMeal(meal!), focusResult: null, events };
+  if (focusResult?.supports) events.push({ type: "meal_supported_focus", message: supportedMessage(focusResult.focus) });
+  return { meal: toApiMeal(meal), focusResult, events };
 }

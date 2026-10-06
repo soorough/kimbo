@@ -54,3 +54,16 @@ export const MARKER_THRESHOLDS = {
 
 /** When markers are equally out of range, the earlier one decides the focus. */
 export const FOCUS_PRIORITY = ["ldl", "hba1c", "triglycerides"] as const;
+
+// --- Meal ↔ focus matching ---
+export const FOCUS_MATCH = {
+  /** A meal with this much fibre counts as fibre-rich even without a fibre-rich dish (≈ 1/5 of 30 g/day). */
+  fibreRichMealG: 6,
+  /** Saturated fat from rich dishes above this, in one meal, outweighs the fibre for the LDL focus. */
+  satFatHeavyMealG: 8,
+  /** Protein that makes a meal count as "carbs paired with protein". */
+  proteinPairedG: 15,
+  /** Balanced plate: some protein plus some fibre. */
+  balancedProteinG: 12,
+  balancedFibreG: 4,
+} as const;
