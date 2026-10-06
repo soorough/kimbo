@@ -120,14 +120,16 @@ export default function ReportTab() {
             </T>
           </View>
           <View style={styles.steps}>
-            {["Add your report", "Check the values", "Get one food focus"].map((s, i) => (
+            {["Add report", "Check values", "Get a focus"].map((s, i) => (
               <View key={s} style={styles.step}>
                 <View style={styles.stepNum}>
                   <T variant="caption" tone="leaf">
                     {i + 1}
                   </T>
                 </View>
-                <T variant="label">{s}</T>
+                <T variant="label" align="center">
+                  {s}
+                </T>
               </View>
             ))}
           </View>

@@ -11,6 +11,30 @@ Phase 1 loop: **Report → Food focus → Log meals → Track progress**. See [S
 | `apps/api` | Fastify + Postgres API. AI sits behind `MealRecognizer` / `ReportExtractor`; nutrition, targets, focus rules and progress are deterministic |
 | `apps/mobile` | Expo SDK 57 + Expo Router Android app |
 
+## Design decisions
+
+**Direction: a warm Indian kitchen notebook.** Kimbo is about home food and gentle habits, so it should
+feel like a well-kept recipe notebook, not a clinical dashboard or a gym tracker.
+
+- **Colour has meaning.** Paper and ink neutrals keep long food lists calm. Curry-leaf green is for
+  actions and "this helped your focus". Turmeric is reserved for celebration (milestones, streaks).
+  "Worth watching" and going over target use plum, never red: they inform without alarming.
+- **Two typefaces, two jobs.** Fraunces (a soft serif) for moments that should feel personal: greetings,
+  the target and focus reveals. Plus Jakarta Sans for anything scanned quickly: numbers, lists, labels.
+  Only the five weights in use are bundled.
+- **Bottom sheets for short tasks.** Logging a meal, picking a food and editing a portion slide up over
+  the current screen, so you never lose your place. Full screens are kept for decisions with consequences
+  (reviewing a meal, confirming report values).
+- **One primary action per screen**, in a sticky footer within thumb reach. The most frequent action
+  (log a meal) is the raised centre of the tab bar.
+- **Empty states are starting points.** An empty meal slot is a one-tap "Add lunch", with "Same as
+  yesterday" built in when there is something to repeat.
+- **No guilt.** No red, no "streak lost", no judging single meals. A missed day doesn't break the streak,
+  only gains are compared with last week, and badges show how to earn them, not what you failed at.
+- **Delight is tied to progress.** Kimbo (an SVG character) reacts to what just happened, and its sprout
+  grows a leaf for every meal that helps the focus. Milestones get a short confetti moment; everything
+  else is a passing toast with a light haptic, never a blocking dialog.
+
 ## Run locally
 
 ```sh
