@@ -6,7 +6,7 @@ import { colors, fonts, radius } from "@/lib/theme";
 import { Kimbo, type KimboMood } from "./Kimbo";
 import { T } from "./Text";
 
-export type SceneStep = "goal" | "sex" | "age" | "height" | "weight" | "activity" | "goalWeight" | "pace";
+export type SceneStep = "name" | "goal" | "sex" | "age" | "height" | "weight" | "activity" | "goalWeight" | "pace";
 
 type Activity = GoalRequest["activity"];
 
@@ -51,6 +51,7 @@ export function KimboScene({
       <Svg width={W} height={8} style={styles.ground}>
         <Rect x={20} y={0} width={W - 40} height={8} rx={4} fill={colors.sunk} />
       </Svg>
+      {step === "name" ? <Solo mood="wave" /> : null}
       {step === "goal" ? <SignpostScene still={still} /> : null}
       {step === "sex" ? <Solo mood="wave" /> : null}
       {step === "age" ? <CakeScene still={still} /> : null}

@@ -17,6 +17,25 @@ describe("onboarding & goal", () => {
     expect(res.json.profile.id).toMatch(/^[0-9a-f-]{36}$/);
   });
 
+  it("remembers the name Kimbo should use, trimmed, and forgets it when cleared", async () => {
+    const id = await freshProfile();
+    expect((await api.get(`/profiles/${id}`, id)).json.profile.name).toBeNull();
+    const saved = await api.put(`/profiles/${id}/name`, { name: "  Souravh " }, id);
+    expect(saved.status).toBe(200);
+    expect(saved.json.profile.name).toBe("Souravh");
+    expect((await api.get(`/profiles/${id}`, id)).json.profile.name).toBe("Souravh");
+    const cleared = await api.put(`/profiles/${id}/name`, { name: "   " }, id);
+    expect(cleared.json.profile.name).toBeNull();
+  });
+
+  it("rejects a name that is too long, and another profile's name change", async () => {
+    const id = await freshProfile();
+    const long = await api.put(`/profiles/${id}/name`, { name: "x".repeat(31) }, id);
+    expect(long.status).toBe(400);
+    const other = await freshProfile();
+    expect((await api.put(`/profiles/${id}/name`, { name: "Asha" }, other)).status).toBe(404);
+  });
+
   it("calculates a calorie target with Mifflin–St Jeor and explains it", async () => {
     const id = await freshProfile();
     // 10*70 + 6.25*175 - 5*30 + 5 = 1648.75 BMR; ×1.2 sedentary = 1978.5 → 1980

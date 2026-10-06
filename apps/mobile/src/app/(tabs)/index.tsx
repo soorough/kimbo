@@ -11,7 +11,7 @@ import { useMoments } from "@/components/Moments";
 import { Bar, ErrorState, Icon, Ring, Screen, Surface, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useDraft } from "@/lib/draft";
-import { MEAL_LABEL, MEAL_ORDER, nextMealPrompt } from "@/lib/format";
+import { MEAL_LABEL, MEAL_ORDER, addName, nextMealPrompt } from "@/lib/format";
 import { useAfterWrite } from "@/lib/mutations";
 import { useSession } from "@/lib/session";
 import { colors, macroColors, radius, space } from "@/lib/theme";
@@ -53,7 +53,7 @@ export default function Today() {
               .toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" })
               .toUpperCase()}
           </T>
-          <T variant="display">{nextMealPrompt(data.meals.map((m) => m.mealType))}</T>
+          <T variant="display">{addName(nextMealPrompt(data.meals.map((m) => m.mealType)), profile.data?.profile.name)}</T>
         </View>
         <KimboBuddy mood={data.meals.length ? "happy" : "idle"} leaves={1 + supported} />
       </View>

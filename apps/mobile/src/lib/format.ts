@@ -21,6 +21,12 @@ export function nextMealPrompt(logged: MealType[], now = new Date()): string {
   return next ? NEXT_MEAL_PROMPT[next] : "All meals logged";
 }
 
+/** "What's for lunch?" → "What's for lunch, Asha?" */
+export function addName(prompt: string, name: string | null | undefined): string {
+  if (!name) return prompt;
+  return prompt.endsWith("?") ? `${prompt.slice(0, -1)}, ${name}?` : `${prompt}, ${name}`;
+}
+
 const NEXT_MEAL_PROMPT: Record<MealType, string> = {
   breakfast: "What's for breakfast?",
   lunch: "What's for lunch?",

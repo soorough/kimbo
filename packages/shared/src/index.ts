@@ -145,8 +145,20 @@ export const Goal = GoalFields.omit({ targetOverride: true, weeklyKg: true, targ
 });
 export type Goal = z.infer<typeof Goal>;
 
+/** First name, or null to stop using one. Blank counts as null. */
+export const NameRequest = z.object({
+  name: z
+    .string()
+    .trim()
+    .max(30, "Keep it under 30 characters")
+    .nullable()
+    .transform((n) => n || null),
+});
+export type NameRequest = z.infer<typeof NameRequest>;
+
 export const Profile = z.object({
   id: z.string(),
+  name: z.string().nullable(),
   isDemo: z.boolean(),
   timezone: z.string(),
   createdAt: z.string(),

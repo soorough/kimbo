@@ -1,9 +1,10 @@
 import { isWeightGoal } from "@kimbo/shared";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useRef, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
+import { NameField } from "@/components/NameField";
 import { ListSkeleton } from "@/components/Skeleton";
 import { Button, ErrorState, Icon, Screen, Sheet, Surface, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
@@ -33,6 +34,14 @@ export default function You() {
   });
 
   const [confirming, setConfirming] = useState(false);
+  const [editingName, setEditingName] = useState<string | null>(null);
+  const saveName = useMutation({
+    mutationFn: (name: string) => api.saveName(profileId!, { name: name.trim() || null }),
+    onSuccess: ({ profile: saved }) => {
+      queryClient.setQueryData(["profile", profileId], { profile: saved });
+      setEditingName(null);
+    },
+  });
   const isDemoRef = useRef(false);
 
   const setProfileId = useSession((s) => s.setProfileId);
@@ -69,7 +78,7 @@ export default function You() {
       </Screen>
     );
   }
-  const { goal, isDemo } = profile.data.profile;
+  const { goal, isDemo, name } = profile.data.profile;
   isDemoRef.current = isDemo;
 
   return (
@@ -77,7 +86,7 @@ export default function You() {
       <View style={styles.hero}>
         <Kimbo mood="wave" size={72} />
         <View style={{ flex: 1 }}>
-          <T variant="title">You</T>
+          <T variant="title">{name ?? "You"}</T>
           <T variant="label">{isDemo ? "Using sample data" : "No account. Linked to this phone."}</T>
         </View>
       </View>
@@ -107,6 +116,8 @@ export default function You() {
       ) : null}
 
       <View style={styles.list}>
+        <Row icon="user" label={name ? "Change your name" : "Add your name"} onPress={() => setEditingName(name ?? "")} />
+        <View style={styles.divider} />
         <Row icon="file-text" label="Health reports" onPress={() => router.push("/(tabs)/report")} />
         <View style={styles.divider} />
         <Row
@@ -123,6 +134,22 @@ export default function You() {
           triglycerides. Kimbo doesn't diagnose or treat anything. Talk to your doctor about your results.
         </T>
       </Surface>
+      <Sheet visible={editingName !== null} onClose={() => setEditingName(null)} title="What should Kimbo call you?">
+        <View style={{ gap: space.lg }}>
+          <NameField
+            value={editingName ?? ""}
+            onChange={setEditingName}
+            onSubmit={() => saveName.mutate(editingName ?? "")}
+            autoFocus
+          />
+          {saveName.error ? (
+            <T variant="label" tone="plum" align="center">
+              {errorMessage(saveName.error)}
+            </T>
+          ) : null}
+          <Button label="Save" loading={saveName.isPending} onPress={() => saveName.mutate(editingName ?? "")} />
+        </View>
+      </Sheet>
       {/* With no account, leaving a real profile can't be undone, so it gets a deliberate second step. */}
       <Sheet visible={confirming} onClose={() => setConfirming(false)} title="Leave your data?">
         <View style={{ gap: space.lg }}>

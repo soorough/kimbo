@@ -7,6 +7,7 @@ export interface ProfileRow {
   id: string;
   created_at: Date;
   is_demo: boolean;
+  name: string | null;
   timezone: string;
   age: number | null;
   sex: GoalRequest["sex"] | null;
@@ -61,6 +62,11 @@ export async function saveGoal(db: Db, id: string, input: GoalRequest, computedT
   return res.rows[0]!;
 }
 
+export async function saveName(db: Db, id: string, name: string | null): Promise<ProfileRow> {
+  const res = await db.query<ProfileRow>("UPDATE profiles SET name = $2 WHERE id = $1 RETURNING *", [id, name]);
+  return res.rows[0]!;
+}
+
 export function goalOf(row: ProfileRow): Goal | null {
   if (row.age == null || !row.sex || row.height_cm == null || row.weight_kg == null || !row.activity || !row.goal) {
     return null;
@@ -84,6 +90,7 @@ export function goalOf(row: ProfileRow): Goal | null {
 export function toProfile(row: ProfileRow): Profile {
   return {
     id: row.id,
+    name: row.name,
     isDemo: row.is_demo,
     timezone: row.timezone,
     createdAt: row.created_at.toISOString(),

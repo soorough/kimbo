@@ -15,6 +15,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
 import { KimboScene } from "@/components/KimboScene";
+import { NameField } from "@/components/NameField";
 import { PacePlanner } from "@/components/PacePlanner";
 import { RulerPicker } from "@/components/RulerPicker";
 import { Button, Chip, Icon, Screen, Segmented, SegmentRing, T, type IconName } from "@/components/ui";
@@ -68,9 +69,10 @@ const ACTIVITY: { key: Activity; label: string; hint: string }[] = [
   { key: "very_active", label: "Physical job or athlete", hint: "Labour work, or training twice a day" },
 ];
 
-type Step = "goal" | "sex" | "age" | "height" | "weight" | "activity" | "goalWeight" | "pace";
+type Step = "name" | "goal" | "sex" | "age" | "height" | "weight" | "activity" | "goalWeight" | "pace";
 
 const QUESTIONS: Record<Step, string> = {
+  name: "Hi, I'm Kimbo. What should I call you?",
   goal: "What's your goal?",
   sex: "Your sex",
   age: "How old are you?",
@@ -83,13 +85,14 @@ const QUESTIONS: Record<Step, string> = {
 
 /** Maintaining has no goal weight or pace to choose. */
 function stepsFor(goal: GoalType | null): Step[] {
-  const base: Step[] = ["goal", "sex", "age", "height", "weight", "activity"];
+  const base: Step[] = ["name", "goal", "sex", "age", "height", "weight", "activity"];
   return goal && isWeightGoal(goal) ? [...base, "goalWeight", "pace"] : base;
 }
 
 /**
- * One question per screen. Choices advance on tap; numbers are picked on a ruler, so
- * there's no keyboard and no invalid input. Activity and pace show their calorie effect
+ * One question per screen. Kimbo introduces itself first and asks for a name (optional, the
+ * only typed answer). Choices advance on tap; numbers are picked on a ruler, so there's no
+ * keyboard and no invalid input. Activity and pace show their calorie effect
  * live (shared formula), so each answer visibly matters.
  */
 export default function Onboarding() {
@@ -102,6 +105,7 @@ export default function Onboarding() {
   if (existing.data && firstSetup.current === null) firstSetup.current = !existing.data.profile.goal;
 
   const [step, setStep] = useState(0);
+  const [name, setName] = useState("");
   const [goalType, setGoalType] = useState<GoalType | null>(null);
   const [sex, setSex] = useState<Sex | null>(null);
   const [age, setAge] = useState(28);
@@ -112,6 +116,11 @@ export default function Onboarding() {
   const [weeklyKg, setWeeklyKg] = useState<number | null>(null);
   const [result, setResult] = useState<Goal | null>(null);
   const [target, setTarget] = useState(0);
+
+  const savedName = existing.data?.profile.name;
+  useEffect(() => {
+    if (savedName) setName(savedName);
+  }, [savedName]);
 
   // Editing later: start from what's saved.
   useEffect(() => {
@@ -165,6 +174,16 @@ export default function Onboarding() {
   });
 
   const next = () => setStep((s) => Math.min(s + 1, steps.length - 1));
+
+  const saveName = useMutation({
+    mutationFn: () => api.saveName(profileId, { name: name.trim() || null }),
+    onSuccess: ({ profile }) => {
+      queryClient.setQueryData(["profile", profileId], { profile });
+      next();
+    },
+  });
+  /** Skipping is fine; only a changed name costs a request. */
+  const submitName = () => ((name.trim() || null) === (savedName ?? null) ? next() : saveName.mutate());
   /** Single-choice answers move on by themselves after a beat, so the choice registers visually. */
   const choose = <V,>(set: (v: V) => void, v: V, then: () => void) => {
     set(v);
@@ -195,7 +214,16 @@ export default function Onboarding() {
       : Math.min(goalWeight ?? Math.max(35, Math.round(weight - 5)), loseCeiling(weight));
 
   const footer =
-    current === "age" || current === "height" || current === "weight" ? (
+    current === "name" ? (
+      <View style={{ gap: space.sm }}>
+        {saveName.error ? (
+          <T variant="label" tone="plum" align="center">
+            {errorMessage(saveName.error)}
+          </T>
+        ) : null}
+        <Button label={name.trim() ? "Continue" : "Skip"} loading={saveName.isPending} onPress={submitName} />
+      </View>
+    ) : current === "age" || current === "height" || current === "weight" ? (
       <Button label="Continue" onPress={next} />
     ) : current === "goalWeight" ? (
       <Button
@@ -254,6 +282,8 @@ export default function Onboarding() {
         </T>
         {current === "activity" ? <T variant="label">This sets how many calories you burn on a normal day.</T> : null}
       </View>
+
+      {current === "name" ? <NameField value={name} onChange={setName} onSubmit={submitName} autoFocus /> : null}
 
       {current === "goal" ? (
         <Options>
