@@ -90,16 +90,33 @@ describe("weekly progress", () => {
     await log(id, "2026-10-06", kcal(2178)); // +10%
     await log(id, "2026-10-07", kcal(1781));
     await log(id, "2026-10-08", kcal(2179));
-    expect((await api.get("/progress", id)).json.goal).toEqual({ daysMet: 2, daysTracked: 4, bandPct: 10 });
+    expect((await api.get("/progress", id)).json.goal).toEqual({ daysMet: 2, daysTracked: 4, bandPct: 10, targetCalories: 1980 });
+  });
+
+  it("charts the calories eaten on each day of the week, leaving days ahead empty", async () => {
+    const id = await onboarded();
+    await log(id, "2026-10-05", kcal(1800));
+    await log(id, "2026-10-07", kcal(1200));
+    await log(id, "2026-10-07", kcal(700)); // two meals add up
+    await log(id, "2026-10-09", kcal(650)); // today, so far
+    expect((await api.get("/progress", id)).json.days).toEqual([
+      { date: "2026-10-05", calories: 1800 },
+      { date: "2026-10-06", calories: 0 },
+      { date: "2026-10-07", calories: 1900 },
+      { date: "2026-10-08", calories: 0 },
+      { date: "2026-10-09", calories: 650 },
+      { date: "2026-10-10", calories: null },
+      { date: "2026-10-11", calories: null },
+    ]);
   });
 
   it("doesn't count today against the goal while the day is still going", async () => {
     const id = await onboarded();
     await log(id, "2026-10-08", kcal(1980));
     await log(id, "2026-10-09", kcal(900)); // today, half-way through
-    expect((await api.get("/progress", id)).json.goal).toEqual({ daysMet: 1, daysTracked: 1, bandPct: 10 });
+    expect((await api.get("/progress", id)).json.goal).toEqual({ daysMet: 1, daysTracked: 1, bandPct: 10, targetCalories: 1980 });
     await log(id, "2026-10-09", kcal(1000)); // today reaches the band
-    expect((await api.get("/progress", id)).json.goal).toEqual({ daysMet: 2, daysTracked: 2, bandPct: 10 });
+    expect((await api.get("/progress", id)).json.goal).toEqual({ daysMet: 2, daysTracked: 2, bandPct: 10, targetCalories: 1980 });
   });
 
   it("only compares with last week once there was a last week", async () => {

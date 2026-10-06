@@ -20,6 +20,8 @@ export interface WeekStats {
   weekEnd: string;
   daysElapsed: number;
   trackedDates: string[];
+  /** kcal for each day Mon–Sun: 0 for a past day with nothing logged, null for days ahead */
+  days: { date: string; calories: number | null }[];
   goalDaysMet: number | null;
   /** Completed tracked days, plus today once it's within the band — today never counts as a miss. */
   goalDaysEvaluated: number | null;
@@ -42,6 +44,10 @@ export function weekStats(input: ProgressInput, anyDateInWeek: string): WeekStat
   const caloriesByDay = new Map<string, number>();
   for (const m of weekMeals) caloriesByDay.set(m.localDate, (caloriesByDay.get(m.localDate) ?? 0) + m.totals.calories);
   const trackedDates = [...caloriesByDay.keys()].sort();
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(start, i);
+    return { date, calories: date > lastCounted ? null : Math.round(caloriesByDay.get(date) ?? 0) };
+  });
 
   let goalDaysMet: number | null = null;
   let goalDaysEvaluated: number | null = null;
@@ -80,6 +86,7 @@ export function weekStats(input: ProgressInput, anyDateInWeek: string): WeekStat
     weekEnd: end,
     daysElapsed,
     trackedDates,
+    days,
     goalDaysMet,
     goalDaysEvaluated,
     focus,

@@ -26,11 +26,17 @@ export function progressRoutes(app: FastifyInstance, deps: Deps) {
       daysElapsed: week.daysElapsed,
       daysTracked: week.trackedDates.length,
       trackedDates: week.trackedDates,
+      days: week.days,
       streak: consistencyStreak(trackedDateSet(input.meals), input.today, earliest),
       goal:
         week.goalDaysMet === null
           ? null
-          : { daysMet: week.goalDaysMet, daysTracked: week.goalDaysEvaluated!, bandPct: GOAL_BAND_PCT },
+          : {
+              daysMet: week.goalDaysMet,
+              daysTracked: week.goalDaysEvaluated!,
+              bandPct: GOAL_BAND_PCT,
+              targetCalories: input.targetCalories!,
+            },
       focus: week.focus ? { ...week.focus, title: FOCI[week.focus.key].title } : null,
       // Nothing to compare against until the previous week had some tracking.
       weekOverWeek:

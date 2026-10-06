@@ -384,8 +384,12 @@ export const ProgressResponse = z.object({
   daysElapsed: z.number(),
   daysTracked: z.number(),
   trackedDates: z.array(LocalDate),
+  /** Mon–Sun kcal: 0 for a past day with nothing logged, null for days still ahead */
+  days: z.array(z.object({ date: LocalDate, calories: z.number().nullable() })),
   streak: z.number(),
-  goal: z.object({ daysMet: z.number(), daysTracked: z.number(), bandPct: z.number() }).nullable(),
+  goal: z
+    .object({ daysMet: z.number(), daysTracked: z.number(), bandPct: z.number(), targetCalories: z.number() })
+    .nullable(),
   focus: z
     .object({ key: FocusKey, title: z.string(), supported: z.number(), total: z.number(), pct: z.number() })
     .nullable(),
