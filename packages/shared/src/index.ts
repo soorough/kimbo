@@ -10,7 +10,13 @@ export const ApiError = z.object({
 });
 export type ApiError = z.infer<typeof ApiError>;
 
-export const LocalDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD");
+export const LocalDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD")
+  .refine((s) => {
+    const d = new Date(`${s}T00:00:00Z`);
+    return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+  }, "Not a real calendar date");
 
 export const Nutrition = z.object({
   calories: z.number().nonnegative(),
@@ -178,7 +184,8 @@ export const ConfirmItem = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("catalogue"),
     foodId: z.string(),
-    quantity: z.number().positive().max(50),
+    // Household units are capped server-side at 50; grams can go higher.
+    quantity: z.number().positive().max(2000),
     unit: Unit,
   }),
   z.object({

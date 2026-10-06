@@ -2,6 +2,7 @@ import { LocalDate, type ProgressResponse } from "@kimbo/shared";
 import type { FastifyInstance } from "fastify";
 import type { Deps } from "../app.js";
 import { welcomeBackCandidate } from "../domain/achievements.js";
+import { GOAL_BAND_PCT } from "../domain/config.js";
 import { FOCI } from "../domain/health.js";
 import { consistencyStreak, focusComparable, insights, trackedDateSet, weekStats } from "../domain/progress.js";
 import { addDays, localDate } from "../domain/time.js";
@@ -29,7 +30,7 @@ export function progressRoutes(app: FastifyInstance, deps: Deps) {
       goal:
         week.goalDaysMet === null
           ? null
-          : { daysMet: week.goalDaysMet, daysTracked: week.trackedDates.length, bandPct: 10 },
+          : { daysMet: week.goalDaysMet, daysTracked: week.trackedDates.length, bandPct: GOAL_BAND_PCT },
       focus: week.focus ? { ...week.focus, title: FOCI[week.focus.key].title } : null,
       weekOverWeek: {
         daysTracked: week.trackedDates.length - previous.trackedDates.length,

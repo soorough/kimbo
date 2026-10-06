@@ -106,7 +106,7 @@ export class ClaudeAdapters implements MealRecognizer, ReportExtractor {
 
   async fromText(text: string): Promise<RecognizedItem[]> {
     const input = await this.callTool(MEAL_SYSTEM, mealTool, [{ type: "text", text: `Meal: ${text}` }]);
-    return RecognizedItems.parse(input).items;
+    return checked(() => RecognizedItems.parse(input).items);
   }
 
   async fromImage(image: { base64: string; mimeType: string }): Promise<RecognizedItem[]> {
@@ -114,7 +114,7 @@ export class ClaudeAdapters implements MealRecognizer, ReportExtractor {
       { type: "image", source: { type: "base64", media_type: imageType(image.mimeType), data: image.base64 } },
       { type: "text", text: "Identify the foods on this plate with estimated portions." },
     ]);
-    return RecognizedItems.parse(input).items;
+    return checked(() => RecognizedItems.parse(input).items);
   }
 
   async extract(file: { base64: string; mimeType: string }): Promise<ExtractedReport> {
@@ -123,7 +123,7 @@ export class ClaudeAdapters implements MealRecognizer, ReportExtractor {
         ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: file.base64 } }
         : { type: "image", source: { type: "base64", media_type: imageType(file.mimeType), data: file.base64 } };
     const input = await this.callTool(REPORT_SYSTEM, reportTool, [source, { type: "text", text: "Record the results." }]);
-    return ExtractedMarkers.parse(input);
+    return checked(() => ExtractedMarkers.parse(input));
   }
 
   private async callTool(system: string, tool: Anthropic.Tool, content: Anthropic.ContentBlockParam[]): Promise<unknown> {
@@ -142,6 +142,15 @@ export class ClaudeAdapters implements MealRecognizer, ReportExtractor {
     } catch (err) {
       throw new AiUnavailableError(undefined, { cause: err });
     }
+  }
+}
+
+/** Malformed model output is a provider failure (retryable), not a client error. */
+function checked<T>(fn: () => T): T {
+  try {
+    return fn();
+  } catch (err) {
+    throw new AiUnavailableError(undefined, { cause: err });
   }
 }
 

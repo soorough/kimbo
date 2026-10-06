@@ -65,7 +65,14 @@ export const SAMPLE_REPORT: ExtractedReport = {
 };
 
 function normaliseUnit(unit: string): string {
-  return unit.toLowerCase().replace(/\s+/g, "").replace("mgs", "mg").replace("percent", "%");
+  const u = unit
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace("mgs", "mg")
+    .replace("percent", "%")
+    .replace(/litre|liter|ltr/, "l");
+  // mg% and mg/100ml are older spellings of mg/dL.
+  return u === "mg%" || u === "mg/100ml" ? "mg/dl" : u;
 }
 
 function displayUnit(marker: MarkerKey, normalised: string): string {
@@ -116,8 +123,10 @@ export function toDraftMarkers(extracted: ExtractedReport): { markers: MarkerRea
       if (!key) ignored.push(m.markerName);
       continue;
     }
-    // A unit Kimbo can't convert is shown as-if canonical so the user can correct it before confirming.
-    markers.push(reading(key, m.value, m.unit) ?? { ...reading(key, m.value, MARKERS[key].canonicalUnit)!, originalUnit: m.unit });
+    const r = reading(key, m.value, m.unit);
+    // Never guess a unit: leave it out so the user enters the value themselves.
+    if (r) markers.push(r);
+    else ignored.push(`${m.markerName} (unit ${m.unit} not recognised)`);
   }
   return { markers, ignored };
 }

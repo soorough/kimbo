@@ -143,9 +143,10 @@ describe("managing logged meals", () => {
       id,
     );
     expect(res.status).toBe(200);
-    expect(res.json.meal.totals.calories).toBe(357);
+    // 3 × 118.8 kcal
+    expect(res.json.meal.totals.calories).toBe(356);
     const list = await api.get("/meals?date=2026-10-06", id);
-    expect(list.json.meals[0].totals.calories).toBe(357);
+    expect(list.json.meals[0].totals.calories).toBe(356);
   });
 
   it("deletes a meal", async () => {

@@ -168,7 +168,7 @@ export async function insertMeal(db: Db, profileId: string, meal: MealWrite, now
 export async function replaceMeal(db: Db, profileId: string, mealId: string, meal: MealWrite): Promise<void> {
   await withTransaction(db, async (client) => {
     await client.query(
-      `UPDATE meals SET meal_type = $3, eaten_at = $4, source = $5, was_corrected = $6, catalogue_version = $7
+      `UPDATE meals SET meal_type = $3, eaten_at = $4, source = $5, was_corrected = was_corrected OR $6, catalogue_version = $7
        WHERE id = $1 AND profile_id = $2`,
       [mealId, profileId, meal.mealType, meal.eatenAt, meal.source, meal.wasCorrected, CATALOGUE_VERSION],
     );

@@ -3,6 +3,8 @@ import { HttpError } from "../errors.js";
 import type { StoredItem } from "../repo/meals.js";
 import { getEntry, gramsPerUnit, nutritionFor } from "./catalogue.js";
 
+const MAX_HOUSEHOLD_QUANTITY = 50;
+
 /**
  * Turns confirmed items into stored items. Catalogue nutrition is always
  * recomputed here — the client's numbers are only trusted for estimates.
@@ -24,6 +26,9 @@ export function resolveConfirmedItems(items: ConfirmItem[]): StoredItem[] {
     if (!entry) throw new HttpError(400, "UNKNOWN_FOOD", `Kimbo doesn't know the food "${item.foodId}"`);
     if (gramsPerUnit(entry, item.unit) === null) {
       throw new HttpError(400, "UNSUPPORTED_UNIT", `${entry.name} can't be logged in ${item.unit}`);
+    }
+    if (item.unit !== "g" && item.quantity > MAX_HOUSEHOLD_QUANTITY) {
+      throw new HttpError(400, "VALIDATION_ERROR", `${item.quantity} ${item.unit} of ${entry.name} looks too many`);
     }
     return {
       foodId: entry.id,

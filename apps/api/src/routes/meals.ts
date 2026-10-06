@@ -21,6 +21,7 @@ export function mealRoutes(app: FastifyInstance, deps: Deps) {
   app.post("/meals/parse", async (req) => {
     const profile = await requireProfile(deps, req);
     const body = parse(ParseMealRequest, req.body);
+    if ("imageBase64" in body) assertImageSize(body.imageBase64);
     const candidates =
       "text" in body
         ? await deps.recognizer.fromText(body.text)
@@ -95,6 +96,15 @@ export function mealRoutes(app: FastifyInstance, deps: Deps) {
     });
     return { meals: meals.map(toApiMeal) };
   });
+}
+
+/** Claude accepts images up to 5 MB; base64 adds a third. */
+const MAX_IMAGE_BASE64_CHARS = 7_000_000;
+
+export function assertImageSize(base64: string) {
+  if (base64.length > MAX_IMAGE_BASE64_CHARS) {
+    throw new HttpError(400, "IMAGE_TOO_LARGE", "That photo is too large. Please try a smaller one.");
+  }
 }
 
 function toMealWrite(deps: Deps, req: FastifyRequest): MealWrite {

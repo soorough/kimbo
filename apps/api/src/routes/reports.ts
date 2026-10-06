@@ -4,12 +4,14 @@ import type { Deps } from "../app.js";
 import { confirmedReading, DISCLAIMER, SAMPLE_REPORT, selectFocus, SUPPORTED_MARKERS, toDraftMarkers } from "../domain/health.js";
 import { badRequest } from "../errors.js";
 import { parse, requireProfile } from "../http.js";
+import { assertImageSize } from "./meals.js";
 import { insertReportWithFocus, listReports } from "../repo/reports.js";
 
 export function reportRoutes(app: FastifyInstance, deps: Deps) {
   app.post("/reports/extract", async (req): Promise<ReportDraft> => {
     await requireProfile(deps, req);
     const body = parse(ExtractReportRequest, req.body);
+    if ("fileBase64" in body && body.mimeType !== "application/pdf") assertImageSize(body.fileBase64);
     const extracted =
       "sample" in body ? SAMPLE_REPORT : await deps.extractor.extract({ base64: body.fileBase64, mimeType: body.mimeType });
     const { markers, ignored } = toDraftMarkers(extracted);

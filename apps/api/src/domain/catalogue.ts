@@ -1,4 +1,4 @@
-import { roundNutrition, scaleNutrition, type Food, type Nutrition, type Unit, type UnitOption } from "@kimbo/shared";
+import { scaleNutrition, type Food, type Nutrition, type Unit, type UnitOption } from "@kimbo/shared";
 import { CATALOGUE, type CatalogueEntry } from "./catalogue-data.js";
 
 export { CATALOGUE_VERSION } from "./catalogue-data.js";
@@ -49,6 +49,12 @@ for (const entry of CATALOGUE) {
   for (const alias of [entry.name, ...entry.aliases]) exactIndex.set(normalise(alias), entry);
 }
 
+/** Words that describe a dish without changing what it is. */
+const MODIFIERS = new Set([
+  "homemade", "home", "made", "style", "fresh", "hot", "warm", "plain", "simple", "small", "big", "large",
+  "some", "little", "extra", "spicy", "mild", "leftover", "my", "of", "a", "the", "sabzi", "sabji", "curry",
+]);
+
 function containsPhrase(haystack: string[], needle: string[]): boolean {
   outer: for (let i = 0; i + needle.length <= haystack.length; i++) {
     for (let j = 0; j < needle.length; j++) if (haystack[i + j] !== needle[j]) continue outer;
@@ -65,11 +71,15 @@ export function match(name: string): CatalogueEntry | null {
   const exact = exactIndex.get(norm) ?? exactIndex.get(singularWords.join(" "));
   if (exact) return exact;
 
-  // Otherwise pick the longest alias that appears as a whole phrase in the name.
+  // Otherwise pick the longest alias that appears as a whole phrase in the name. A one-word
+  // alias only counts when every other word is a harmless modifier — "green tea" is not chai.
   let best: { entry: CatalogueEntry; length: number } | null = null;
   for (const [alias, entry] of exactIndex) {
     const aliasWords = alias.split(" ");
-    if (containsPhrase(words, aliasWords) || containsPhrase(singularWords, aliasWords)) {
+    for (const candidate of [words, singularWords]) {
+      if (!containsPhrase(candidate, aliasWords)) continue;
+      const rest = candidate.filter((w) => !aliasWords.includes(w));
+      if (aliasWords.length === 1 && !rest.every((w) => MODIFIERS.has(w))) continue;
       if (!best || alias.length > best.length) best = { entry, length: alias.length };
     }
   }
@@ -97,14 +107,17 @@ export function resolveUnit(entry: CatalogueEntry, rawUnit: string | null): Unit
   return entry.defaultUnit;
 }
 
-/** Nutrition for one unit of a food, rounded — the basis every other figure is derived from. */
+/**
+ * Exact (unrounded) nutrition for one unit of a food. Rounding happens once,
+ * after scaling by quantity, so gram portions stay precise.
+ */
 export function perUnit(entry: CatalogueEntry, unit: Unit): Nutrition {
   const grams = gramsPerUnit(entry, unit);
   if (grams === null) throw new Error(`${entry.id} has no ${unit} portion`);
   const [calories, protein, carbs, fat, fibre, satFat] = entry.per100.map((v) => (v * grams) / 100) as [
     number, number, number, number, number, number,
   ];
-  return roundNutrition({ calories, protein, carbs, fat, fibre, satFat });
+  return { calories, protein, carbs, fat, fibre, satFat };
 }
 
 export const scale = scaleNutrition;
