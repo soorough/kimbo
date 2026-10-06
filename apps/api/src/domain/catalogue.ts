@@ -1,7 +1,8 @@
-import type { Food, Nutrition, Unit, UnitOption } from "@kimbo/shared";
+import { roundNutrition, scaleNutrition, type Food, type Nutrition, type Unit, type UnitOption } from "@kimbo/shared";
 import { CATALOGUE, type CatalogueEntry } from "./catalogue-data.js";
 
 export { CATALOGUE_VERSION } from "./catalogue-data.js";
+export { sumNutrition } from "@kimbo/shared";
 
 const UNIT_LABELS: Record<Unit, string> = {
   piece: "piece",
@@ -96,19 +97,6 @@ export function resolveUnit(entry: CatalogueEntry, rawUnit: string | null): Unit
   return entry.defaultUnit;
 }
 
-const round1 = (n: number) => Math.round(n * 10) / 10;
-
-function roundNutrition(n: Nutrition): Nutrition {
-  return {
-    calories: Math.round(n.calories),
-    protein: round1(n.protein),
-    carbs: round1(n.carbs),
-    fat: round1(n.fat),
-    fibre: round1(n.fibre),
-    satFat: round1(n.satFat),
-  };
-}
-
 /** Nutrition for one unit of a food, rounded — the basis every other figure is derived from. */
 export function perUnit(entry: CatalogueEntry, unit: Unit): Nutrition {
   const grams = gramsPerUnit(entry, unit);
@@ -119,39 +107,10 @@ export function perUnit(entry: CatalogueEntry, unit: Unit): Nutrition {
   return roundNutrition({ calories, protein, carbs, fat, fibre, satFat });
 }
 
-/**
- * quantity × per-unit nutrition. The app recomputes this the same way while the
- * user edits, so the review sheet and the saved meal always agree.
- */
-export function scale(unitNutrition: Nutrition, quantity: number): Nutrition {
-  return roundNutrition({
-    calories: unitNutrition.calories * quantity,
-    protein: unitNutrition.protein * quantity,
-    carbs: unitNutrition.carbs * quantity,
-    fat: unitNutrition.fat * quantity,
-    fibre: unitNutrition.fibre * quantity,
-    satFat: unitNutrition.satFat * quantity,
-  });
-}
+export const scale = scaleNutrition;
 
 export function nutritionFor(entry: CatalogueEntry, quantity: number, unit: Unit): Nutrition {
   return scale(perUnit(entry, unit), quantity);
-}
-
-export function sumNutrition(items: Nutrition[]): Nutrition {
-  return roundNutrition(
-    items.reduce(
-      (acc, n) => ({
-        calories: acc.calories + n.calories,
-        protein: acc.protein + n.protein,
-        carbs: acc.carbs + n.carbs,
-        fat: acc.fat + n.fat,
-        fibre: acc.fibre + n.fibre,
-        satFat: acc.satFat + n.satFat,
-      }),
-      { calories: 0, protein: 0, carbs: 0, fat: 0, fibre: 0, satFat: 0 },
-    ),
-  );
 }
 
 export function toFood(entry: CatalogueEntry): Food {

@@ -360,3 +360,4 @@ export type ProgressResponse = z.infer<typeof ProgressResponse>;
 
 export const CheckinResponse = z.object({ events: z.array(KimboEvent) });
 export type CheckinResponse = z.infer<typeof CheckinResponse>;
+export * from "./nutrition";
