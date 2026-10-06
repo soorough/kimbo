@@ -299,6 +299,20 @@ export const RecentMeal = z.object({
 export type RecentMeal = z.infer<typeof RecentMeal>;
 export const RecentMealsResponse = z.object({ meals: z.array(RecentMeal) });
 
+const SavedMealName = z.string().trim().min(1, "Give the meal a name").max(40, "Keep the name under 40 characters");
+export const SaveMealRequest = z.object({
+  name: SavedMealName,
+  items: z.array(ConfirmItem).min(1, "Add at least one item"),
+});
+export type SaveMealRequest = z.input<typeof SaveMealRequest>;
+export const RenameSavedMealRequest = z.object({ name: SavedMealName });
+
+/** A meal the user named and kept in "My meals"; `draft` opens straight in review. */
+export const SavedMeal = z.object({ id: z.string(), name: z.string(), calories: z.number(), draft: MealDraft });
+export type SavedMeal = z.infer<typeof SavedMeal>;
+export const SavedMealResponse = z.object({ meal: SavedMeal });
+export const SavedMealsResponse = z.object({ meals: z.array(SavedMeal) });
+
 export const RepeatYesterdayRequest = z.object({ mealType: MealType });
 
 // ---------- Reports ----------

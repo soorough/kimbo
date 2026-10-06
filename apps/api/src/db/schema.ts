@@ -99,4 +99,14 @@ CREATE TABLE IF NOT EXISTS hidden_recent_meals (
   hidden_at timestamptz NOT NULL,
   PRIMARY KEY (profile_id, meal_key)
 );
+
+-- "My meals": named meals kept for quick logging. Items are resolved at save time.
+CREATE TABLE IF NOT EXISTS saved_meals (
+  id uuid PRIMARY KEY,
+  profile_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  items jsonb NOT NULL,
+  created_at timestamptz NOT NULL
+);
+CREATE INDEX IF NOT EXISTS saved_meals_profile_idx ON saved_meals (profile_id, created_at);
 `;

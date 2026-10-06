@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { DraftItem, MealType, RecentMeal, Unit } from "@kimbo/shared";
-import type { StoredMeal } from "../repo/meals.js";
+import type { StoredItem, StoredMeal } from "../repo/meals.js";
 import { getEntry, gramsPerUnit, nutritionFor, sumNutrition, toFood } from "./catalogue.js";
 
 export const RECENT_LOOKBACK_DAYS = 60;
@@ -49,7 +49,7 @@ export function recentMeals(meals: StoredMeal[], hidden: Set<string>, suggestedM
 }
 
 /** Catalogue dishes are re-resolved so a quick add uses today's catalogue values. */
-function toDraftItem(item: StoredMeal["items"][number]): DraftItem {
+export function toDraftItem(item: StoredItem): DraftItem {
   const entry = item.foodId ? getEntry(item.foodId) : null;
   if (entry && gramsPerUnit(entry, item.unit as Unit) !== null) {
     const unit = item.unit as Unit;

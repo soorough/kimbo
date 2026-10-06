@@ -9,6 +9,7 @@ import { mealRoutes } from "./routes/meals.js";
 import { profileRoutes } from "./routes/profiles.js";
 import { progressRoutes } from "./routes/progress.js";
 import { reportRoutes } from "./routes/reports.js";
+import { savedMealRoutes } from "./routes/saved-meals.js";
 import { todayRoutes } from "./routes/today.js";
 
 export interface Deps {
@@ -50,6 +51,7 @@ export async function createApp(deps: Deps, opts: { logger?: boolean } = {}) {
   app.get("/health", async () => ({ ok: true }));
   profileRoutes(app, deps);
   mealRoutes(app, deps);
+  savedMealRoutes(app, deps);
   reportRoutes(app, deps);
   todayRoutes(app, deps);
   progressRoutes(app, deps);
