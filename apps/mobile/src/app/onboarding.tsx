@@ -1,6 +1,7 @@
 import {
   computeGoal,
   DEFAULT_PACE,
+  isWeightGoal,
   maintenanceFor,
   PACES,
   TARGET_BOUNDS_KCAL,
@@ -46,6 +47,12 @@ const GOALS: { key: GoalType; icon: IconName; label: string; hint: string }[] = 
     label: "Build muscle",
     hint: "A small surplus and more protein, not just weight",
   },
+  {
+    key: "recomp",
+    icon: "refresh-cw",
+    label: "Build muscle, keep my weight",
+    hint: "Maingain: maintenance calories, more protein, for people who lift",
+  },
 ];
 const SEXES: { key: Sex; label: string }[] = [
   { key: "female", label: "Female" },
@@ -77,7 +84,7 @@ const QUESTIONS: Record<Step, string> = {
 /** Maintaining has no goal weight or pace to choose. */
 function stepsFor(goal: GoalType | null): Step[] {
   const base: Step[] = ["goal", "sex", "age", "height", "weight", "activity"];
-  return goal === "maintain" ? base : [...base, "goalWeight", "pace"];
+  return goal && isWeightGoal(goal) ? [...base, "goalWeight", "pace"] : base;
 }
 
 /**
@@ -116,7 +123,7 @@ export default function Onboarding() {
     setWeight(saved.weightKg);
     setActivity(saved.activity);
     setGoalWeight(saved.targetWeightKg);
-    setWeeklyKg(saved.goal === "maintain" ? null : saved.weeklyKg);
+    setWeeklyKg(isWeightGoal(saved.goal) ? saved.weeklyKg : null);
   }, [saved]);
 
   const steps = stepsFor(goalType);
@@ -125,7 +132,7 @@ export default function Onboarding() {
   const request = (overrides: Partial<GoalRequest> = {}): GoalRequest => {
     const goal = overrides.goal ?? goalType!;
     const base: GoalRequest = { age, sex: sex!, heightCm: height, weightKg: weight, activity: activity!, goal };
-    if (goal !== "maintain") {
+    if (isWeightGoal(goal)) {
       base.weeklyKg = weeklyKg ?? DEFAULT_PACE[goal];
       if (goalWeight !== null) base.targetWeightKg = goalWeight;
     }
@@ -236,7 +243,7 @@ export default function Onboarding() {
         goalWeightLabel={formatWeight(goalWeightValue, weightUnit)}
         activity={activity}
         pace={
-          goalType && goalType !== "maintain" && weeklyKg !== null && PACES[goalType].length > 1
+          goalType && isWeightGoal(goalType) && weeklyKg !== null && PACES[goalType].length > 1
             ? PACES[goalType].indexOf(weeklyKg) / (PACES[goalType].length - 1)
             : null
         }
@@ -300,7 +307,7 @@ export default function Onboarding() {
               selected={activity === a.key}
               onPress={() =>
                 choose(setActivity, a.key, () =>
-                  goalType === "maintain" ? calculate.mutate(request({ activity: a.key })) : next(),
+                  goalType && !isWeightGoal(goalType) ? calculate.mutate(request({ activity: a.key })) : next(),
                 )
               }
               label={a.label}
@@ -311,11 +318,11 @@ export default function Onboarding() {
         </Options>
       ) : null}
 
-      {current === "goalWeight" && goalType && goalType !== "maintain" ? (
+      {current === "goalWeight" && goalType && isWeightGoal(goalType) ? (
         <GoalWeightStep goal={goalType} currentKg={weight} kg={goalWeightValue} onChange={setGoalWeight} />
       ) : null}
 
-      {current === "pace" && goalType && goalType !== "maintain" && activity ? (
+      {current === "pace" && goalType && isWeightGoal(goalType) && activity ? (
         <Options>
           {PACES[goalType].map((pace) => {
             const n = computeGoal({
@@ -477,12 +484,15 @@ function Reveal({
   const weightUnit = useUnits((u) => u.weight);
   const verb = b.kgPerWeek < 0 ? "Lose" : "Build";
   const pace =
-    b.kgPerWeek === 0
-      ? "Keeps your weight where it is"
+    goal.goal === "recomp"
+      ? "Same weight, more protein, so muscle replaces fat"
+      : b.kgPerWeek === 0
+        ? "Keeps your weight where it is"
       : goal.targetWeightKg && b.weeksToGoal
         ? `${verb} ${formatPace(Math.abs(b.kgPerWeek), weightUnit)} a week · ${formatWeight(goal.targetWeightKg, weightUnit)} by ${dateInWeeks(b.weeksToGoal)}`
         : `${verb} ${formatPace(Math.abs(b.kgPerWeek), weightUnit)} a week`;
-  const paceIcon: IconName = b.kgPerWeek < 0 ? "trending-down" : b.kgPerWeek > 0 ? "trending-up" : "minus";
+  const paceIcon: IconName =
+    goal.goal === "recomp" ? "refresh-cw" : b.kgPerWeek < 0 ? "trending-down" : b.kgPerWeek > 0 ? "trending-up" : "minus";
 
   return (
     <Screen

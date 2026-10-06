@@ -1,3 +1,4 @@
+import { isWeightGoal } from "@kimbo/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useRef, useState } from "react";
@@ -17,7 +18,7 @@ const ACTIVITY_LABEL = {
   active: "Very active",
   very_active: "Extremely active",
 } as const;
-const GOAL_LABEL = { lose: "Lose weight", maintain: "Maintain", build_muscle: "Build muscle" } as const;
+const GOAL_LABEL = { lose: "Lose weight", maintain: "Maintain", build_muscle: "Build muscle", recomp: "Maingain" } as const;
 
 /** Settings live in one predictable place instead of scattered links. */
 export default function You() {
@@ -92,7 +93,7 @@ export default function You() {
           <T variant="number">{goal.effectiveTarget} kcal</T>
           <T variant="label">
             {GOAL_LABEL[goal.goal]}
-            {goal.goal !== "maintain" ? ` ${formatPace(goal.weeklyKg, weightUnit)} a week` : ""} ·{" "}
+            {isWeightGoal(goal.goal) ? ` ${formatPace(goal.weeklyKg, weightUnit)} a week` : ""} ·{" "}
             {ACTIVITY_LABEL[goal.activity]}
           </T>
           <T variant="caption">

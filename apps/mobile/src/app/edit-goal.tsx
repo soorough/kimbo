@@ -1,4 +1,4 @@
-import { computeGoal, DEFAULT_PACE, PACES, TARGET_BOUNDS_KCAL, type GoalRequest } from "@kimbo/shared";
+import { computeGoal, DEFAULT_PACE, isWeightGoal, PACES, TARGET_BOUNDS_KCAL, type GoalRequest } from "@kimbo/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
@@ -17,7 +17,8 @@ type Sex = GoalRequest["sex"];
 const GOALS: { value: GoalType; label: string }[] = [
   { value: "lose", label: "Lose" },
   { value: "maintain", label: "Maintain" },
-  { value: "build_muscle", label: "Build muscle" },
+  { value: "recomp", label: "Maingain" },
+  { value: "build_muscle", label: "Build" },
 ];
 const ACTIVITIES: { value: Activity; label: string }[] = [
   { value: "sedentary", label: "Mostly sitting" },
@@ -59,7 +60,7 @@ export default function EditGoal() {
     setGoal(saved.goal);
     setWeight(saved.weightKg);
     setGoalWeight(saved.targetWeightKg ?? (saved.goal === "build_muscle" ? saved.weightKg + 3 : saved.weightKg - 5));
-    setPace(saved.goal === "maintain" ? DEFAULT_PACE.lose : saved.weeklyKg);
+    setPace(isWeightGoal(saved.goal) ? saved.weeklyKg : DEFAULT_PACE.lose);
     setActivity(saved.activity);
     setSex(saved.sex);
     setAge(saved.age);
@@ -74,8 +75,8 @@ export default function EditGoal() {
       : goal === "lose"
         ? Math.min(goalWeight, Math.floor(weight - 0.5))
         : null;
-  const paces = goal === "maintain" ? [] : PACES[goal];
-  const weeklyKg = goal === "maintain" ? undefined : paces.includes(pace) ? pace : DEFAULT_PACE[goal];
+  const paces = isWeightGoal(goal) ? PACES[goal] : [];
+  const weeklyKg = isWeightGoal(goal) ? (paces.includes(pace) ? pace : DEFAULT_PACE[goal]) : undefined;
 
   const request: GoalRequest = {
     goal,
@@ -84,7 +85,7 @@ export default function EditGoal() {
     heightCm: height,
     weightKg: weight,
     activity,
-    ...(goal !== "maintain" ? { weeklyKg, targetWeightKg: gw! } : {}),
+    ...(isWeightGoal(goal) ? { weeklyKg, targetWeightKg: gw! } : {}),
   };
   const computed = computeGoal(request).target;
   const target = override ?? computed;
@@ -155,7 +156,7 @@ export default function EditGoal() {
               <Chip key={p} label={`${formatPace(p, weightUnit)} / week`} selected={weeklyKg === p} onPress={() => edit(setPace)(p)} />
             ))}
           </View>
-          {goal !== "maintain" && gw !== null ? (
+          {isWeightGoal(goal) && gw !== null ? (
             <PacePlanner
               goal={goal}
               body={{ age, sex, heightCm: height, weightKg: weight, activity }}

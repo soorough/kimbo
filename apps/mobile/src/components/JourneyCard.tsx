@@ -27,9 +27,11 @@ export function JourneyCard() {
   if (!j) return null;
 
   const title =
-    j.goal === "maintain"
-      ? `Stay at ${formatWeight(j.startKg, unit)}`
-      : `${j.goal === "lose" ? "Lose" : "Build"} ${formatPace(j.weeklyKg, unit)} a week`;
+    j.goal === "recomp"
+      ? `Build muscle at ${formatWeight(j.startKg, unit)}`
+      : j.goal === "maintain"
+        ? `Stay at ${formatWeight(j.startKg, unit)}`
+        : `${j.goal === "lose" ? "Lose" : "Build"} ${formatPace(j.weeklyKg, unit)} a week`;
 
   return (
     <Surface>
