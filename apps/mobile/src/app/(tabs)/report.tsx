@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
-import { ErrorState, Icon, Loading, Screen, Surface, T, type IconName } from "@/components/ui";
+import { CardSkeleton } from "@/components/Skeleton";
+import { ErrorState, Icon, Screen, Surface, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { DISCLAIMER } from "@/lib/copy";
 import { useReportIntake } from "@/lib/report-intake";
@@ -40,7 +41,7 @@ export default function ReportTab() {
         <T variant="display">Blood report</T>
       </View>
 
-      {reports.isLoading ? <Loading /> : null}
+      {reports.isLoading ? <CardSkeleton h={160} /> : null}
       {reports.error ? <ErrorState message={errorMessage(reports.error)} onRetry={() => reports.refetch()} /> : null}
 
       {latest && focus ? (

@@ -18,6 +18,12 @@ const MOOD: Record<KimboEvent["type"], KimboMood> = {
   meal_supported_focus: "proud",
   report_became_focus: "focus",
   correction_accepted: "thanks",
+  first_weigh_in: "happy",
+  kg_progress: "cheer",
+  halfway_to_goal: "cheer",
+  goal_reached: "cheer",
+  on_target_3: "proud",
+  on_target_7: "cheer",
 };
 
 /** Milestones earn a moment of their own; everything else is a light, passing toast. */
@@ -26,6 +32,10 @@ const MILESTONES = new Set<KimboEvent["type"]>([
   "first_full_week",
   "consistency_improved",
   "focus_improved",
+  "kg_progress",
+  "halfway_to_goal",
+  "goal_reached",
+  "on_target_7",
 ]);
 
 const MILESTONE_TITLES: Partial<Record<KimboEvent["type"], string>> = {
@@ -33,6 +43,10 @@ const MILESTONE_TITLES: Partial<Record<KimboEvent["type"], string>> = {
   first_full_week: "A full week",
   consistency_improved: "Better than last week",
   focus_improved: "Focus up",
+  kg_progress: "A kilogram closer",
+  halfway_to_goal: "Halfway there",
+  goal_reached: "Goal reached",
+  on_target_7: "A week on target",
 };
 
 interface MomentsState {

@@ -2,7 +2,9 @@ import type { Achievement, KimboEventType, ProgressResponse } from "@kimbo/share
 import { useQuery } from "@tanstack/react-query";
 import { StyleSheet, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
-import { Bar, ErrorState, Icon, Loading, Screen, Surface, T, type IconName } from "@/components/ui";
+import { ProgressSkeleton } from "@/components/Skeleton";
+import { WeightTrend } from "@/components/WeightTrend";
+import { Bar, ErrorState, Icon, Screen, Surface, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { colors, radius, space } from "@/lib/theme";
 
@@ -15,14 +17,21 @@ const BADGES: { type: KimboEventType; icon: IconName; title: string; how: string
   { type: "consistency_improved", icon: "trending-up", title: "Steadier week", how: "Log more days than last week" },
   { type: "focus_improved", icon: "target", title: "Focus up", how: "More meals help than last week" },
   { type: "welcome_back", icon: "heart", title: "Came back", how: "Return after a break" },
+  { type: "first_weigh_in", icon: "activity", title: "First weigh-in", how: "Log your weight once" },
+  { type: "on_target_3", icon: "sun", title: "3 on target", how: "3 days in a row on your kcal target" },
+  { type: "on_target_7", icon: "award", title: "Week on target", how: "7 days in a row on target" },
+  { type: "kg_progress", icon: "trending-down", title: "Kilogram closer", how: "Move 1 kg toward your goal" },
+  { type: "halfway_to_goal", icon: "flag", title: "Halfway", how: "Get halfway to your goal weight" },
+  { type: "goal_reached", icon: "check-circle", title: "Goal reached", how: "Reach your goal weight" },
 ];
 
 export default function Progress() {
   const progress = useQuery({ queryKey: ["progress"], queryFn: api.progress });
+  const journey = useQuery({ queryKey: ["journey"], queryFn: api.journey, retry: false });
   if (progress.isLoading)
     return (
       <Screen>
-        <Loading />
+        <ProgressSkeleton />
       </Screen>
     );
   if (progress.error || !progress.data) {
@@ -44,6 +53,7 @@ export default function Progress() {
       </View>
 
       <WeekCard p={p} />
+      {journey.data ? <WeightTrend journey={journey.data} /> : null}
       {p.focus ? <FocusCard focus={p.focus} /> : null}
 
       <View style={styles.stats}>

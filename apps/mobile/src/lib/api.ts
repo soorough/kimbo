@@ -1,6 +1,8 @@
 import {
   ApiError,
   CheckinResponse,
+  JourneyResponse,
+  WeighInResponse,
   ConfirmMealResponse,
   ConfirmReportResponse,
   FoodSearchResponse,
@@ -91,6 +93,9 @@ export const api = {
   today: () => request(TodayResponse, "GET", "/today"),
   progress: () => request(ProgressResponse, "GET", "/progress"),
   checkin: () => request(CheckinResponse, "POST", "/checkins", {}),
+
+  journey: () => request(JourneyResponse, "GET", "/journey"),
+  logWeight: (kg: number) => request(WeighInResponse, "POST", "/weights", { kg }),
 };
 
 export function errorMessage(err: unknown): string {

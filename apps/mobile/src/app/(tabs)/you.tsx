@@ -3,7 +3,8 @@ import { router } from "expo-router";
 import { useRef, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
-import { Button, ErrorState, Icon, Loading, Screen, Sheet, Surface, T, type IconName } from "@/components/ui";
+import { ListSkeleton } from "@/components/Skeleton";
+import { Button, ErrorState, Icon, Screen, Sheet, Surface, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { formatPace, formatWeight, useUnits } from "@/lib/units";
@@ -57,7 +58,7 @@ export default function You() {
   if (profile.isLoading)
     return (
       <Screen>
-        <Loading />
+        <ListSkeleton rows={3} />
       </Screen>
     );
   if (!profile.data) {

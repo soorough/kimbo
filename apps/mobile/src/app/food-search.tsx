@@ -2,7 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
 import { FlatList, Pressable, StyleSheet, TextInput, View } from "react-native";
-import { ErrorState, Icon, Loading, SheetPanel, T } from "@/components/ui";
+import { ListSkeleton } from "@/components/Skeleton";
+import { ErrorState, Icon, SheetPanel, T } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useDraft, useFoodPicker } from "@/lib/draft";
 import { colors, fonts, radius, space } from "@/lib/theme";
@@ -30,7 +31,7 @@ export default function FoodSearch() {
           accessibilityLabel="Search foods"
         />
       </View>
-      {results.isLoading ? <Loading /> : null}
+      {results.isLoading ? <ListSkeleton rows={6} header={false} /> : null}
       {results.error ? <ErrorState message={errorMessage(results.error)} onRetry={() => results.refetch()} /> : null}
       <FlatList
         style={{ marginTop: space.sm }}

@@ -3,9 +3,12 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useEffect } from "react";
 import { AppState, Pressable, StyleSheet, View } from "react-native";
+import { JourneyCard } from "@/components/JourneyCard";
+import { KimboBuddy } from "@/components/KimboBuddy";
+import { TodaySkeleton } from "@/components/Skeleton";
 import { Kimbo } from "@/components/Kimbo";
 import { useMoments } from "@/components/Moments";
-import { Bar, ErrorState, Icon, Loading, Ring, Screen, Surface, T, type IconName } from "@/components/ui";
+import { Bar, ErrorState, Icon, Ring, Screen, Surface, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useDraft } from "@/lib/draft";
 import { MEAL_LABEL, MEAL_ORDER, nextMealPrompt } from "@/lib/format";
@@ -28,7 +31,7 @@ export default function Today() {
   if (today.isLoading)
     return (
       <Screen>
-        <Loading />
+        <TodaySkeleton />
       </Screen>
     );
   if (today.error || !today.data) {
@@ -52,12 +55,13 @@ export default function Today() {
           </T>
           <T variant="display">{nextMealPrompt(data.meals.map((m) => m.mealType))}</T>
         </View>
-        <Kimbo mood={data.meals.length ? "happy" : "idle"} size={56} leaves={1 + supported} />
+        <KimboBuddy mood={data.meals.length ? "happy" : "idle"} leaves={1 + supported} />
       </View>
 
       {profile.data?.profile.isDemo ? <DemoBanner /> : null}
 
       <EnergyCard data={data} />
+      {data.targets ? <JourneyCard /> : null}
       <FocusCard data={data} />
 
       <View style={{ gap: space.md }}>
@@ -297,7 +301,7 @@ function useWelcomeBack() {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "flex-end", gap: space.md, marginTop: space.sm },
+  header: { flexDirection: "row", alignItems: "flex-end", gap: space.md, marginTop: space.sm, zIndex: 10 },
   rowBetween: { flexDirection: "row", justifyContent: "space-between" },
   rowCenter: { flexDirection: "row", alignItems: "center", gap: space.md },
   energy: { flexDirection: "row", alignItems: "center", gap: space.xl },
