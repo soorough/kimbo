@@ -158,6 +158,26 @@ describe("report insights", () => {
     expect((await insights(id)).cutBackOn).toEqual([]);
   });
 
+  it("breaks helping meals down by meal of the day, by day, and as a timeline", async () => {
+    const id = await profile();
+    await report(id, "2026-09-28T08:00:00Z", LDL_HIGH);
+    const at = (date: string, mealType: string, items: unknown[], hour: string) =>
+      api.post("/meals", { mealType, source: "text", eatenAt: `${date}T${hour}:00:00Z`, items }, id);
+    await at("2026-09-29", "lunch", dalRoti, "07"); // helps
+    await at("2026-09-29", "dinner", paneerNaan, "14"); // doesn't
+    await at("2026-09-30", "lunch", rajmaRice, "07"); // helps
+    await at("2026-10-01", "dinner", paneerNaan, "14"); // doesn't
+    const res = await insights(id);
+    expect(res.byMealType).toEqual([
+      { mealType: "lunch", supported: 2, total: 2 },
+      { mealType: "dinner", supported: 0, total: 2 },
+    ]);
+    expect(res.days).toEqual({ helped: 2, logged: 3 });
+    expect(res.timeline.map((t: { supports: boolean }) => t.supports)).toEqual([true, false, true, false]);
+    // fibre: dal-roti 12.2 + paneer-naan 3.4 + rajma-rice 9.1 + paneer-naan 3.4 over 3 days
+    expect(res.avgFibreG).toBeGreaterThan(0);
+  });
+
   it("says how long it has been since the report", async () => {
     const id = await profile();
     await report(id, "2026-08-20T08:00:00Z", LDL_HIGH);

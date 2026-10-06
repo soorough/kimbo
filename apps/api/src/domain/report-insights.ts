@@ -1,4 +1,4 @@
-import type { FocusKey, FoodTag, Report, ReportInsights } from "@kimbo/shared";
+import type { FocusKey, FoodTag, MealType, Report, ReportInsights } from "@kimbo/shared";
 import type { StoredMeal } from "../repo/meals.js";
 import type { FocusAssignment } from "../repo/reports.js";
 import { mealSupportsFocus } from "./focus-match.js";
@@ -10,6 +10,8 @@ const MAX_HELPERS = 3;
 /** Dishes worth naming as helpers: the ones that carry a "good" tag, not every item on the plate. */
 const HELPER_TAGS: FoodTag[] = ["fibre_rich", "lean_protein"];
 const MAX_CUT_BACK = 4;
+const MAX_TIMELINE = 42;
+const MEAL_ORDER: MealType[] = ["breakfast", "lunch", "snack", "dinner"];
 /** What works against each focus, in the order used to name the reason. Balanced plate: nothing flagged. */
 const AGAINST: Record<FocusKey, FoodTag[]> = {
   fibre_focus: ["high_sat_fat", "fried"],
@@ -109,6 +111,23 @@ export function reportInsights(i: InsightsInput): ReportInsights | null {
     helpers,
     cutBackOn,
     cutBackFor: watched.map((m) => m.label),
+    byMealType: MEAL_ORDER.map((mealType) => {
+      const of = judged.filter((j) => j.meal.mealType === mealType);
+      return { mealType, supported: of.filter((j) => j.supports).length, total: of.length };
+    }).filter((b) => b.total > 0),
+    days: {
+      helped: new Set(judged.filter((j) => j.supports).map((j) => j.meal.localDate)).size,
+      logged: new Set(judged.map((j) => j.meal.localDate)).size,
+    },
+    timeline: [...judged]
+      .sort((a, b) => a.meal.eatenAt.localeCompare(b.meal.eatenAt))
+      .slice(-MAX_TIMELINE)
+      .map((j) => ({ date: j.meal.localDate, mealType: j.meal.mealType, supports: j.supports })),
+    avgFibreG: (() => {
+      const days = new Set(judged.map((j) => j.meal.localDate)).size;
+      const fibre = judged.reduce((sum, j) => sum + j.meal.totals.fibre, 0);
+      return days ? Math.round((fibre / days) * 10) / 10 : 0;
+    })(),
     compare:
       compared && earlier
         ? {

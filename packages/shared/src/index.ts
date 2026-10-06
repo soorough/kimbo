@@ -403,6 +403,12 @@ export const ReportInsights = z.object({
   cutBackOn: z.array(z.object({ name: z.string(), times: z.number(), reason: z.string() })),
   /** labels of the markers worth watching that the list is for */
   cutBackFor: z.array(z.string()),
+  byMealType: z.array(z.object({ mealType: MealType, supported: z.number(), total: z.number() })),
+  /** days with at least one helping meal, out of days with any meal logged */
+  days: z.object({ helped: z.number(), logged: z.number() }),
+  /** meals since the report in order, most recent last (capped) */
+  timeline: z.array(z.object({ date: LocalDate, mealType: MealType, supports: z.boolean() })),
+  avgFibreG: z.number(),
   compare: z
     .object({
       marker: MarkerKey,
