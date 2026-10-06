@@ -129,7 +129,8 @@ export function RulerPicker({
             horizontal
             showsHorizontalScrollIndicator={false}
             snapToInterval={SPACING}
-            decelerationRate="fast"
+            // Native momentum, like an iOS picker: a flick glides far, a slow drag tracks the finger.
+            decelerationRate={0.995}
             onScroll={onScroll}
             onMomentumScrollEnd={settle}
             onScrollEndDrag={(e) => {
