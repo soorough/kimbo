@@ -39,7 +39,7 @@ type GoalType = GoalRequest["goal"];
 
 const GOALS: { key: GoalType; icon: IconName; label: string; hint: string }[] = [
   { key: "lose", icon: "trending-down", label: "Lose weight", hint: "At a pace you pick, from ¼ to 1 kg a week" },
-  { key: "maintain", icon: "minus", label: "Stay where I am", hint: "Eat for the weight you're at" },
+  { key: "maintain", icon: "minus", label: "Stay where I am", hint: "Keep your weight, focus on your report" },
   {
     key: "build_muscle",
     icon: "zap",
