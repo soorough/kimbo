@@ -146,7 +146,5 @@ export function insights(week: WeekStats): string[] {
     .sort((a, b) => b[1].supports / b[1].total - a[1].supports / a[1].total);
   const out: string[] = [];
   if (candidates[0] && byType.size > 1) out.push(`Your ${PLURAL[candidates[0][0]]} most often support your focus.`);
-  if (week.trackedDates.length >= 5)
-    out.push(`You've shown up ${week.trackedDates.length} days this week — that's the habit forming.`);
   return out;
 }

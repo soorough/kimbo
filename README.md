@@ -35,6 +35,22 @@ feel like a well-kept recipe notebook, not a clinical dashboard or a gym tracker
   grows a leaf for every meal that helps the focus. Milestones get a short confetti moment; everything
   else is a passing toast with a light haptic, never a blocking dialog.
 
+### Voice
+
+Kimbo talks like a friend who cooks at home, not a wellness brand. Every string in the app and API follows:
+
+1. **Name the food and the number.** "2 roti + dal, 396 kcal", never "a great meal".
+2. **No slogans or filler** ("journey", "wins", "habit", "gentle", "perfection").
+3. **No em-dashes.** One idea per sentence.
+4. **Kitchen words as people say them:** roti, katori, sabzi, thali, chai.
+5. **Health text gives the number and what Kimbo does with it,** never what it means medically.
+6. **Buttons name the outcome** ("Use these values", "Save lunch"); they are text-only, with no icons.
+
+### Accessibility
+
+Every text/background pair in `apps/mobile/src/lib/theme.ts` meets WCAG AA (4.5:1 for text, 3:1 for
+control borders and graphics). Number inputs in onboarding are rulers with screen-reader increment/decrement.
+
 ## Run locally
 
 ```sh

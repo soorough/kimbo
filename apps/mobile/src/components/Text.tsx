@@ -9,6 +9,7 @@ const TONES = {
   leaf: colors.leaf,
   plum: colors.plum,
   terracotta: colors.terracotta,
+  turmeric: colors.turmericDeep,
   white: colors.white,
 } as const;
 

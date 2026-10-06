@@ -136,7 +136,7 @@ async function respondWithMeal(deps: Deps, profile: ProfileRow, id: string, writ
   const focusResult = focus ? mealSupportsFocus(meal, focus) : null;
   const events: KimboEvent[] = [];
   if (write.wasCorrected)
-    events.push({ type: "correction_accepted", message: "Thanks for the fix — saved just as you ate it." });
+    events.push({ type: "correction_accepted", message: "Fixed. Saved as you ate it." });
   if (focusResult?.supports)
     events.push({ type: "meal_supported_focus", message: supportedMessage(focusResult.focus) });
   events.push(...(await unlockMilestones(deps, profile)));

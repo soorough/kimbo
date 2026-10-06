@@ -74,8 +74,7 @@ export default function Review() {
           </View>
           <View style={{ minWidth: 150 }}>
             <Button
-              label={draft.mealId ? "Save changes" : "Save meal"}
-              icon="check"
+              label={draft.mealId ? "Save changes" : `Save ${draft.mealType}`}
               disabled={!draft.lines.length}
               loading={save.isPending}
               onPress={() => save.mutate()}
@@ -91,12 +90,12 @@ export default function Review() {
             {draft.mealId
               ? "Tap an item to change it."
               : isAiDraft
-                ? "Here's what I found. Tap anything I got wrong — nothing's saved until you do."
+                ? "Tap a dish to fix its portion. Nothing is saved yet."
                 : "Tap an item to set the portion."}
           </T>
         </View>
       ) : (
-        <Notice mood="idle" title="What's on the plate?" message="Add each dish from Kimbo's Indian food list." />
+        <Notice mood="idle" title="What's on the plate?" message="Search Kimbo's list of Indian dishes." />
       )}
 
       <View style={styles.list}>
@@ -106,7 +105,7 @@ export default function Review() {
         <Pressable accessibilityRole="button" onPress={() => openSearch(null)} style={styles.addRow}>
           <Icon name="plus-circle" size={20} color={colors.leaf} />
           <T variant="bodyStrong" tone="leaf">
-            {draft.lines.length ? "Add something I missed" : "Add a dish"}
+            Add a dish
           </T>
         </Pressable>
       </View>
@@ -134,20 +133,14 @@ export default function Review() {
         </T>
       ) : null}
       {draft.mealId ? (
-        <Button
-          label="Delete this meal"
-          kind="danger"
-          icon="trash-2"
-          loading={remove.isPending}
-          onPress={() => remove.mutate()}
-        />
+        <Button label="Delete this meal" kind="danger" loading={remove.isPending} onPress={() => remove.mutate()} />
       ) : null}
 
       <Sheet
         visible={!!editingLine}
         onClose={() => setEditing(null)}
         title={editingLine ? lineName(editingLine) : undefined}
-        subtitle={editingLine?.kind === "estimate" ? "Estimate — adjust the calories if you know them" : undefined}
+        subtitle={editingLine?.kind === "estimate" ? "Rough estimate. Change the kcal if you know it." : undefined}
       >
         {editingLine ? (
           <PortionEditor
@@ -262,11 +255,10 @@ function PortionEditor({ line, onSwap, onDone }: { line: DraftLine; onSwap: () =
       </T>
 
       <View style={styles.editorActions}>
-        <Button label="Swap dish" kind="secondary" icon="repeat" compact onPress={onSwap} />
+        <Button label="Swap dish" kind="secondary" compact onPress={onSwap} />
         <Button
           label="Remove"
           kind="danger"
-          icon="trash-2"
           compact
           onPress={() => {
             onDone();
@@ -327,7 +319,7 @@ const styles = StyleSheet.create({
   kcalInput: {
     minWidth: 90,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: colors.lineStrong,
     borderRadius: radius.sm,
     padding: space.sm,
     textAlign: "right",

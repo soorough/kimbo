@@ -13,7 +13,7 @@ import { toUploadableJpeg } from "@/lib/image";
 import { colors, fonts, radius, space } from "@/lib/theme";
 
 const EXAMPLES = ["2 roti, 1 katori dal, aloo gobi", "poha and chai", "rajma chawal with salad"];
-const HINTS = ["Spotting the rotis…", "Sizing up katoris…", "Matching Indian dishes…", "Almost there…"];
+const HINTS = ["Reading your plate…", "Counting roti and katoris…", "Matching dishes…"];
 
 /**
  * The log sheet: one tap to a photo, or a sentence the way you'd say it.
@@ -63,25 +63,21 @@ export default function LogMeal() {
   const title = presetType ? `Log ${MEAL_LABEL[presetType].toLowerCase()}` : "What did you eat?";
 
   return (
-    <SheetPanel
-      title={analyse.isPending ? undefined : title}
-      subtitle={analyse.isPending ? undefined : "You'll check everything before it's saved."}
-      onClose={() => router.back()}
-    >
+    <SheetPanel title={analyse.isPending ? undefined : title} subtitle={undefined} onClose={() => router.back()}>
       {analyse.isPending ? (
         <Analysing />
       ) : (
         <View style={{ gap: space.lg }}>
           <View style={styles.tiles}>
-            <Tile icon="camera" title="Snap your plate" subtitle="Best for thalis" onPress={() => photo(true)} />
-            <Tile icon="image" title="From photos" subtitle="A meal you already shot" onPress={() => photo(false)} />
+            <Tile icon="camera" title="Camera" subtitle="Best for a full thali" onPress={() => photo(true)} />
+            <Tile icon="image" title="Gallery" subtitle="A photo you took earlier" onPress={() => photo(false)} />
           </View>
 
           <View style={styles.inputRow}>
             <TextInput
               value={text}
               onChangeText={setText}
-              placeholder="Or type it — e.g. 2 roti and dal"
+              placeholder="Type what you ate"
               placeholderTextColor={colors.inkFaint}
               style={styles.input}
               returnKeyType="send"
@@ -113,7 +109,7 @@ export default function LogMeal() {
               <Icon name="cloud-off" size={18} color={colors.plum} />
               <View style={{ flex: 1, gap: 2 }}>
                 <T variant="bodyStrong">{errorMessage(analyse.error)}</T>
-                <T variant="caption">Try again, type it instead, or pick from the food list.</T>
+                <T variant="caption">Type it or pick from the food list instead.</T>
               </View>
               <T variant="label" tone="leaf" onPress={() => analyse.variables && analyse.mutate(analyse.variables)}>
                 Retry
@@ -177,7 +173,7 @@ function Analysing() {
     <View style={styles.analysing} accessibilityLiveRegion="polite">
       <Kimbo mood="thinking" size={110} />
       <T variant="title">{HINTS[hint]}</T>
-      <T variant="label">You'll get to check everything before it's saved.</T>
+      <T variant="label">Nothing is saved until you check it.</T>
     </View>
   );
 }
@@ -207,7 +203,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: colors.lineStrong,
     paddingLeft: space.lg,
     paddingRight: 6,
     paddingVertical: 6,

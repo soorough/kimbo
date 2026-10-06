@@ -100,6 +100,14 @@ export const Goal = GoalRequest.omit({ targetOverride: true }).extend({
   targetOverride: z.number().nullable(),
   effectiveTarget: z.number(),
   explanation: z.array(z.string()),
+  /** The same calculation as numbers, for visual display. kgPerWeek is an approximate pace. */
+  breakdown: z.object({
+    bmr: z.number(),
+    activityFactor: z.number(),
+    maintenance: z.number(),
+    adjustment: z.number(),
+    kgPerWeek: z.number(),
+  }),
   targets: MacroTargets,
 });
 export type Goal = z.infer<typeof Goal>;

@@ -14,10 +14,19 @@ export function mealTypeForNow(now = new Date()): MealType {
   return h < 11 ? "breakfast" : h < 16 ? "lunch" : h < 19 ? "snack" : "dinner";
 }
 
-export function greeting(now = new Date()): string {
-  const h = now.getHours();
-  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+/** Today's headline asks about the next meal still to log, which is what the screen is for. */
+export function nextMealPrompt(logged: MealType[], now = new Date()): string {
+  const order = MEAL_ORDER.slice(MEAL_ORDER.indexOf(mealTypeForNow(now)));
+  const next = order.find((m) => !logged.includes(m));
+  return next ? NEXT_MEAL_PROMPT[next] : "All meals logged";
 }
+
+const NEXT_MEAL_PROMPT: Record<MealType, string> = {
+  breakfast: "What's for breakfast?",
+  lunch: "What's for lunch?",
+  snack: "Chai time?",
+  dinner: "What's for dinner?",
+};
 
 export function isMealType(v: unknown): v is MealType {
   return typeof v === "string" && (MEAL_ORDER as readonly string[]).includes(v);

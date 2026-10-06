@@ -3,20 +3,18 @@ import { router } from "expo-router";
 import { StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Kimbo } from "@/components/Kimbo";
-import { Button, Icon, T, type IconName } from "@/components/ui";
+import { Button, Icon, Surface, T } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { colors, radius, space } from "@/lib/theme";
 
-const PROMISES: { icon: IconName; title: string; body: string }[] = [
-  { icon: "camera", title: "Snap or say it", body: "Roti, dal, sabzi — logged from a photo or one sentence." },
-  {
-    icon: "file-text",
-    title: "One focus from your report",
-    body: "Your blood report becomes a simple daily food focus.",
-  },
-  { icon: "sun", title: "Small wins, no guilt", body: "Kimbo celebrates showing up, not perfection." },
-];
+/** A real-looking meal card shows what Kimbo does faster than any list of promises. */
+const PREVIEW = {
+  meal: "Lunch",
+  items: "2 roti · 1 katori dal · bhindi",
+  kcal: 512,
+  helped: "Helped your fibre focus",
+};
 
 export default function Welcome() {
   const setProfileId = useSession((s) => s.setProfileId);
@@ -33,39 +31,42 @@ export default function Welcome() {
 
   return (
     <SafeAreaView style={styles.root}>
-      <View style={styles.hero}>
-        <View style={styles.blob} />
-        <Kimbo mood="wave" size={150} leaves={3} />
-      </View>
       <View style={styles.body}>
-        <T variant="display">
-          Eat like home.{"\n"}
-          <T variant="display" tone="leaf">
-            Feel the progress.
-          </T>
+        <Kimbo mood="wave" size={96} leaves={3} />
+        <T variant="display">Log your thali in one photo.</T>
+        <T variant="body" tone="soft">
+          Kimbo counts roti, dal and sabzi by the katori, then checks each meal against your blood report.
         </T>
-        <View style={{ gap: space.md }}>
-          {PROMISES.map((p) => (
-            <View key={p.title} style={styles.promise}>
-              <View style={styles.promiseIcon}>
-                <Icon name={p.icon} size={18} color={colors.leafDeep} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <T variant="bodyStrong">{p.title}</T>
-                <T variant="label">{p.body}</T>
-              </View>
+
+        <Surface style={styles.preview} accessibilityLabel="Example of a logged lunch">
+          <View style={styles.row}>
+            <View style={styles.mealIcon}>
+              <Icon name="sun" size={18} color={colors.leafDeep} />
             </View>
-          ))}
-        </View>
+            <T variant="heading" style={{ flex: 1 }}>
+              {PREVIEW.meal}
+            </T>
+            <T variant="heading">{PREVIEW.kcal}</T>
+            <T variant="caption">kcal</T>
+          </View>
+          <T variant="body">{PREVIEW.items}</T>
+          <View style={styles.helped}>
+            <Icon name="check" size={14} color={colors.leafDeep} />
+            <T variant="caption" tone="leaf">
+              {PREVIEW.helped}
+            </T>
+          </View>
+        </Surface>
       </View>
+
       <View style={styles.actions}>
         <Button
-          label="Start fresh"
+          label="Start"
           onPress={() => start.mutate("fresh")}
           loading={start.isPending && start.variables === "fresh"}
         />
         <Button
-          label="Explore with sample data"
+          label="Try it with sample data"
           kind="secondary"
           onPress={() => start.mutate("demo")}
           loading={start.isPending && start.variables === "demo"}
@@ -76,7 +77,7 @@ export default function Welcome() {
           </T>
         ) : (
           <T variant="caption" align="center">
-            No account needed · your data stays tied to this device
+            No sign-up needed.
           </T>
         )}
       </View>
@@ -86,24 +87,25 @@ export default function Welcome() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.paper, paddingHorizontal: space.xl },
-  hero: { alignItems: "center", justifyContent: "center", height: 220 },
-  blob: {
-    position: "absolute",
-    width: 210,
-    height: 190,
-    borderRadius: 100,
-    backgroundColor: colors.leafSoft,
-    transform: [{ rotate: "-8deg" }],
-  },
-  body: { flex: 1, gap: space.xl, paddingTop: space.md },
-  promise: { flexDirection: "row", alignItems: "center", gap: space.md },
-  promiseIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
+  body: { flex: 1, justifyContent: "center", gap: space.lg },
+  preview: { marginTop: space.md, transform: [{ rotate: "-1.5deg" }] },
+  row: { flexDirection: "row", alignItems: "center", gap: space.md },
+  mealIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: colors.leafSoft,
     alignItems: "center",
     justifyContent: "center",
+  },
+  helped: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: colors.leafSoft,
+    borderRadius: radius.sm,
+    paddingHorizontal: space.sm,
+    paddingVertical: 6,
   },
   actions: { gap: space.md, paddingBottom: space.lg },
 });

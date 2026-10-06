@@ -59,11 +59,7 @@ export default function ReportReview() {
 
   if (result) {
     return (
-      <Screen
-        footer={
-          <Button label="See how today's meals fit" icon="arrow-right" onPress={() => router.dismissTo("/(tabs)")} />
-        }
-      >
+      <Screen footer={<Button label="Go to today" onPress={() => router.dismissTo("/(tabs)")} />}>
         <View style={styles.reveal}>
           <View style={styles.revealGlow} />
           <Kimbo mood="focus" size={130} leaves={3} />
@@ -78,7 +74,7 @@ export default function ReportReview() {
         <Surface tint="leaf">
           <T variant="body">{result.focus.description}</T>
           <T variant="caption" tone="leaf">
-            From now on, each meal you log shows whether it helped this focus.
+            Each meal you log will show if it helped.
           </T>
         </Surface>
         <View style={styles.disclaimer}>
@@ -106,8 +102,7 @@ export default function ReportReview() {
             </T>
           ) : null}
           <Button
-            label="Confirm values"
-            icon="check"
+            label="Use these values"
             disabled={!anyValue || !dateValid}
             loading={confirm.isPending}
             onPress={() => confirm.mutate()}
@@ -119,10 +114,10 @@ export default function ReportReview() {
         <Kimbo mood={nothingFound ? "thinking" : "idle"} size={48} />
         <T variant="label" style={{ flex: 1 }}>
           {nothingFound
-            ? "I couldn't find LDL, HbA1c or triglycerides in that file. Type them below, or go back and try the sample."
+            ? "No LDL, HbA1c or triglycerides found in that file. Type them below."
             : source === "manual"
-              ? "Enter any of these from your report. One is enough."
-              : "Compare each value with your report. Kimbo only uses what you confirm."}
+              ? "One value is enough."
+              : "Check each number against your report."}
         </T>
       </View>
 
@@ -154,10 +149,10 @@ export default function ReportReview() {
             />
             {extracted && extracted.originalUnit !== extracted.unit ? (
               <T variant="caption">
-                Report said {extracted.originalValue} {extracted.originalUnit} — converted for you.
+                Report says {extracted.originalValue} {extracted.originalUnit}. Converted.
               </T>
             ) : null}
-            {!extracted && source === "upload" ? <T variant="caption">Not found — leave blank or type it in.</T> : null}
+            {!extracted && source === "upload" ? <T variant="caption">Not found. Leave blank or type it.</T> : null}
           </Surface>
         );
       })}
@@ -166,7 +161,7 @@ export default function ReportReview() {
         <View style={styles.markerTop}>
           <View style={{ flex: 1 }}>
             <T variant="heading">Report date</T>
-            <T variant="caption">{dateValid ? "When the sample was taken" : "Use YYYY-MM-DD, not in the future"}</T>
+            <T variant="caption">{dateValid ? "When the blood was drawn" : "Use YYYY-MM-DD, not a future date"}</T>
           </View>
           <TextInput
             value={reportDate}
@@ -180,9 +175,7 @@ export default function ReportReview() {
         </View>
       </Surface>
 
-      {draft?.ignored.length ? (
-        <T variant="caption">Also on your report, not used by Kimbo yet: {draft.ignored.join(", ")}.</T>
-      ) : null}
+      {draft?.ignored.length ? <T variant="caption">Not used yet: {draft.ignored.join(", ")}.</T> : null}
       <View style={styles.disclaimer}>
         <Icon name="info" size={16} color={colors.inkFaint} />
         <T variant="caption" style={{ flex: 1 }}>
@@ -199,7 +192,7 @@ const styles = StyleSheet.create({
   input: {
     minWidth: 100,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: colors.lineStrong,
     borderRadius: radius.sm,
     paddingHorizontal: space.md,
     paddingVertical: space.sm,

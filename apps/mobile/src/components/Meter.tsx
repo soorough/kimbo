@@ -81,3 +81,51 @@ export function Bar({
     </View>
   );
 }
+
+/** A ring split into proportional coloured segments, e.g. the calorie share of each macro. */
+export function SegmentRing({
+  segments,
+  size = 220,
+  stroke = 16,
+  gap = 0.012,
+  children,
+}: {
+  segments: { value: number; color: string }[];
+  size?: number;
+  stroke?: number;
+  /** gap between segments, as a fraction of the circle */
+  gap?: number;
+  children?: ReactNode;
+}) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const total = segments.reduce((sum, s) => sum + s.value, 0) || 1;
+  let offset = 0;
+  return (
+    <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
+      <Svg width={size} height={size} style={{ position: "absolute", transform: [{ rotate: "-90deg" }] }}>
+        {segments.map((s, i) => {
+          const share = s.value / total;
+          const length = Math.max(0, share - gap) * c;
+          const dash = (
+            <Circle
+              key={i}
+              cx={size / 2}
+              cy={size / 2}
+              r={r}
+              stroke={s.color}
+              strokeWidth={stroke}
+              fill="none"
+              strokeLinecap="butt"
+              strokeDasharray={`${length} ${c}`}
+              strokeDashoffset={-offset * c}
+            />
+          );
+          offset += share;
+          return dash;
+        })}
+      </Svg>
+      {children}
+    </View>
+  );
+}

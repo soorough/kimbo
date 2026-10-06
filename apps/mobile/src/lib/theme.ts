@@ -9,33 +9,52 @@ import type { TextStyle } from "react-native";
  *  - curry-leaf green carries actions and "this supported your focus"
  *  - turmeric is reserved for celebration (milestones, streaks)
  *  - plum (never red) marks "worth watching" — informative, not alarming
+ *  - terracotta appears only for destructive actions the user chose
+ * Every text/background pair used is checked against WCAG AA (4.5:1 text, 3:1 graphics).
  */
 export const colors = {
   paper: "#FBF6EE",
   surface: "#FFFFFF",
   sunk: "#F3EADC",
+  /** decorative dividers only */
   line: "#E9DDCB",
+  /** borders that identify a control (inputs, chips) — 3:1 against paper */
+  lineStrong: "#9C8B72",
 
   ink: "#23201B",
   inkSoft: "#5F594F",
-  inkFaint: "#9B9387",
+  /** smallest readable text — still 5:1 against paper */
+  inkFaint: "#716A5E",
 
+  // Action: buttons, links, "this helped your focus".
   leaf: "#2E6B4F",
   leafDeep: "#1E4C37",
   leafSoft: "#E2EFE6",
 
+  // Celebration only: milestones and streaks. Soft for fills, deep for icons/text on it.
   turmeric: "#E39B2D",
+  turmericDeep: "#8F5A0B",
   turmericSoft: "#FBEBCD",
 
-  terracotta: "#C2623A",
-  terracottaSoft: "#F8E3D8",
-
+  // Caution, never alarm: "worth watching", over target.
   plum: "#6B579C",
   plumSoft: "#EDE8F6",
+
+  // Destructive actions (delete, remove) — the only near-red, and only on demand.
+  terracotta: "#A64B27",
+  terracottaSoft: "#F8E3D8",
 
   white: "#FFFFFF",
   scrim: "rgba(35, 32, 27, 0.45)",
 };
+
+/** Macro bars: a quiet data palette, each ≥3:1 on the track, kept apart from the role colours above. */
+export const macroColors = {
+  protein: "#B5532F",
+  carbs: "#B7791F",
+  fat: "#6B579C",
+  fibre: "#2E6B4F",
+} as const;
 
 export const space = { xxs: 2, xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32 } as const;
 export const radius = { sm: 10, md: 16, lg: 22, xl: 28, pill: 999 } as const;

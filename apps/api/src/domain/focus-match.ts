@@ -25,15 +25,15 @@ export function mealSupportsFocus(meal: StoredMeal, focus: FocusKey): FocusResul
       if (fibreOk && !satHeavy) {
         return result(true, fibreRich.length ? `Fibre from ${names(fibreRich)} (${fibre} g)` : `${fibre} g of fibre`);
       }
-      if (satHeavy) return result(false, `A richer meal — ${satFat} g saturated fat from ${names(richSatFat)}`);
-      return result(false, `Lighter on fibre this time (${fibre} g)`);
+      if (satHeavy) return result(false, `${satFat} g saturated fat, mostly from ${names(richSatFat)}`);
+      return result(false, `Only ${fibre} g fibre`);
     }
     case "steady_carbs": {
       if (sweet.length) return result(false, `Includes something sweet (${names(sweet)})`);
       const paired = fibreRich.length > 0 || leanProtein.length > 0 || protein >= T.proteinPairedG;
       return paired
         ? result(true, `Carbs paired with ${names([...fibreRich, ...leanProtein]) || `${protein} g protein`}`)
-        : result(false, "Mostly carbs this time — dal, sabzi or protein would steady it");
+        : result(false, "Mostly carbs. Dal, sabzi or egg would balance it");
     }
     case "less_sugar_refined": {
       if (sweet.length) return result(false, `Includes something sweet (${names(sweet)})`);

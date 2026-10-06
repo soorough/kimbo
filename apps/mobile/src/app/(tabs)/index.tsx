@@ -8,17 +8,21 @@ import { useMoments } from "@/components/Moments";
 import { Bar, ErrorState, Icon, Loading, Ring, Screen, Surface, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useDraft } from "@/lib/draft";
-import { MEAL_LABEL, MEAL_ORDER, greeting } from "@/lib/format";
+import { MEAL_LABEL, MEAL_ORDER, nextMealPrompt } from "@/lib/format";
 import { useAfterWrite } from "@/lib/mutations";
 import { useSession } from "@/lib/session";
-import { colors, radius, space } from "@/lib/theme";
+import { colors, macroColors, radius, space } from "@/lib/theme";
 
 const MEAL_ICON: Record<MealType, IconName> = { breakfast: "sunrise", lunch: "sun", snack: "coffee", dinner: "moon" };
 
 export default function Today() {
   const profileId = useSession((s) => s.profileId);
   const today = useQuery({ queryKey: ["today"], queryFn: api.today });
-  const profile = useQuery({ queryKey: ["profile", profileId], queryFn: () => api.getProfile(profileId!) });
+  const profile = useQuery({
+    queryKey: ["profile", profileId],
+    queryFn: () => api.getProfile(profileId!),
+    enabled: !!profileId,
+  });
   useWelcomeBack();
 
   if (today.isLoading)
@@ -46,7 +50,7 @@ export default function Today() {
               .toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" })
               .toUpperCase()}
           </T>
-          <T variant="display">{greeting()}</T>
+          <T variant="display">{nextMealPrompt(data.meals.map((m) => m.mealType))}</T>
         </View>
         <Kimbo mood={data.meals.length ? "happy" : "idle"} size={56} leaves={1 + supported} />
       </View>
@@ -57,7 +61,7 @@ export default function Today() {
       <FocusCard data={data} />
 
       <View style={{ gap: space.md }}>
-        <T variant="heading">Your plate today</T>
+        <T variant="heading">Meals</T>
         {MEAL_ORDER.map((type) => (
           <MealSlot
             key={type}
@@ -87,10 +91,10 @@ function EnergyCard({ data }: { data: TodayResponse }) {
         <T variant="label">
           {eaten} of {t.calories} kcal
         </T>
-        <Macro label="Protein" value={data.totals.protein} target={t.protein} color={colors.terracotta} />
-        <Macro label="Carbs" value={data.totals.carbs} target={t.carbs} color={colors.turmeric} />
-        <Macro label="Fat" value={data.totals.fat} target={t.fat} color={colors.plum} />
-        <Macro label="Fibre" value={data.totals.fibre} target={t.fibre} color={colors.leaf} />
+        <Macro label="Protein" value={data.totals.protein} target={t.protein} color={macroColors.protein} />
+        <Macro label="Carbs" value={data.totals.carbs} target={t.carbs} color={macroColors.carbs} />
+        <Macro label="Fat" value={data.totals.fat} target={t.fat} color={macroColors.fat} />
+        <Macro label="Fibre" value={data.totals.fibre} target={t.fibre} color={macroColors.fibre} />
       </View>
     </Surface>
   );
@@ -118,9 +122,9 @@ function FocusCard({ data }: { data: TodayResponse }) {
       <Surface tint="leaf" onPress={() => router.push("/(tabs)/report")} accessibilityLabel="Add a blood report">
         <View style={styles.rowCenter}>
           <View style={{ flex: 1, gap: 4 }}>
-            <T variant="overline">DAILY FOOD FOCUS</T>
-            <T variant="heading">Turn your blood report into one simple focus</T>
-            <T variant="label">Upload a report — or try a sample — and Kimbo connects it to your meals.</T>
+            <T variant="overline">FOOD FOCUS</T>
+            <T variant="heading">Add your blood report</T>
+            <T variant="label">Kimbo reads LDL, HbA1c and triglycerides and tells you what to eat more of.</T>
           </View>
           <Icon name="chevron-right" color={colors.leaf} />
         </View>
@@ -152,7 +156,7 @@ function FocusCard({ data }: { data: TodayResponse }) {
         </View>
       </View>
       <T variant="caption" tone="leaf">
-        Kimbo grows a leaf for every meal that helps.
+        One leaf on Kimbo for each meal that helped.
       </T>
     </Surface>
   );
@@ -240,7 +244,7 @@ function MealCard({ meal }: { meal: TodayMeal }) {
         <View style={styles.helped}>
           <Icon name="check" size={14} color={colors.leafDeep} />
           <T variant="caption" tone="leaf" numberOfLines={2} style={{ flex: 1 }}>
-            Helped your focus · {meal.focusReason}
+            {meal.focusReason}
           </T>
         </View>
       ) : meal.focusReason ? (
@@ -254,9 +258,9 @@ function DemoBanner() {
   const clear = useSession((s) => s.clear);
   return (
     <View style={styles.demo}>
-      <Icon name="eye" size={16} color={colors.terracotta} />
+      <Icon name="eye" size={16} color={colors.turmericDeep} />
       <T variant="label" style={{ flex: 1, color: colors.ink }}>
-        You're exploring sample data
+        Sample data
       </T>
       <T
         variant="label"
@@ -341,7 +345,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: space.sm,
-    backgroundColor: colors.terracottaSoft,
+    backgroundColor: colors.turmericSoft,
     borderRadius: radius.md,
     paddingHorizontal: space.md,
     paddingVertical: space.sm,

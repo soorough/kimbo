@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     paddingVertical: space.sm,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: colors.lineStrong,
     backgroundColor: colors.surface,
   },
   selected: { backgroundColor: colors.leaf, borderColor: colors.leaf },

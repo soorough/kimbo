@@ -50,8 +50,8 @@ export default function FoodSearch() {
             >
               <Icon name="edit-3" size={18} color={colors.plum} />
               <View style={{ flex: 1 }}>
-                <T variant="bodyStrong">Add "{query}" as an estimate</T>
-                <T variant="caption">For dishes not in Kimbo's list yet — you can adjust the calories.</T>
+                <T variant="bodyStrong">Add "{query}" with a rough estimate</T>
+                <T variant="caption">Not in Kimbo's list. You can change the kcal.</T>
               </View>
             </Pressable>
           ) : null
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: colors.lineStrong,
     paddingHorizontal: space.lg,
   },
   input: { flex: 1, fontFamily: fonts.medium, fontSize: 15, color: colors.ink, paddingVertical: space.md },

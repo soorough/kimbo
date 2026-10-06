@@ -17,6 +17,8 @@ export const ACTIVITY_MULTIPLIERS: Record<ActivityLevel, { factor: number; label
 export const GOAL_ADJUSTMENT_KCAL = { maintain: 0, lose: -500, gain: 300 } as const;
 export const TARGET_BOUNDS_KCAL = { min: 1200, max: 4000 } as const;
 export const TARGET_ROUNDING_KCAL = 10;
+/** Common approximation of the energy in 1 kg of body weight, used only for the "about ½ kg a week" pace. */
+export const KCAL_PER_KG = 7700;
 /** Share of calories from each macro (common balanced-diet split). */
 export const MACRO_SPLIT = { protein: 0.2, carbs: 0.5, fat: 0.3 } as const;
 /** ICMR-NIN 2020 suggests ~30 g/day dietary fibre for a 2000 kcal diet. */

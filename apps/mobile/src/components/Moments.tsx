@@ -29,10 +29,10 @@ const MILESTONES = new Set<KimboEvent["type"]>([
 ]);
 
 const MILESTONE_TITLES: Partial<Record<KimboEvent["type"], string>> = {
-  first_3_days: "Three days in!",
-  first_full_week: "A whole week",
-  consistency_improved: "More consistent",
-  focus_improved: "Focus is growing",
+  first_3_days: "3 days logged",
+  first_full_week: "A full week",
+  consistency_improved: "Better than last week",
+  focus_improved: "Focus up",
 };
 
 interface MomentsState {
@@ -110,17 +110,17 @@ export function Celebration() {
           <Confetti key={current.message} />
           <Animated.View style={[styles.celebrationCard, { transform: [{ scale }] }]}>
             <Kimbo mood={MOOD[current.type]} size={120} leaves={5} />
-            <T variant="overline" tone="terracotta">
+            <T variant="overline" tone="turmeric">
               MILESTONE
             </T>
             <T variant="title" align="center">
-              {MILESTONE_TITLES[current.type] ?? "Nice work"}
+              {MILESTONE_TITLES[current.type] ?? "Milestone"}
             </T>
             <T variant="body" tone="soft" align="center">
               {current.message}
             </T>
             <View style={{ alignSelf: "stretch", marginTop: space.sm }}>
-              <Button label="Keep going" onPress={shift} />
+              <Button label="Done" onPress={shift} />
             </View>
           </Animated.View>
         </View>
@@ -129,7 +129,8 @@ export function Celebration() {
   );
 }
 
-const CONFETTI_COLORS = [colors.turmeric, colors.leaf, colors.terracotta, colors.plum, "#F2C14E"];
+// Confetti is decoration, so it may use the full warm range.
+const CONFETTI_COLORS = [colors.turmeric, colors.leaf, colors.plum, "#F2C14E", "#E8A07E"];
 const { width: W, height: H } = Dimensions.get("window");
 
 /** A short burst of falling paper — cheap Animated views, no extra library. */

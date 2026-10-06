@@ -27,6 +27,21 @@ describe("onboarding & goal", () => {
     expect(res.json.profile.goal.explanation.join(" ")).toMatch(/1\.2/);
   });
 
+  it("returns the calculation as numbers so the app can show it visually", async () => {
+    const id = await freshProfile();
+    const lose = await api.put(`/profiles/${id}/goal`, { ...defaultGoal, goal: "lose" }, id);
+    // 1648.75 BMR × 1.2 = 1978.5 maintenance; −500 to lose
+    expect(lose.json.profile.goal.breakdown).toEqual({
+      bmr: 1649,
+      activityFactor: 1.2,
+      maintenance: 1979,
+      adjustment: -500,
+      kgPerWeek: -0.45,
+    });
+    const gain = await api.put(`/profiles/${id}/goal`, { ...defaultGoal, goal: "gain" }, id);
+    expect(gain.json.profile.goal.breakdown).toMatchObject({ adjustment: 300, kgPerWeek: 0.27 });
+  });
+
   it("adjusts for lose and gain goals", async () => {
     const id = await freshProfile();
     const lose = await api.put(`/profiles/${id}/goal`, { ...defaultGoal, goal: "lose" }, id);

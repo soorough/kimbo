@@ -48,7 +48,7 @@ export function reportRoutes(app: FastifyInstance, deps: Deps) {
     return {
       report: { id, reportDate: body.reportDate, source: body.source, markers },
       focus,
-      events: [{ type: "report_became_focus", message: `Your report is now today's focus: ${focus.title}.` }],
+      events: [{ type: "report_became_focus", message: `New focus: ${focus.title}.` }],
       disclaimer: DISCLAIMER,
     };
   });

@@ -73,7 +73,7 @@ export default function ReportTab() {
           <Kimbo mood="thinking" size={120} />
           <T variant="title">Reading your report…</T>
           <T variant="label" align="center">
-            You'll check every value before Kimbo uses it.
+            You'll check each number next.
           </T>
         </View>
       </Screen>
@@ -89,7 +89,7 @@ export default function ReportTab() {
         <T variant="overline" tone="faint">
           BLOOD REPORT
         </T>
-        <T variant="display">{latest ? "Your report" : "From report to plate"}</T>
+        <T variant="display">Blood report</T>
       </View>
 
       {reports.isLoading ? <Loading /> : null}
@@ -139,7 +139,7 @@ export default function ReportTab() {
       {extract.error ? (
         <Surface tint="plum">
           <T variant="bodyStrong">{errorMessage(extract.error)}</T>
-          <T variant="caption">Try again, enter the values yourself, or use the sample report.</T>
+          <T variant="caption">Type the values instead, or try the sample.</T>
         </Surface>
       ) : null}
 
@@ -162,10 +162,10 @@ export default function ReportTab() {
           <Option
             icon="book-open"
             title="Try a sample report"
-            subtitle="See how it works first"
+            subtitle="LDL 142 · HbA1c 5.6 · TG 160"
             onPress={() => extract.mutate({ load: async () => ({ sample: true }), source: "sample" })}
           />
-          <Option icon="edit-3" title="Type the values" subtitle="Just three numbers" onPress={enterManually} />
+          <Option icon="edit-3" title="Type the values" subtitle="LDL, HbA1c, triglycerides" onPress={enterManually} />
         </View>
       </View>
 

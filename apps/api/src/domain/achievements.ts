@@ -15,11 +15,11 @@ export const ACHIEVEMENT_TITLES: Record<KimboEventType, string> = {
 };
 
 const MESSAGES: Partial<Record<KimboEventType, string>> = {
-  first_3_days: "3 days tracked — a habit is starting ✦",
-  first_full_week: "A full week of tracking. That's real consistency!",
-  consistency_improved: "You've tracked more days than last week ↑",
-  focus_improved: "Your focus is going better than last week ↑",
-  welcome_back: "Welcome back! Good to see you — one meal is a great place to start.",
+  first_3_days: "Meals logged on 3 days.",
+  first_full_week: "7 days in a row, every day logged.",
+  consistency_improved: "More days logged than last week.",
+  focus_improved: "More meals helped your focus than last week.",
+  welcome_back: "Welcome back. Log one meal to pick up where you left off.",
 };
 
 /** A candidate milestone and the key that makes it fire only once (per week where relevant). */

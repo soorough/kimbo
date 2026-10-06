@@ -4,7 +4,7 @@ import { HttpError } from "../errors.js";
 import { FOCUS_PRIORITY, MARKER_THRESHOLDS } from "./config.js";
 
 export const DISCLAIMER =
-  "Kimbo is not a medical service. It doesn't diagnose conditions or give treatment advice — please discuss your results with a doctor.";
+  "Kimbo doesn't diagnose or treat anything. Talk to your doctor about your results.";
 
 interface MarkerDef {
   label: string;
@@ -146,24 +146,22 @@ export const FOCI: Record<FocusKey, FocusInfo> = {
   fibre_focus: {
     key: "fibre_focus",
     title: "More fibre-rich meals",
-    description:
-      "Dals, beans, whole grains, vegetables and fruit add fibre. Go easy on frequent high saturated-fat choices like butter-rich gravies and fried snacks.",
+    description: "More dal, rajma, chole, sabzi, salad and fruit. Fewer butter gravies and fried snacks.",
   },
   steady_carbs: {
     key: "steady_carbs",
     title: "Steady carbs",
-    description: "Pair carbs with dal, vegetables or protein, and keep sweets and sugary drinks occasional.",
+    description: "Have rice or roti with dal, sabzi or egg. Keep mithai and sweet chai for once in a while.",
   },
   less_sugar_refined: {
     key: "less_sugar_refined",
     title: "Less sugar & refined carbs",
-    description:
-      "Favour dals, vegetables and whole grains; keep sweets, sugary chai, maida and fried snacks occasional.",
+    description: "Fewer sweets, sugary chai, maida and fried snacks. More dal, sabzi and whole grains.",
   },
   balanced_plate: {
     key: "balanced_plate",
     title: "Balanced plates",
-    description: "Aim for some protein plus vegetables or dal at each meal.",
+    description: "Some dal, paneer, egg or chicken plus a sabzi or salad at each meal.",
   },
 };
 
@@ -185,7 +183,7 @@ export function selectFocus(readings: MarkerReading[]): FocusInfo & { reason: st
   if (!top) {
     return {
       ...FOCI.balanced_plate,
-      reason: "Your confirmed markers look in range, so Kimbo will help you keep plates balanced.",
+      reason: "Your markers are all in range.",
     };
   }
   return {

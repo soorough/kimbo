@@ -12,8 +12,8 @@ const DAY_LETTERS = ["M", "T", "W", "T", "F", "S", "S"];
 const BADGES: { type: KimboEventType; icon: IconName; title: string; how: string }[] = [
   { type: "first_3_days", icon: "star", title: "First 3 days", how: "Log meals on 3 days" },
   { type: "first_full_week", icon: "calendar", title: "Full week", how: "Log 7 days in a row" },
-  { type: "consistency_improved", icon: "trending-up", title: "Steadier week", how: "Track more days than last week" },
-  { type: "focus_improved", icon: "target", title: "Focus up", how: "Beat last week's focus score" },
+  { type: "consistency_improved", icon: "trending-up", title: "Steadier week", how: "Log more days than last week" },
+  { type: "focus_improved", icon: "target", title: "Focus up", how: "More meals help than last week" },
   { type: "welcome_back", icon: "heart", title: "Came back", how: "Return after a break" },
 ];
 
@@ -51,10 +51,10 @@ export default function Progress() {
           <Stat
             icon="target"
             value={`${p.goal.daysMet}/${p.goal.daysTracked}`}
-            label={`days within ±${p.goal.bandPct}% of your goal`}
+            label={`days within ${p.goal.bandPct}% of your kcal goal`}
           />
         ) : null}
-        <Stat icon="check-circle" value={`${p.daysTracked}/${p.daysElapsed}`} label="days tracked so far" />
+        <Stat icon="check-circle" value={`${p.daysTracked}/${p.daysElapsed}`} label="days logged" />
       </View>
 
       <WeekOverWeek p={p} />
@@ -66,7 +66,7 @@ export default function Progress() {
           </T>
           {p.insights.map((i) => (
             <View key={i} style={styles.insight}>
-              <Icon name="zap" size={16} color={colors.turmeric} />
+              <Icon name="zap" size={16} color={colors.turmericDeep} />
               <T variant="body" style={{ flex: 1 }}>
                 {i}
               </T>
@@ -76,10 +76,6 @@ export default function Progress() {
       ) : null}
 
       <Badges achievements={p.achievements} />
-
-      <T variant="caption" align="center">
-        Progress rewards showing up — not perfection.
-      </T>
     </Screen>
   );
 }
@@ -122,10 +118,10 @@ function WeekCard({ p }: { p: ProgressResponse }) {
       </View>
       {p.streak >= 2 ? (
         <View style={styles.streak}>
-          <Icon name="sun" size={18} color={colors.turmeric} />
+          <Icon name="sun" size={18} color={colors.turmericDeep} />
           <View style={{ flex: 1 }}>
             <T variant="bodyStrong">{p.streak}-day consistency streak</T>
-            <T variant="caption">A single missed day won't break it.</T>
+            <T variant="caption">Missing one day won't break it.</T>
           </View>
         </View>
       ) : (
@@ -149,7 +145,7 @@ function FocusCard({ focus }: { focus: NonNullable<ProgressResponse["focus"]> })
           <T variant="label">
             {focus.total
               ? `${focus.supported} of ${focus.total} meals helped · ${focus.pct}%`
-              : "No meals logged yet this week"}
+              : "No meals yet this week"}
           </T>
         </View>
       </View>
@@ -183,7 +179,7 @@ function WeekOverWeek({ p }: { p: ProgressResponse }) {
     <Surface tint="turmeric">
       {lines.map((l) => (
         <View key={l} style={styles.insight}>
-          <Icon name="arrow-up-right" size={16} color={colors.terracotta} />
+          <Icon name="arrow-up-right" size={16} color={colors.turmericDeep} />
           <T variant="bodyStrong" style={{ flex: 1 }}>
             {l}
           </T>
@@ -282,13 +278,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 4,
   },
-  badgeIconOn: { backgroundColor: colors.turmeric },
+  badgeIconOn: { backgroundColor: colors.turmericDeep },
   badgeIconOff: { backgroundColor: colors.paper },
   badgeCount: {
     position: "absolute",
     right: -6,
     top: -4,
-    backgroundColor: colors.terracotta,
+    backgroundColor: colors.leaf,
     borderRadius: radius.pill,
     paddingHorizontal: 5,
   },

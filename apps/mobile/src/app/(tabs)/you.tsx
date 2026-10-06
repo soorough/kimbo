@@ -21,7 +21,11 @@ export default function You() {
   const profileId = useSession((s) => s.profileId);
   const clear = useSession((s) => s.clear);
   const queryClient = useQueryClient();
-  const profile = useQuery({ queryKey: ["profile", profileId], queryFn: () => api.getProfile(profileId!) });
+  const profile = useQuery({
+    queryKey: ["profile", profileId],
+    queryFn: () => api.getProfile(profileId!),
+    enabled: !!profileId,
+  });
 
   const startOver = async () => {
     queryClient.clear();
@@ -50,7 +54,7 @@ export default function You() {
         <Kimbo mood="wave" size={72} />
         <View style={{ flex: 1 }}>
           <T variant="title">You</T>
-          <T variant="label">{isDemo ? "Exploring with sample data" : "Your data stays tied to this device"}</T>
+          <T variant="label">{isDemo ? "Using sample data" : "No account. Linked to this phone."}</T>
         </View>
       </View>
 
@@ -77,7 +81,7 @@ export default function You() {
         <View style={styles.divider} />
         <Row
           icon={isDemo ? "user-plus" : "refresh-ccw"}
-          label={isDemo ? "Start fresh with my own data" : "Try the sample data"}
+          label={isDemo ? "Use my own data" : "Try sample data"}
           onPress={startOver}
         />
       </View>
@@ -85,9 +89,8 @@ export default function You() {
       <Surface tint="sunk">
         <T variant="heading">About Kimbo</T>
         <T variant="label">
-          Kimbo estimates nutrition from a curated Indian food list and turns supported blood markers into one food
-          focus. It's a habit companion, not a medical service — it doesn't diagnose or give treatment advice. Please
-          discuss your results with a doctor.
+          Calories come from Kimbo's list of about 90 Indian dishes. Your food focus comes from LDL, HbA1c and
+          triglycerides. Kimbo doesn't diagnose or treat anything. Talk to your doctor about your results.
         </T>
       </Surface>
     </Screen>

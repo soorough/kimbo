@@ -1,22 +1,21 @@
-import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet } from "react-native";
 import { colors, fonts, radius, space } from "@/lib/theme";
-import { Icon, type IconName } from "./Icon";
 import { T } from "./Text";
 
 type Kind = "primary" | "secondary" | "ghost" | "danger";
 
 const KIND = {
   primary: { bg: colors.leaf, fg: colors.white, border: colors.leaf },
-  secondary: { bg: colors.surface, fg: colors.leafDeep, border: colors.line },
+  secondary: { bg: colors.surface, fg: colors.leafDeep, border: colors.lineStrong },
   ghost: { bg: "transparent", fg: colors.leaf, border: "transparent" },
   danger: { bg: "transparent", fg: colors.terracotta, border: "transparent" },
 } as const;
 
+/** Buttons are text-only by design: the label says what happens; icons live in rows and tiles. */
 export function Button({
   label,
   onPress,
   kind = "primary",
-  icon,
   loading,
   disabled,
   compact,
@@ -25,7 +24,6 @@ export function Button({
   label: string;
   onPress: () => void;
   kind?: Kind;
-  icon?: IconName;
   loading?: boolean;
   disabled?: boolean;
   compact?: boolean;
@@ -50,10 +48,7 @@ export function Button({
       {loading ? (
         <ActivityIndicator color={k.fg} />
       ) : (
-        <View style={styles.row}>
-          {icon ? <Icon name={icon} size={compact ? 16 : 18} color={k.fg} /> : null}
-          <T style={{ fontFamily: fonts.bold, fontSize: compact ? 14 : 16, color: k.fg }}>{label}</T>
-        </View>
+        <T style={{ fontFamily: fonts.bold, fontSize: compact ? 14 : 16, color: k.fg }}>{label}</T>
       )}
     </Pressable>
   );
@@ -69,5 +64,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   compact: { minHeight: 40, paddingHorizontal: space.lg },
-  row: { flexDirection: "row", alignItems: "center", gap: space.sm },
 });
