@@ -1,16 +1,16 @@
 import type { JourneyResponse } from "@kimbo/shared";
 import { useState } from "react";
 import { View, type LayoutChangeEvent } from "react-native";
-import Svg, { Circle, Line, Polyline } from "react-native-svg";
+import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from "react-native-svg";
 import { colors, space } from "@/lib/theme";
 import { formatWeight, useUnits } from "@/lib/units";
 import { Surface } from "./Surface";
 import { T } from "./Text";
 
-const H = 120;
-const PAD = 10;
+const H = 140;
+const PAD = 12;
 
-/** Weigh-ins over time, with the goal weight as a dashed line. Needs at least two points. */
+/** Weigh-ins over time as a filled line, with the goal weight dashed. Needs at least two points. */
 export function WeightTrend({ journey }: { journey: JourneyResponse }) {
   const unit = useUnits((u) => u.weight);
   const [w, setW] = useState(0);
@@ -22,10 +22,12 @@ export function WeightTrend({ journey }: { journey: JourneyResponse }) {
   const max = Math.max(...values) + 0.5;
   const x = (i: number) => PAD + (i / (points.length - 1)) * (w - PAD * 2);
   const y = (kg: number) => PAD + ((max - kg) / (max - min)) * (H - PAD * 2);
+  const line = points.map((p, i) => `${i ? "L" : "M"} ${x(i)} ${y(p.kg)}`).join(" ");
+  const area = `${line} L ${x(points.length - 1)} ${H} L ${x(0)} ${H} Z`;
   const change = Math.round((points.at(-1)!.kg - points[0]!.kg) * 10) / 10;
 
   return (
-    <Surface>
+    <Surface tint="leaf">
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
         <T variant="heading">Weight</T>
         <T variant="label">
@@ -51,15 +53,21 @@ export function WeightTrend({ journey }: { journey: JourneyResponse }) {
                 opacity={0.6}
               />
             ) : null}
-            <Polyline
-              points={points.map((p, i) => `${x(i)},${y(p.kg)}`).join(" ")}
-              fill="none"
-              stroke={colors.leaf}
-              strokeWidth={3}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-            />
-            <Circle cx={x(points.length - 1)} cy={y(points.at(-1)!.kg)} r={5} fill={colors.leaf} />
+            <Defs>
+              <LinearGradient id="weightArea" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor={colors.leaf} stopOpacity="0.28" />
+                <Stop offset="1" stopColor={colors.leaf} stopOpacity="0" />
+              </LinearGradient>
+            </Defs>
+            <Path d={area} fill="url(#weightArea)" />
+            <Path d={line} fill="none" stroke={colors.leaf} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
+            {points.map((p, i) =>
+              i === points.length - 1 ? (
+                <Circle key={p.date} cx={x(i)} cy={y(p.kg)} r={6} fill={colors.leaf} stroke={colors.leafSoft} strokeWidth={3} />
+              ) : (
+                <Circle key={p.date} cx={x(i)} cy={y(p.kg)} r={3} fill={colors.leaf} />
+              ),
+            )}
           </Svg>
         ) : null}
       </View>

@@ -83,23 +83,23 @@ export function ProgressSkeleton() {
     <SkeletonScreen>
       <Bone w={120} h={10} />
       <Bone w="55%" h={30} r={radius.md} />
-      <Card h={120}>
-        <View style={styles.row}>
-          {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-            <Bone key={i} w={34} h={34} r={17} />
+      <Card h={250}>
+        <Bone w="60%" h={18} />
+        <View style={[styles.row, { alignItems: "flex-end", flex: 1 }]}>
+          {[60, 90, 40, 110, 80, 20, 20].map((h, i) => (
+            <Bone key={i} w={22} h={h} r={8} />
           ))}
         </View>
-        <Bone w="65%" />
       </Card>
-      <Card h={110} />
       <View style={styles.row}>
         <View style={{ flex: 1 }}>
-          <Bone h={96} r={radius.lg} />
+          <Bone h={190} r={radius.lg} />
         </View>
         <View style={{ flex: 1 }}>
-          <Bone h={96} r={radius.lg} />
+          <Bone h={190} r={radius.lg} />
         </View>
       </View>
+      <Card h={200} />
       <Bone w="35%" h={18} />
       <View style={[styles.row, { flexWrap: "wrap" }]}>
         {[0, 1, 2].map((i) => (

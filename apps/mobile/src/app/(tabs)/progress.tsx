@@ -1,14 +1,12 @@
 import type { Achievement, KimboEventType, ProgressResponse } from "@kimbo/shared";
 import { useQuery } from "@tanstack/react-query";
 import { StyleSheet, View } from "react-native";
-import { Kimbo } from "@/components/Kimbo";
+import { CaloriesWeek, FocusRing, StreakCard } from "@/components/ProgressCharts";
 import { ProgressSkeleton } from "@/components/Skeleton";
 import { WeightTrend } from "@/components/WeightTrend";
-import { Bar, ErrorState, Icon, Screen, Surface, T, type IconName } from "@/components/ui";
+import { ErrorState, Icon, Screen, Surface, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { colors, radius, space } from "@/lib/theme";
-
-const DAY_LETTERS = ["M", "T", "W", "T", "F", "S", "S"];
 
 /** Every badge is visible from day one, so people know what's worth showing up for. */
 const BADGES: { type: KimboEventType; icon: IconName; title: string; how: string }[] = [
@@ -52,20 +50,12 @@ export default function Progress() {
         <T variant="display">This week</T>
       </View>
 
-      <WeekCard p={p} />
-      {journey.data ? <WeightTrend journey={journey.data} /> : null}
-      {p.focus ? <FocusCard focus={p.focus} /> : null}
-
-      <View style={styles.stats}>
-        {p.goal && p.goal.daysTracked > 0 ? (
-          <Stat
-            icon="target"
-            value={`${p.goal.daysMet}/${p.goal.daysTracked}`}
-            label={`days within ${p.goal.bandPct}% of your kcal goal`}
-          />
-        ) : null}
-        <Stat icon="check-circle" value={`${p.daysTracked}/${p.daysElapsed}`} label="days logged" />
+      <CaloriesWeek p={p} />
+      <View style={styles.pair}>
+        <StreakCard p={p} />
+        {p.focus ? <FocusRing focus={p.focus} /> : null}
       </View>
+      {journey.data ? <WeightTrend journey={journey.data} /> : null}
 
       <WeekOverWeek p={p} />
 
@@ -87,91 +77,6 @@ export default function Progress() {
 
       <Badges achievements={p.achievements} />
     </Screen>
-  );
-}
-
-function WeekCard({ p }: { p: ProgressResponse }) {
-  const tracked = new Set(p.trackedDates);
-  const start = new Date(`${p.weekStart}T12:00:00Z`);
-  return (
-    <Surface>
-      <View style={styles.week}>
-        {DAY_LETTERS.map((letter, i) => {
-          const d = new Date(start);
-          d.setUTCDate(start.getUTCDate() + i);
-          const iso = d.toISOString().slice(0, 10);
-          const done = tracked.has(iso);
-          const isToday = i === p.daysElapsed - 1;
-          const future = i >= p.daysElapsed;
-          return (
-            <View
-              key={iso}
-              style={styles.dayCol}
-              accessibilityLabel={`${iso}: ${done ? "tracked" : future ? "upcoming" : "not tracked"}`}
-            >
-              <T variant="caption" tone={isToday ? "leaf" : "faint"}>
-                {letter}
-              </T>
-              <View
-                style={[
-                  styles.day,
-                  done && styles.dayDone,
-                  isToday && !done && styles.dayToday,
-                  future && styles.dayFuture,
-                ]}
-              >
-                {done ? <Icon name="check" size={16} color={colors.white} /> : null}
-              </View>
-            </View>
-          );
-        })}
-      </View>
-      {p.streak >= 2 ? (
-        <View style={styles.streak}>
-          <Icon name="sun" size={18} color={colors.turmericDeep} />
-          <View style={{ flex: 1 }}>
-            <T variant="bodyStrong">{p.streak}-day consistency streak</T>
-            <T variant="caption">Missing one day won't break it.</T>
-          </View>
-        </View>
-      ) : (
-        <T variant="label">Log a meal on two days in a row to start a streak.</T>
-      )}
-    </Surface>
-  );
-}
-
-function FocusCard({ focus }: { focus: NonNullable<ProgressResponse["focus"]> }) {
-  // Kimbo's sprout grows with the week's focus score: one leaf, up to five.
-  const leaves = 1 + Math.round((focus.pct / 100) * 4);
-  return (
-    <Surface tint="leaf">
-      <View style={styles.focusRow}>
-        <Kimbo mood={focus.pct >= 50 ? "proud" : "focus"} size={72} leaves={leaves} />
-        <View style={{ flex: 1, gap: 6 }}>
-          <T variant="overline">THIS WEEK'S FOCUS</T>
-          <T variant="heading">{focus.title}</T>
-          <Bar value={focus.supported} max={Math.max(1, focus.total)} height={8} />
-          <T variant="label">
-            {focus.total
-              ? `${focus.supported} of ${focus.total} meals helped · ${focus.pct}%`
-              : "No meals yet this week"}
-          </T>
-        </View>
-      </View>
-    </Surface>
-  );
-}
-
-function Stat({ icon, value, label }: { icon: IconName; value: string; label: string }) {
-  return (
-    <Surface style={{ flex: 1 }}>
-      <Icon name={icon} size={18} color={colors.leaf} />
-      <T variant="number" style={{ fontSize: 24, lineHeight: 28 }}>
-        {value}
-      </T>
-      <T variant="caption">{label}</T>
-    </Surface>
   );
 }
 
@@ -244,30 +149,7 @@ function rangeLabel(p: ProgressResponse): string {
 }
 
 const styles = StyleSheet.create({
-  week: { flexDirection: "row", justifyContent: "space-between" },
-  dayCol: { alignItems: "center", gap: 6 },
-  day: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: colors.sunk,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dayDone: { backgroundColor: colors.leaf },
-  dayToday: { backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.leaf },
-  dayFuture: { backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.line, borderStyle: "dashed" },
-  streak: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.md,
-    marginTop: space.sm,
-    padding: space.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.turmericSoft,
-  },
-  focusRow: { flexDirection: "row", alignItems: "center", gap: space.lg },
-  stats: { flexDirection: "row", gap: space.md },
+  pair: { flexDirection: "row", gap: space.md },
   insight: { flexDirection: "row", alignItems: "center", gap: space.sm },
   badges: { flexDirection: "row", flexWrap: "wrap", gap: space.md },
   // Fixed thirds so a partial last row keeps the same badge size.
