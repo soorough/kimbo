@@ -36,7 +36,7 @@ export function RoadToGoal({ journey }: { journey: JourneyResponse }) {
         <T variant="overline" tone="soft">
           {title.toUpperCase()}
         </T>
-        <Pressable accessibilityRole="button" accessibilityLabel="Edit goal" hitSlop={10} onPress={() => router.push("/onboarding")}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Edit goal" hitSlop={10} onPress={() => router.push("/edit-goal")}>
           <T variant="label" tone="leaf">
             Edit goal
           </T>

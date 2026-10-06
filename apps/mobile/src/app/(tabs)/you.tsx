@@ -82,7 +82,7 @@ export default function You() {
       </View>
 
       {goal ? (
-        <Surface onPress={() => router.push("/onboarding")} accessibilityLabel="Edit daily goal">
+        <Surface onPress={() => router.push("/edit-goal")} accessibilityLabel="Edit daily goal">
           <View style={styles.rowBetween}>
             <T variant="overline">DAILY GOAL</T>
             <T variant="label" tone="leaf">
