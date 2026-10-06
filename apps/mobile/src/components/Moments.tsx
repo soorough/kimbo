@@ -104,7 +104,14 @@ export function Celebration() {
   }, [current, scale]);
 
   return (
-    <Modal visible={!!current} transparent animationType="fade" onRequestClose={shift} statusBarTranslucent>
+    <Modal
+      visible={!!current}
+      transparent
+      animationType="fade"
+      onRequestClose={shift}
+      statusBarTranslucent
+      navigationBarTranslucent
+    >
       {current ? (
         <View style={styles.celebrationRoot}>
           <Confetti key={current.message} />

@@ -1,8 +1,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
+import { useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
-import { ErrorState, Icon, Loading, Screen, Surface, T, type IconName } from "@/components/ui";
+import { Button, ErrorState, Icon, Loading, Screen, Sheet, Surface, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { colors, space } from "@/lib/theme";
@@ -27,7 +28,10 @@ export default function You() {
     enabled: !!profileId,
   });
 
+  const [confirming, setConfirming] = useState(false);
+
   const startOver = async () => {
+    setConfirming(false);
     queryClient.clear();
     await clear();
     router.replace("/welcome");
@@ -82,7 +86,7 @@ export default function You() {
         <Row
           icon={isDemo ? "user-plus" : "refresh-ccw"}
           label={isDemo ? "Use my own data" : "Try sample data"}
-          onPress={startOver}
+          onPress={() => (isDemo ? startOver() : setConfirming(true))}
         />
       </View>
 
@@ -93,6 +97,17 @@ export default function You() {
           triglycerides. Kimbo doesn't diagnose or treat anything. Talk to your doctor about your results.
         </T>
       </Surface>
+      {/* With no account, leaving a real profile can't be undone, so it gets a deliberate second step. */}
+      <Sheet visible={confirming} onClose={() => setConfirming(false)} title="Leave your data?">
+        <View style={{ gap: space.lg }}>
+          <T variant="body">
+            Your meals and report are linked to this phone only. If you switch to sample data, you can't get back to
+            them.
+          </T>
+          <Button label="Keep my data" onPress={() => setConfirming(false)} />
+          <Button label="Switch to sample data" kind="danger" onPress={startOver} />
+        </View>
+      </Sheet>
     </Screen>
   );
 }

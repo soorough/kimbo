@@ -10,7 +10,7 @@ import {
   StyleSheet,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, radius, space } from "@/lib/theme";
 import { Icon } from "./Icon";
 import { T } from "./Text";
@@ -118,8 +118,16 @@ export function Sheet({
   children: ReactNode;
 }) {
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
-      {visible ? <SheetPanel onClose={onClose} {...rest} /> : null}
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      onRequestClose={onClose}
+      statusBarTranslucent
+      navigationBarTranslucent
+    >
+      {/* A Modal is its own window, so it needs its own safe-area measurement. */}
+      <SafeAreaProvider>{visible ? <SheetPanel onClose={onClose} {...rest} /> : null}</SafeAreaProvider>
     </Modal>
   );
 }
