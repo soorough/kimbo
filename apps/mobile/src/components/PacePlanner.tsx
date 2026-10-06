@@ -146,6 +146,7 @@ function DateCheck({
         unit={`in ${weeks} weeks`}
         format={() => by}
         tickFormat={(w) => `${w}w`}
+        compact
       />
       <View style={[styles.verdict, { backgroundColor: tone.bg }]} accessibilityLiveRegion="polite">
         <View style={styles.verdictHead}>
@@ -189,7 +190,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.leafSoft,
   },
   toggle: { flexDirection: "row", alignItems: "center", gap: space.sm, paddingVertical: space.sm },
-  verdict: { gap: space.sm, padding: space.md, borderRadius: radius.md },
+  // Fixed minimum so switching between one- and two-line verdicts doesn't bump the button while dragging.
+  verdict: { gap: space.sm, padding: space.md, borderRadius: radius.md, minHeight: 104 },
   verdictHead: { flexDirection: "row", alignItems: "center", gap: space.sm },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
 });

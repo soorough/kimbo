@@ -28,6 +28,7 @@ export function RulerPicker({
   label,
   format,
   tickFormat = format,
+  compact,
 }: {
   value: number;
   onChange: (v: number) => void;
@@ -42,6 +43,8 @@ export function RulerPicker({
   format?: (v: number) => string;
   /** label for major ticks, if shorter than the readout (5′ 0″ → 5 ft) */
   tickFormat?: (v: number) => string;
+  /** smaller readout for long values (dates), so it never wraps and shifts the layout */
+  compact?: boolean;
 }) {
   const scroll = useRef<ScrollView>(null);
   const [width, setWidth] = useState(0);
@@ -106,7 +109,7 @@ export function RulerPicker({
 
   return (
     <View
-      style={styles.wrap}
+      style={[styles.wrap, compact && styles.wrapCompact]}
       accessible
       accessibilityRole="adjustable"
       accessibilityLabel={label}
@@ -115,10 +118,14 @@ export function RulerPicker({
       onAccessibilityAction={(e) => nudge(e.nativeEvent.actionName === "increment" ? 1 : -1)}
     >
       <View style={styles.readout}>
-        <T variant="display" style={styles.value}>
+        <T
+          variant="display"
+          style={compact ? styles.valueCompact : styles.value}
+          fit
+        >
           {format ? format(value) : Number.isInteger(value) ? value : value.toFixed(1)}
         </T>
-        <T variant="title" tone="soft">
+        <T variant="title" tone="soft" numberOfLines={1} style={compact && styles.unitCompact}>
           {unit}
         </T>
       </View>
@@ -154,7 +161,10 @@ export function RulerPicker({
 const styles = StyleSheet.create({
   wrap: { gap: space.xl, alignItems: "stretch", marginTop: space.xxxl * 2 },
   readout: { flexDirection: "row", alignItems: "baseline", justifyContent: "center", gap: space.sm },
-  value: { fontSize: 64, lineHeight: 72, fontVariant: ["tabular-nums"] },
+  value: { fontSize: 64, lineHeight: 72, fontVariant: ["tabular-nums"], flexShrink: 1 },
+  wrapCompact: { marginTop: space.md, gap: space.md },
+  valueCompact: { fontSize: 36, lineHeight: 44, flexShrink: 1 },
+  unitCompact: { fontSize: 18, lineHeight: 24 },
   rulerArea: { height: 84, justifyContent: "flex-start" },
   tickSlot: { width: SPACING, alignItems: "center" },
   tick: { width: 2, borderRadius: 1, backgroundColor: colors.inkFaint },
