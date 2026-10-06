@@ -166,48 +166,6 @@ function Legend({ color, label }: { color: string; label: string }) {
   );
 }
 
-/** Consistency as a number and a row of day tiles — the forgiving streak at a glance. */
-export function StreakCard({ p }: { p: ProgressResponse }) {
-  const tracked = new Set(p.trackedDates);
-  const todayIndex = p.daysElapsed - 1;
-  return (
-    <Surface
-      style={{ flex: 1 }}
-      accessibilityLabel={`${p.streak}-day streak. ${p.daysTracked} of ${p.daysElapsed} days logged this week.`}
-    >
-      <View style={styles.cardHead}>
-        <Icon name="sun" size={16} color={colors.turmericDeep} />
-        <T variant="overline" tone="soft">
-          STREAK
-        </T>
-      </View>
-      <T variant="number" style={styles.big}>
-        {p.streak}
-        <T variant="label"> {p.streak === 1 ? "day" : "days"}</T>
-      </T>
-      <View style={styles.tiles}>
-        {p.days.map((d, i) => (
-          <View
-            key={d.date}
-            style={[
-              styles.tile,
-              tracked.has(d.date) ? styles.tileOn : d.calories === null ? styles.tileAhead : styles.tileOff,
-              i === todayIndex && !tracked.has(d.date) && styles.tileToday,
-            ]}
-          />
-        ))}
-      </View>
-      <T variant="caption">
-        {p.streak >= 2
-          ? "One missed day won't break it."
-          : p.streak === 1
-            ? "Log tomorrow to make it 2."
-            : "Log a meal today to start one."}
-      </T>
-    </Surface>
-  );
-}
-
 /** This week's focus as a ring Kimbo sits in; the sprout grows with the score. */
 export function FocusRing({ focus }: { focus: NonNullable<ProgressResponse["focus"]> }) {
   const leaves = 1 + Math.round((focus.pct / 100) * 4);
@@ -243,11 +201,4 @@ const styles = StyleSheet.create({
   swatch: { width: 10, height: 10, borderRadius: 3 },
   dash: { width: 14, borderTopWidth: 1.5, borderStyle: "dashed", borderColor: colors.turmericDeep },
   cardHead: { flexDirection: "row", alignItems: "center", gap: 6 },
-  big: { fontSize: 30, lineHeight: 36 },
-  tiles: { flexDirection: "row", gap: 4 },
-  tile: { flex: 1, aspectRatio: 1, borderRadius: radius.sm / 2 },
-  tileOn: { backgroundColor: colors.turmeric },
-  tileOff: { backgroundColor: colors.sunk },
-  tileAhead: { borderWidth: 1.5, borderColor: colors.line, borderStyle: "dashed" },
-  tileToday: { borderWidth: 2, borderColor: colors.turmeric, backgroundColor: colors.surface },
 });

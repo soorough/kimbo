@@ -78,6 +78,7 @@ export default function RootLayout() {
             <Stack.Screen name="log" options={sheet} />
             <Stack.Screen name="food-search" options={sheet} />
             <Stack.Screen name="my-meals" options={{ animation: "slide_from_right" }} />
+            <Stack.Screen name="nutrition" options={{ animation: "slide_from_right" }} />
             <Stack.Screen name="review" options={{ animation: "slide_from_bottom" }} />
             <Stack.Screen name="report-review" options={{ animation: "slide_from_right" }} />
           </Stack>

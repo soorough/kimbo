@@ -1,7 +1,8 @@
 import type { Achievement, KimboEventType, ProgressResponse } from "@kimbo/shared";
 import { useQuery } from "@tanstack/react-query";
 import { StyleSheet, View } from "react-native";
-import { CaloriesWeek, FocusRing, StreakCard } from "@/components/ProgressCharts";
+import { CaloriesWeek, FocusRing } from "@/components/ProgressCharts";
+import { RoadToGoal } from "@/components/RoadToGoal";
 import { ProgressSkeleton } from "@/components/Skeleton";
 import { WeightTrend } from "@/components/WeightTrend";
 import { ErrorState, Icon, Screen, Surface, T, type IconName } from "@/components/ui";
@@ -50,11 +51,9 @@ export default function Progress() {
         <T variant="display">This week</T>
       </View>
 
+      {journey.data ? <RoadToGoal journey={journey.data} /> : null}
       <CaloriesWeek p={p} />
-      <View style={styles.pair}>
-        <StreakCard p={p} />
-        {p.focus ? <FocusRing focus={p.focus} /> : null}
-      </View>
+      {p.focus ? <FocusRing focus={p.focus} /> : null}
       {journey.data ? <WeightTrend journey={journey.data} /> : null}
 
       <WeekOverWeek p={p} />
@@ -149,7 +148,6 @@ function rangeLabel(p: ProgressResponse): string {
 }
 
 const styles = StyleSheet.create({
-  pair: { flexDirection: "row", gap: space.md },
   insight: { flexDirection: "row", alignItems: "center", gap: space.sm },
   badges: { flexDirection: "row", flexWrap: "wrap", gap: space.md },
   // Fixed thirds so a partial last row keeps the same badge size.

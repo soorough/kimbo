@@ -85,7 +85,11 @@ function EnergyCard({ data }: { data: TodayResponse }) {
   const eaten = data.totals.calories;
   const left = t.calories - eaten;
   return (
-    <Surface style={styles.energy}>
+    <Surface
+      style={styles.energy}
+      onPress={() => router.push("/nutrition")}
+      accessibilityLabel={`${eaten} of ${t.calories} kilocalories. Open nutrition details`}
+    >
       <Ring value={eaten} max={t.calories} size={132} stroke={12}>
         {/* Over target is stated plainly, in a calm colour — never an alarm. */}
         <T variant="number">{Math.abs(left)}</T>
@@ -99,6 +103,9 @@ function EnergyCard({ data }: { data: TodayResponse }) {
         <Macro label="Carbs" value={data.totals.carbs} target={t.carbs} color={macroColors.carbs} />
         <Macro label="Fat" value={data.totals.fat} target={t.fat} color={macroColors.fat} />
         <Macro label="Fibre" value={data.totals.fibre} target={t.fibre} color={macroColors.fibre} />
+        <T variant="caption" tone="leaf">
+          All nutrients ›
+        </T>
       </View>
     </Surface>
   );
