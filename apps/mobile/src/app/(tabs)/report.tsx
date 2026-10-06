@@ -1,72 +1,20 @@
-import type { ExtractReportRequest, MarkerReading, Report } from "@kimbo/shared";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import * as DocumentPicker from "expo-document-picker";
-import * as ImagePicker from "expo-image-picker";
+import type { MarkerReading, Report } from "@kimbo/shared";
+import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
 import { ErrorState, Icon, Loading, Screen, Surface, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { DISCLAIMER } from "@/lib/copy";
-import { readAsBase64, toUploadableJpeg } from "@/lib/image";
-import { useReportDraft } from "@/lib/report-draft";
+import { useReportIntake } from "@/lib/report-intake";
 import { colors, radius, space } from "@/lib/theme";
 
 export default function ReportTab() {
   const reports = useQuery({ queryKey: ["reports"], queryFn: api.reports });
   const today = useQuery({ queryKey: ["today"], queryFn: api.today });
-  const setDraft = useReportDraft((s) => s.set);
+  const intake = useReportIntake();
 
-  const extract = useMutation({
-    mutationFn: async ({ load }: { load: () => Promise<ExtractReportRequest>; source: "upload" | "sample" }) =>
-      api.extractReport(await load()),
-    onSuccess: (draft, { source }) => {
-      setDraft(draft, source);
-      router.push("/report-review");
-    },
-  });
-
-  async function pickFile() {
-    const res = await DocumentPicker.getDocumentAsync({
-      type: ["application/pdf", "image/*"],
-      copyToCacheDirectory: true,
-    });
-    const asset = res.canceled ? null : res.assets[0];
-    if (!asset) return;
-    const mimeType = asset.mimeType ?? "application/pdf";
-    extract.mutate({
-      source: "upload",
-      load: async () => {
-        if (mimeType.startsWith("image/")) {
-          const image = await toUploadableJpeg(asset.uri);
-          return { fileBase64: image.base64, mimeType: image.mimeType };
-        }
-        return { fileBase64: await readAsBase64(asset.uri), mimeType };
-      },
-    });
-  }
-
-  async function snapReport() {
-    const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) return;
-    const res = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"] });
-    const asset = res.canceled ? null : res.assets[0];
-    if (!asset) return;
-    extract.mutate({
-      source: "upload",
-      load: async () => {
-        const image = await toUploadableJpeg(asset.uri);
-        return { fileBase64: image.base64, mimeType: image.mimeType };
-      },
-    });
-  }
-
-  function enterManually() {
-    setDraft({ markers: [], reportDate: null, ignored: [], supportedMarkers: [], disclaimer: DISCLAIMER }, "manual");
-    router.push("/report-review");
-  }
-
-  if (extract.isPending) {
+  if (intake.reading) {
     return (
       <Screen scroll={false}>
         <View style={styles.center}>
@@ -136,9 +84,9 @@ export default function ReportTab() {
         </Surface>
       ) : null}
 
-      {extract.error ? (
+      {intake.error ? (
         <Surface tint="plum">
-          <T variant="bodyStrong">{errorMessage(extract.error)}</T>
+          <T variant="bodyStrong">{errorMessage(intake.error)}</T>
           <T variant="caption">Type the values instead, or try the sample.</T>
         </Surface>
       ) : null}
@@ -151,21 +99,26 @@ export default function ReportTab() {
             title="Upload PDF or image"
             subtitle="From your files or lab app"
             primary
-            onPress={pickFile}
+            onPress={intake.pickFile}
           />
           <Option
             icon="camera"
             title="Photograph a printed report"
             subtitle="Lay it flat in good light"
-            onPress={snapReport}
+            onPress={intake.snapReport}
           />
           <Option
             icon="book-open"
             title="Try a sample report"
             subtitle="LDL 142 · HbA1c 5.6 · TG 160"
-            onPress={() => extract.mutate({ load: async () => ({ sample: true }), source: "sample" })}
+            onPress={intake.trySample}
           />
-          <Option icon="edit-3" title="Type the values" subtitle="LDL, HbA1c, triglycerides" onPress={enterManually} />
+          <Option
+            icon="edit-3"
+            title="Type the values"
+            subtitle="LDL, HbA1c, triglycerides"
+            onPress={intake.enterManually}
+          />
         </View>
       </View>
 

@@ -2,7 +2,7 @@ import type { Goal, GoalRequest } from "@kimbo/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
 import { RulerPicker } from "@/components/RulerPicker";
@@ -65,6 +65,9 @@ export default function Onboarding() {
   const queryClient = useQueryClient();
   const existing = useQuery({ queryKey: ["profile", profileId], queryFn: () => api.getProfile(profileId) });
   const saved = existing.data?.profile.goal;
+  // Decided once, on first load: the flow saves a goal part-way through.
+  const firstSetup = useRef<boolean | null>(null);
+  if (existing.data && firstSetup.current === null) firstSetup.current = !existing.data.profile.goal;
 
   const [step, setStep] = useState(0);
   const [goalType, setGoalType] = useState<GoalType | null>(null);
@@ -112,6 +115,11 @@ export default function Onboarding() {
       api.saveGoal(profileId, target !== result!.computedTarget ? request({ targetOverride: target }) : request()),
     onSuccess: async () => {
       await queryClient.invalidateQueries();
+      // First-time setup ends with the optional report step, unless a report already exists.
+      if (firstSetup.current) {
+        const { reports } = await api.reports().catch(() => ({ reports: [] as unknown[] }));
+        if (reports.length === 0) return router.replace("/report-offer");
+      }
       if (router.canGoBack()) router.back();
       else router.replace("/(tabs)");
     },

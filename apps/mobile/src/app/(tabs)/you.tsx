@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
 import { Button, ErrorState, Icon, Loading, Screen, Sheet, Surface, T, type IconName } from "@/components/ui";
@@ -31,12 +31,27 @@ export default function You() {
   });
 
   const [confirming, setConfirming] = useState(false);
+  const isDemoRef = useRef(false);
 
+  const setProfileId = useSession((s) => s.setProfileId);
+  /** Switch straight to the other kind of profile, so the row does what its label says. */
   const startOver = async () => {
     setConfirming(false);
-    queryClient.clear();
-    await clear();
-    router.replace("/welcome");
+    const mode = isDemoRef.current ? "fresh" : "demo";
+    try {
+      const { profile: next } = await api.createProfile({
+        mode,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
+      queryClient.clear();
+      await setProfileId(next.id);
+      router.replace(next.goal ? "/(tabs)" : "/onboarding");
+    } catch {
+      // Offline or server down: fall back to the welcome screen, which handles errors.
+      queryClient.clear();
+      await clear();
+      router.replace("/welcome");
+    }
   };
 
   if (profile.isLoading)
@@ -53,6 +68,7 @@ export default function You() {
     );
   }
   const { goal, isDemo } = profile.data.profile;
+  isDemoRef.current = isDemo;
 
   return (
     <Screen>
