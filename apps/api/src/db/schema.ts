@@ -91,4 +91,12 @@ CREATE TABLE IF NOT EXISTS weigh_ins (
   created_at timestamptz NOT NULL,
   PRIMARY KEY (profile_id, measured_on)
 );
+
+-- Recent meals the user removed from quick add; logging the meal again brings it back.
+CREATE TABLE IF NOT EXISTS hidden_recent_meals (
+  profile_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  meal_key text NOT NULL,
+  hidden_at timestamptz NOT NULL,
+  PRIMARY KEY (profile_id, meal_key)
+);
 `;

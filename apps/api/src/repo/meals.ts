@@ -186,3 +186,22 @@ export async function deleteMeal(db: Db, profileId: string, mealId: string): Pro
 export function toApiMeal(meal: StoredMeal): Meal {
   return { ...meal, items: meal.items.map(({ tags: _tags, ...item }) => item) };
 }
+
+export async function hideRecentMeal(db: Db, profileId: string, key: string, now: Date): Promise<void> {
+  await db.query(
+    `INSERT INTO hidden_recent_meals (profile_id, meal_key, hidden_at) VALUES ($1, $2, $3)
+     ON CONFLICT (profile_id, meal_key) DO UPDATE SET hidden_at = EXCLUDED.hidden_at`,
+    [profileId, key, now],
+  );
+}
+
+export async function unhideRecentMeal(db: Db, profileId: string, key: string): Promise<void> {
+  await db.query("DELETE FROM hidden_recent_meals WHERE profile_id = $1 AND meal_key = $2", [profileId, key]);
+}
+
+export async function hiddenRecentMeals(db: Db, profileId: string): Promise<Set<string>> {
+  const res = await db.query<{ meal_key: string }>("SELECT meal_key FROM hidden_recent_meals WHERE profile_id = $1", [
+    profileId,
+  ]);
+  return new Set(res.rows.map((r) => r.meal_key));
+}

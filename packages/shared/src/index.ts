@@ -288,6 +288,17 @@ export type ConfirmMealResponse = z.infer<typeof ConfirmMealResponse>;
 
 export const MealsResponse = z.object({ meals: z.array(Meal) });
 
+/** A meal logged before, offered as one-tap quick add; `draft` opens straight in review. */
+export const RecentMeal = z.object({
+  key: z.string(),
+  label: z.string(),
+  calories: z.number(),
+  timesLogged: z.number(),
+  draft: MealDraft,
+});
+export type RecentMeal = z.infer<typeof RecentMeal>;
+export const RecentMealsResponse = z.object({ meals: z.array(RecentMeal) });
+
 export const RepeatYesterdayRequest = z.object({ mealType: MealType });
 
 // ---------- Reports ----------

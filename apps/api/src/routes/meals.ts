@@ -13,11 +13,23 @@ import { resolveConfirmedItems } from "../domain/confirm-meal.js";
 import { focusForDay } from "../domain/focus-history.js";
 import { mealSupportsFocus, supportedMessage } from "../domain/focus-match.js";
 import { buildDraft } from "../domain/meal-draft.js";
+import { mealKey, RECENT_LOOKBACK_DAYS, recentMeals } from "../domain/recent-meals.js";
 import { addDays, localDate, startOfLocalDay, suggestMealType } from "../domain/time.js";
 import { badRequest, HttpError, notFound } from "../errors.js";
 import { parse, requireProfile } from "../http.js";
 import { unlockMilestones } from "../progress-input.js";
-import { deleteMeal, getMeal, insertMeal, listMeals, replaceMeal, toApiMeal, type MealWrite } from "../repo/meals.js";
+import {
+  deleteMeal,
+  getMeal,
+  hiddenRecentMeals,
+  hideRecentMeal,
+  insertMeal,
+  listMeals,
+  replaceMeal,
+  toApiMeal,
+  unhideRecentMeal,
+  type MealWrite,
+} from "../repo/meals.js";
 import type { ProfileRow } from "../repo/profiles.js";
 import { listFocusAssignments } from "../repo/reports.js";
 
@@ -94,6 +106,26 @@ export function mealRoutes(app: FastifyInstance, deps: Deps) {
     return respondWithMeal(deps, profile, id, write);
   });
 
+  app.get("/meals/recent", async (req) => {
+    const profile = await requireProfile(deps, req);
+    const now = deps.clock();
+    const today = localDate(now, profile.timezone);
+    const [meals, hidden] = await Promise.all([
+      listMeals(deps.db, profile.id, profile.timezone, {
+        from: startOfLocalDay(addDays(today, -RECENT_LOOKBACK_DAYS), profile.timezone),
+        to: new Date(now.getTime() + FUTURE_TOLERANCE_MS),
+      }),
+      hiddenRecentMeals(deps.db, profile.id),
+    ]);
+    return { meals: recentMeals(meals, hidden, suggestMealType(now, profile.timezone)) };
+  });
+
+  app.delete<{ Params: { key: string } }>("/meals/recent/:key", async (req, reply) => {
+    const profile = await requireProfile(deps, req);
+    await hideRecentMeal(deps.db, profile.id, req.params.key, deps.clock());
+    reply.code(204);
+  });
+
   app.get<{ Querystring: { date?: string } }>("/meals", async (req) => {
     const profile = await requireProfile(deps, req);
     const date = req.query.date ? parse(LocalDate, req.query.date) : localDate(deps.clock(), profile.timezone);
@@ -132,6 +164,8 @@ function toMealWrite(deps: Deps, req: FastifyRequest): MealWrite {
 
 async function respondWithMeal(deps: Deps, profile: ProfileRow, id: string, write: MealWrite) {
   const meal = (await getMeal(deps.db, profile.id, profile.timezone, id))!;
+  // Logging a meal again is the clearest sign it belongs back in quick add.
+  await unhideRecentMeal(deps.db, profile.id, mealKey(meal));
   const focus = focusForDay(await listFocusAssignments(deps.db, profile.id), meal.localDate, profile.timezone);
   const focusResult = focus ? mealSupportsFocus(meal, focus) : null;
   const events: KimboEvent[] = [];
