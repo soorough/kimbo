@@ -44,7 +44,7 @@ export function Button({
       style={({ pressed }) => [
         styles.base,
         compact && styles.compact,
-        { backgroundColor: k.bg, borderColor: k.border, opacity: disabled ? 0.45 : 1 },
+        { backgroundColor: k.bg, borderColor: k.border, opacity: disabled && !loading ? 0.45 : 1 },
         pressed && { transform: [{ scale: 0.98 }], opacity: 0.9 },
       ]}
     >

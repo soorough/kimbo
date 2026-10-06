@@ -48,17 +48,15 @@ export function CaloriesWeek({ p }: { p: ProgressResponse }) {
     ahead: "transparent",
   };
 
-  const days = (n: number) => (n === 1 ? "day" : "days");
-  const summary = goal
-    ? `${goal.daysMet} of ${goal.daysTracked} ${days(goal.daysTracked)} on target`
-    : `${p.daysTracked} of ${p.daysElapsed} ${days(p.daysElapsed)} logged`;
+  const { summary, hint } = caloriesCopy(p);
 
   return (
-    <Surface tint="turmeric" accessibilityLabel={`Calories this week. ${summary}.`}>
+    <Surface tint="turmeric" accessibilityLabel={`Calories this week. ${summary}. ${hint ?? ""}`}>
       <T variant="overline" tone="soft">
         CALORIES
       </T>
       <T variant="heading">{summary}</T>
+      {hint ? <T variant="caption">{hint}</T> : null}
       <View style={{ height: CHART_H, marginTop: space.sm }} onLayout={(e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width)}>
         {w > 0 ? (
           <Svg width={w} height={CHART_H}>
@@ -142,6 +140,23 @@ export function CaloriesWeek({ p }: { p: ProgressResponse }) {
   );
 }
 
+const plural = (n: number) => (n === 1 ? "day" : "days");
+
+/** Today only counts toward the goal once it lands in the band, so early in the week there may be nothing to score yet. */
+function caloriesCopy(p: ProgressResponse): { summary: string; hint?: string } {
+  const goal = p.goal;
+  if (p.daysTracked === 0) return { summary: "Your week starts with one meal", hint: "Each day you log gets a bar here." };
+  if (!goal) return { summary: `${p.daysTracked} of ${p.daysElapsed} ${plural(p.daysElapsed)} logged` };
+  if (goal.daysTracked > 0)
+    return { summary: `${goal.daysMet} of ${goal.daysTracked} ${plural(goal.daysTracked)} on target` };
+  const today = p.days[p.daysElapsed - 1]?.calories ?? 0;
+  const target = goal.targetCalories.toLocaleString("en-IN");
+  return {
+    summary: `${today.toLocaleString("en-IN")} of ${target} kcal today`,
+    hint: `Land within ${goal.bandPct}% of your target and today counts.`,
+  };
+}
+
 function Legend({ color, label }: { color: string; label: string }) {
   return (
     <View style={styles.legendItem}>
@@ -183,7 +198,11 @@ export function StreakCard({ p }: { p: ProgressResponse }) {
         ))}
       </View>
       <T variant="caption">
-        {p.streak >= 2 ? "One missed day won't break it." : "Log two days in a row to start one."}
+        {p.streak >= 2
+          ? "One missed day won't break it."
+          : p.streak === 1
+            ? "Log tomorrow to make it 2."
+            : "Log a meal today to start one."}
       </T>
     </Surface>
   );
@@ -212,7 +231,7 @@ export function FocusRing({ focus }: { focus: NonNullable<ProgressResponse["focu
       <T variant="label" numberOfLines={2}>
         {focus.title}
       </T>
-      <T variant="caption">{focus.total ? `${focus.supported} of ${focus.total} meals helped` : "No meals yet"}</T>
+      <T variant="caption">{focus.total ? `${focus.supported} of ${focus.total} meals helped` : "Log a meal to see if it helps"}</T>
     </Surface>
   );
 }
