@@ -53,3 +53,9 @@ export function formatFeetInches(inches: number): string {
 export function formatWeight(kg: number, unit: WeightUnit): string {
   return unit === "lb" ? `${kgToLb(kg)} lb` : `${kg} kg`;
 }
+
+/** Weekly pace: ¼ kg, ½ kg… or one decimal in lb (0.5 kg → 1.1 lb). */
+export function formatPace(kg: number, unit: WeightUnit): string {
+  if (unit === "lb") return `${(kg * LB_PER_KG).toFixed(1)} lb`;
+  return ({ 0.25: "¼ kg", 0.5: "½ kg", 0.75: "¾ kg", 1: "1 kg" } as Record<number, string>)[kg] ?? `${kg} kg`;
+}

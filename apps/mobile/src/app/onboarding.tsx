@@ -1,4 +1,12 @@
-import type { Goal, GoalRequest } from "@kimbo/shared";
+import {
+  computeGoal,
+  DEFAULT_PACE,
+  maintenanceFor,
+  PACES,
+  TARGET_BOUNDS_KCAL,
+  type Goal,
+  type GoalRequest,
+} from "@kimbo/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
@@ -9,9 +17,12 @@ import { RulerPicker } from "@/components/RulerPicker";
 import { Button, Chip, Icon, Screen, Segmented, SegmentRing, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
+import { colors, macroColors, radius, space } from "@/lib/theme";
 import {
   cmToIn,
   formatFeetInches,
+  formatPace,
+  formatWeight,
   inToCm,
   kgToLb,
   lbToKg,
@@ -19,46 +30,58 @@ import {
   type HeightUnit,
   type WeightUnit,
 } from "@/lib/units";
-import { colors, macroColors, radius, space } from "@/lib/theme";
 
 type Sex = GoalRequest["sex"];
 type Activity = GoalRequest["activity"];
 type GoalType = GoalRequest["goal"];
 
-const GOALS: { key: GoalType; icon: IconName; label: string }[] = [
-  { key: "lose", icon: "trending-down", label: "Lose weight" },
-  { key: "maintain", icon: "minus", label: "Stay where I am" },
-  { key: "gain", icon: "trending-up", label: "Gain weight" },
+const GOALS: { key: GoalType; icon: IconName; label: string; hint: string }[] = [
+  { key: "lose", icon: "trending-down", label: "Lose weight", hint: "At a pace you pick, from ¼ to 1 kg a week" },
+  { key: "maintain", icon: "minus", label: "Stay where I am", hint: "Eat for the weight you're at" },
+  {
+    key: "build_muscle",
+    icon: "zap",
+    label: "Build muscle",
+    hint: "A small surplus and more protein, not just weight",
+  },
 ];
 const SEXES: { key: Sex; label: string }[] = [
   { key: "female", label: "Female" },
   { key: "male", label: "Male" },
   { key: "other", label: "Prefer not to say" },
 ];
-/** Activity is shown as a 1–5 intensity meter, so the options read at a glance. */
+/** Concrete days, not adjectives: people recognise their routine, not "moderately active". */
 const ACTIVITY: { key: Activity; label: string; hint: string }[] = [
-  { key: "sedentary", label: "Mostly sitting", hint: "Desk job" },
-  { key: "light", label: "Lightly active", hint: "1–3 workouts a week" },
-  { key: "moderate", label: "Active", hint: "3–5 workouts a week" },
-  { key: "active", label: "Very active", hint: "6–7 workouts a week" },
-  { key: "very_active", label: "Athlete", hint: "Physical job or twice a day" },
+  { key: "sedentary", label: "Mostly sitting", hint: "Desk job, under 5,000 steps a day" },
+  { key: "light", label: "Lightly active", hint: "Some walking, or a workout 1–3 days a week" },
+  { key: "moderate", label: "Active", hint: "On your feet a lot, or a workout 3–5 days a week" },
+  { key: "active", label: "Very active", hint: "Hard workouts 6–7 days a week" },
+  { key: "very_active", label: "Physical job or athlete", hint: "Labour work, or training twice a day" },
 ];
 
-const STEPS = ["goal", "sex", "age", "height", "weight", "activity"] as const;
-type Step = (typeof STEPS)[number];
+type Step = "goal" | "sex" | "age" | "height" | "weight" | "activity" | "goalWeight" | "pace";
 
 const QUESTIONS: Record<Step, string> = {
   goal: "What's your goal?",
   sex: "Your sex",
   age: "How old are you?",
   height: "How tall are you?",
-  weight: "What do you weigh?",
-  activity: "How active is your week?",
+  weight: "What do you weigh now?",
+  activity: "What's a normal day like?",
+  goalWeight: "What's your goal weight?",
+  pace: "How fast?",
 };
+
+/** Maintaining has no goal weight or pace to choose. */
+function stepsFor(goal: GoalType | null): Step[] {
+  const base: Step[] = ["goal", "sex", "age", "height", "weight", "activity"];
+  return goal === "maintain" ? base : [...base, "goalWeight", "pace"];
+}
 
 /**
  * One question per screen. Choices advance on tap; numbers are picked on a ruler, so
- * there's no keyboard and no invalid input. The result is shown, not explained.
+ * there's no keyboard and no invalid input. Activity and pace show their calorie effect
+ * live (shared formula), so each answer visibly matters.
  */
 export default function Onboarding() {
   const profileId = useSession((s) => s.profileId)!;
@@ -76,6 +99,8 @@ export default function Onboarding() {
   const [height, setHeight] = useState(165);
   const [weight, setWeight] = useState(65);
   const [activity, setActivity] = useState<Activity | null>(null);
+  const [goalWeight, setGoalWeight] = useState<number | null>(null);
+  const [weeklyKg, setWeeklyKg] = useState<number | null>(null);
   const [result, setResult] = useState<Goal | null>(null);
   const [target, setTarget] = useState(0);
 
@@ -88,17 +113,22 @@ export default function Onboarding() {
     setHeight(saved.heightCm);
     setWeight(saved.weightKg);
     setActivity(saved.activity);
+    setGoalWeight(saved.targetWeightKg);
+    setWeeklyKg(saved.goal === "maintain" ? null : saved.weeklyKg);
   }, [saved]);
 
-  const request = (overrides: Partial<GoalRequest> = {}): GoalRequest => ({
-    age,
-    sex: sex!,
-    heightCm: height,
-    weightKg: weight,
-    activity: activity!,
-    goal: goalType!,
-    ...overrides,
-  });
+  const steps = stepsFor(goalType);
+  const weightUnit = useUnits((u) => u.weight);
+
+  const request = (overrides: Partial<GoalRequest> = {}): GoalRequest => {
+    const goal = overrides.goal ?? goalType!;
+    const base: GoalRequest = { age, sex: sex!, heightCm: height, weightKg: weight, activity: activity!, goal };
+    if (goal !== "maintain") {
+      base.weeklyKg = weeklyKg ?? DEFAULT_PACE[goal];
+      if (goalWeight !== null) base.targetWeightKg = goalWeight;
+    }
+    return { ...base, ...overrides };
+  };
 
   const calculate = useMutation({
     // Preserve an existing custom target while recalculating; "Looks good" decides the final value.
@@ -125,7 +155,7 @@ export default function Onboarding() {
     },
   });
 
-  const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  const next = () => setStep((s) => Math.min(s + 1, steps.length - 1));
   /** Single-choice answers move on by themselves after a beat, so the choice registers visually. */
   const choose = <V,>(set: (v: V) => void, v: V, then: () => void) => {
     set(v);
@@ -147,21 +177,34 @@ export default function Onboarding() {
     );
   }
 
-  const current = STEPS[step]!;
-  const isRuler = current === "age" || current === "height" || current === "weight";
+  const current = steps[Math.min(step, steps.length - 1)]!;
+  const body = { age, sex: sex ?? "other", heightCm: height, weightKg: weight };
+  const goalWeightValue =
+    goalWeight ?? (goalType === "build_muscle" ? weight + 3 : Math.max(35, Math.round(weight - 5)));
+
+  const footer =
+    current === "age" || current === "height" || current === "weight" ? (
+      <Button label="Continue" onPress={next} />
+    ) : current === "goalWeight" ? (
+      <Button
+        label="Continue"
+        onPress={() => {
+          setGoalWeight(goalWeightValue);
+          next();
+        }}
+      />
+    ) : calculate.error ? (
+      <T variant="label" tone="plum" align="center">
+        {errorMessage(calculate.error)}
+      </T>
+    ) : calculate.isPending ? (
+      <T variant="label" align="center">
+        Calculating…
+      </T>
+    ) : undefined;
 
   return (
-    <Screen
-      footer={
-        isRuler ? (
-          <Button label="Continue" onPress={next} />
-        ) : calculate.error ? (
-          <T variant="label" tone="plum" align="center">
-            {errorMessage(calculate.error)}
-          </T>
-        ) : undefined
-      }
-    >
+    <Screen footer={footer}>
       <View style={styles.progressRow}>
         {step > 0 || router.canGoBack() ? (
           <Pressable
@@ -175,15 +218,18 @@ export default function Onboarding() {
           </Pressable>
         ) : null}
         <View style={styles.segments}>
-          {STEPS.map((s, i) => (
+          {steps.map((s, i) => (
             <View key={s} style={[styles.segment, i <= step && styles.segmentOn]} />
           ))}
         </View>
       </View>
 
-      <T variant="title" style={styles.question}>
-        {QUESTIONS[current]}
-      </T>
+      <View style={{ gap: space.xs }}>
+        <T variant="title" style={styles.question}>
+          {QUESTIONS[current]}
+        </T>
+        {current === "activity" ? <T variant="label">This sets how many calories you burn on a normal day.</T> : null}
+      </View>
 
       {current === "goal" ? (
         <Options>
@@ -191,9 +237,22 @@ export default function Onboarding() {
             <Card
               key={g.key}
               selected={goalType === g.key}
-              onPress={() => choose(setGoalType, g.key, next)}
+              onPress={() =>
+                choose(
+                  (v: GoalType) => {
+                    if (v !== goalType) {
+                      setGoalWeight(null);
+                      setWeeklyKg(null);
+                    }
+                    setGoalType(v);
+                  },
+                  g.key,
+                  next,
+                )
+              }
               leading={<Icon name={g.icon} size={22} color={goalType === g.key ? colors.white : colors.leafDeep} />}
               label={g.label}
+              hint={g.hint}
             />
           ))}
         </Options>
@@ -218,25 +277,142 @@ export default function Onboarding() {
 
       {current === "activity" ? (
         <Options>
-          {ACTIVITY.map((a, i) => (
+          {ACTIVITY.map((a) => (
             <Card
               key={a.key}
               selected={activity === a.key}
-              onPress={() => choose(setActivity, a.key, () => calculate.mutate(request({ activity: a.key })))}
-              leading={<Meter level={i + 1} on={activity === a.key} />}
+              onPress={() =>
+                choose(setActivity, a.key, () =>
+                  goalType === "maintain" ? calculate.mutate(request({ activity: a.key })) : next(),
+                )
+              }
               label={a.label}
               hint={a.hint}
+              trailing={<Kcal value={Math.round(maintenanceFor({ ...body, activity: a.key }) / 10) * 10} />}
             />
           ))}
-          {calculate.isPending ? (
-            <T variant="label" align="center">
-              Calculating…
-            </T>
-          ) : null}
+        </Options>
+      ) : null}
+
+      {current === "goalWeight" && goalType && goalType !== "maintain" ? (
+        <GoalWeightStep goal={goalType} currentKg={weight} kg={goalWeightValue} onChange={setGoalWeight} />
+      ) : null}
+
+      {current === "pace" && goalType && goalType !== "maintain" && activity ? (
+        <Options>
+          {PACES[goalType].map((pace) => {
+            const n = computeGoal({
+              ...body,
+              activity,
+              goal: goalType,
+              weeklyKg: pace,
+              targetWeightKg: goalWeightValue,
+            });
+            const floored = n.raw < TARGET_BOUNDS_KCAL.min;
+            const recommended = pace === recommendedPace(goalType, { ...body, activity });
+            return (
+              <Card
+                key={pace}
+                selected={weeklyKg === pace}
+                onPress={() =>
+                  choose(setWeeklyKg, pace, () =>
+                    calculate.mutate(request({ weeklyKg: pace, targetWeightKg: goalWeightValue })),
+                  )
+                }
+                label={`${formatPace(pace, weightUnit)} a week`}
+                hint={[
+                  recommended ? "Recommended" : null,
+                  floored
+                    ? `Needs under ${TARGET_BOUNDS_KCAL.min.toLocaleString("en-IN")} kcal, the safe minimum`
+                    : n.weeksToGoal
+                      ? `Reach ${formatWeight(goalWeightValue, weightUnit)} by ${dateInWeeks(n.weeksToGoal)}`
+                      : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+                trailing={<Kcal value={n.target} />}
+              />
+            );
+          })}
         </Options>
       ) : null}
     </Screen>
   );
+}
+
+/**
+ * The default pace, unless it would push the target under the safe minimum — then the
+ * fastest pace that stays above it (or the gentlest, if none do).
+ */
+function recommendedPace(goal: "lose" | "build_muscle", body: Omit<Parameters<typeof computeGoal>[0], "goal">) {
+  const fits = (pace: number) => computeGoal({ ...body, goal, weeklyKg: pace }).raw >= TARGET_BOUNDS_KCAL.min;
+  if (fits(DEFAULT_PACE[goal])) return DEFAULT_PACE[goal];
+  const safe = PACES[goal].filter(fits);
+  return safe.length ? safe[safe.length - 1]! : PACES[goal][0]!;
+}
+
+function Kcal({ value }: { value: number }) {
+  return (
+    <View style={{ alignItems: "flex-end" }}>
+      <T variant="heading">{value.toLocaleString("en-IN")}</T>
+      <T variant="caption">kcal a day</T>
+    </View>
+  );
+}
+
+/** Goal weight on the same ruler and units as current weight, limited to the right direction. */
+function GoalWeightStep({
+  goal,
+  currentKg,
+  kg,
+  onChange,
+}: {
+  goal: "lose" | "build_muscle";
+  currentKg: number;
+  kg: number;
+  onChange: (kg: number) => void;
+}) {
+  const unit = useUnits((u) => u.weight);
+  const diff = Math.abs(kg - currentKg);
+  const min = goal === "lose" ? 30 : Math.ceil(currentKg + 0.5);
+  const max = goal === "lose" ? Math.floor(currentKg - 0.5) : Math.ceil(currentKg + 30);
+  return (
+    <View style={{ gap: space.lg }}>
+      {unit === "kg" ? (
+        <RulerPicker
+          key="kg"
+          label="Goal weight"
+          value={kg}
+          onChange={onChange}
+          min={min}
+          max={max}
+          step={0.5}
+          unit="kg"
+        />
+      ) : (
+        <RulerPicker
+          key="lb"
+          label="Goal weight"
+          value={kgToLb(kg)}
+          onChange={(lb) => onChange(lbToKg(lb))}
+          min={kgToLb(min)}
+          max={kgToLb(max)}
+          unit="lb"
+        />
+      )}
+      <T variant="label" align="center">
+        That's {formatWeight(Math.round(diff * 10) / 10, unit)} {goal === "lose" ? "to lose" : "to gain"} from{" "}
+        {formatWeight(currentKg, unit)}.
+      </T>
+    </View>
+  );
+}
+
+function dateInWeeks(weeks: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + weeks * 7);
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) });
 }
 
 function Reveal({
@@ -264,7 +440,14 @@ function Reveal({
     { label: "Carbs", grams: goal.targets.carbs, kcalPerGram: 4, color: macroColors.carbs },
     { label: "Fat", grams: goal.targets.fat, kcalPerGram: 9, color: macroColors.fat },
   ];
-  const pace = b.kgPerWeek === 0 ? "Keeps your weight where it is" : `About ${formatKg(Math.abs(b.kgPerWeek))} a week`;
+  const weightUnit = useUnits((u) => u.weight);
+  const verb = b.kgPerWeek < 0 ? "Lose" : "Build";
+  const pace =
+    b.kgPerWeek === 0
+      ? "Keeps your weight where it is"
+      : goal.targetWeightKg && b.weeksToGoal
+        ? `${verb} ${formatPace(Math.abs(b.kgPerWeek), weightUnit)} a week · ${formatWeight(goal.targetWeightKg, weightUnit)} by ${dateInWeeks(b.weeksToGoal)}`
+        : `${verb} ${formatPace(Math.abs(b.kgPerWeek), weightUnit)} a week`;
   const paceIcon: IconName = b.kgPerWeek < 0 ? "trending-down" : b.kgPerWeek > 0 ? "trending-up" : "minus";
 
   return (
@@ -425,12 +608,15 @@ function Card({
   label,
   hint,
   leading,
+  trailing,
   selected,
   onPress,
 }: {
   label: string;
   hint?: string;
   leading?: ReactNode;
+  /** e.g. the calorie effect of this choice */
+  trailing?: ReactNode;
   selected: boolean;
   onPress: () => void;
 }) {
@@ -446,28 +632,9 @@ function Card({
         <T variant="heading">{label}</T>
         {hint ? <T variant="caption">{hint}</T> : null}
       </View>
-      {selected ? <Icon name="check" size={20} color={colors.leaf} /> : null}
+      {trailing}
+      {selected && !trailing ? <Icon name="check" size={20} color={colors.leaf} /> : null}
     </Pressable>
-  );
-}
-
-function Meter({ level, on }: { level: number; on: boolean }) {
-  return (
-    <View style={styles.meter} accessibilityElementsHidden>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <View
-          key={i}
-          style={[
-            styles.meterBar,
-            { height: 6 + i * 3 },
-            {
-              backgroundColor:
-                i <= level ? (on ? colors.white : colors.leaf) : on ? "rgba(255,255,255,0.35)" : colors.line,
-            },
-          ]}
-        />
-      ))}
-    </View>
   );
 }
 
@@ -501,12 +668,6 @@ function useCountUp(to: number, ms = 700) {
     return () => cancelAnimationFrame(raf);
   }, [to, ms, done]);
   return n;
-}
-
-function formatKg(kg: number): string {
-  if (Math.abs(kg - 0.5) < 0.08) return "½ kg";
-  if (Math.abs(kg - 0.25) < 0.05) return "¼ kg";
-  return `${kg.toFixed(1)} kg`;
 }
 
 const styles = StyleSheet.create({
@@ -544,8 +705,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  meter: { flexDirection: "row", alignItems: "flex-end", gap: 2, height: 22 },
-  meterBar: { width: 4, borderRadius: 2 },
   revealTop: { alignItems: "center", gap: space.md, marginTop: space.xl },
   bigNumber: { fontSize: 48, lineHeight: 54, fontVariant: ["tabular-nums"] },
   pace: {

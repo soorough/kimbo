@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PACES } from "./goal";
 
 // ---------- Common ----------
 
@@ -67,7 +68,7 @@ export type Achievement = z.infer<typeof Achievement>;
 export const Sex = z.enum(["male", "female", "other"]);
 export const ActivityLevel = z.enum(["sedentary", "light", "moderate", "active", "very_active"]);
 export type ActivityLevel = z.infer<typeof ActivityLevel>;
-export const GoalType = z.enum(["maintain", "lose", "gain"]);
+export const GoalType = z.enum(["lose", "maintain", "build_muscle"]);
 
 export const CreateProfileRequest = z.object({
   mode: z.enum(["fresh", "demo"]),
@@ -75,14 +76,35 @@ export const CreateProfileRequest = z.object({
 });
 export type CreateProfileRequest = z.infer<typeof CreateProfileRequest>;
 
-export const GoalRequest = z.object({
+const GoalFields = z.object({
   age: z.number().int().min(15, "Age must be 15 or over").max(100, "Age must be 100 or under"),
   sex: Sex,
   heightCm: z.number().min(100, "Height must be at least 100 cm").max(250, "Height must be at most 250 cm"),
   weightKg: z.number().min(30, "Weight must be at least 30 kg").max(300, "Weight must be at most 300 kg"),
   activity: ActivityLevel,
   goal: GoalType,
+  /** kg per week; one of PACES[goal]. Ignored for maintain. */
+  weeklyKg: z.number().optional(),
+  targetWeightKg: z.number().min(30).max(300).optional(),
   targetOverride: z.number().int().optional(),
+});
+
+export const GoalRequest = GoalFields.superRefine((g, ctx) => {
+  if (g.goal !== "maintain" && g.weeklyKg !== undefined && !PACES[g.goal].includes(g.weeklyKg)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["weeklyKg"],
+      message: `Pick ${PACES[g.goal].join(", ")} kg a week`,
+    });
+  }
+  if (g.targetWeightKg !== undefined) {
+    if (g.goal === "lose" && g.targetWeightKg >= g.weightKg) {
+      ctx.addIssue({ code: "custom", path: ["targetWeightKg"], message: "Goal weight should be below your current weight" });
+    }
+    if (g.goal === "build_muscle" && g.targetWeightKg <= g.weightKg) {
+      ctx.addIssue({ code: "custom", path: ["targetWeightKg"], message: "Goal weight should be above your current weight" });
+    }
+  }
 });
 export type GoalRequest = z.infer<typeof GoalRequest>;
 
@@ -95,7 +117,9 @@ export const MacroTargets = z.object({
 });
 export type MacroTargets = z.infer<typeof MacroTargets>;
 
-export const Goal = GoalRequest.omit({ targetOverride: true }).extend({
+export const Goal = GoalFields.omit({ targetOverride: true, weeklyKg: true, targetWeightKg: true }).extend({
+  weeklyKg: z.number(),
+  targetWeightKg: z.number().nullable(),
   computedTarget: z.number(),
   targetOverride: z.number().nullable(),
   effectiveTarget: z.number(),
@@ -107,6 +131,7 @@ export const Goal = GoalRequest.omit({ targetOverride: true }).extend({
     maintenance: z.number(),
     adjustment: z.number(),
     kgPerWeek: z.number(),
+    weeksToGoal: z.number().nullable(),
   }),
   targets: MacroTargets,
 });
@@ -371,3 +396,4 @@ export type ProgressResponse = z.infer<typeof ProgressResponse>;
 export const CheckinResponse = z.object({ events: z.array(KimboEvent) });
 export type CheckinResponse = z.infer<typeof CheckinResponse>;
 export * from "./nutrition";
+export * from "./goal";

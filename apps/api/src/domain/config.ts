@@ -2,27 +2,12 @@
  * Every tunable product constant lives here so it can be reviewed in one place.
  * Sources are noted inline; medical thresholds should be re-reviewed before release.
  */
-import type { ActivityLevel } from "@kimbo/shared";
 
 export const DEFAULT_TIMEZONE = "Asia/Kolkata";
 
-// --- Calorie target (Mifflin–St Jeor, 1990) ---
-export const ACTIVITY_MULTIPLIERS: Record<ActivityLevel, { factor: number; label: string }> = {
-  sedentary: { factor: 1.2, label: "mostly sitting" },
-  light: { factor: 1.375, label: "lightly active (1–3 days of exercise a week)" },
-  moderate: { factor: 1.55, label: "moderately active (3–5 days a week)" },
-  active: { factor: 1.725, label: "very active (6–7 days a week)" },
-  very_active: { factor: 1.9, label: "extremely active (physical job or twice-daily training)" },
-};
-export const GOAL_ADJUSTMENT_KCAL = { maintain: 0, lose: -500, gain: 300 } as const;
-export const TARGET_BOUNDS_KCAL = { min: 1200, max: 4000 } as const;
-export const TARGET_ROUNDING_KCAL = 10;
-/** Common approximation of the energy in 1 kg of body weight, used only for the "about ½ kg a week" pace. */
-export const KCAL_PER_KG = 7700;
-/** Share of calories from each macro (common balanced-diet split). */
-export const MACRO_SPLIT = { protein: 0.2, carbs: 0.5, fat: 0.3 } as const;
-/** ICMR-NIN 2020 suggests ~30 g/day dietary fibre for a 2000 kcal diet. */
-export const FIBRE_TARGET_G = 30;
+// --- Calorie target ---
+// Formula, activity factors, weekly paces and macro rules live in @kimbo/shared (goal.ts),
+// so the app previews exactly what the API stores.
 
 // --- Progress ---
 /** A tracked day "meets the goal" when calories are within ±10% of target. */

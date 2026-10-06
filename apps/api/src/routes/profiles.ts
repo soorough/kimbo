@@ -1,7 +1,8 @@
 import { CreateProfileRequest, GoalRequest } from "@kimbo/shared";
 import type { FastifyInstance } from "fastify";
 import type { Deps } from "../app.js";
-import { DEFAULT_TIMEZONE, TARGET_BOUNDS_KCAL } from "../domain/config.js";
+import { TARGET_BOUNDS_KCAL } from "@kimbo/shared";
+import { DEFAULT_TIMEZONE } from "../domain/config.js";
 import { computeTarget, isTargetInBounds } from "../domain/goal.js";
 import { seedDemoProfile } from "../domain/demo.js";
 import { HttpError } from "../errors.js";

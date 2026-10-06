@@ -30,24 +30,58 @@ describe("onboarding & goal", () => {
   it("returns the calculation as numbers so the app can show it visually", async () => {
     const id = await freshProfile();
     const lose = await api.put(`/profiles/${id}/goal`, { ...defaultGoal, goal: "lose" }, id);
-    // 1648.75 BMR × 1.2 = 1978.5 maintenance; −500 to lose
-    expect(lose.json.profile.goal.breakdown).toEqual({
+    // 1648.75 BMR × 1.2 = 1978.5 maintenance; 0.5 kg a week = 7700 × 0.5 / 7 = 550 kcal a day
+    expect(lose.json.profile.goal.breakdown).toMatchObject({
       bmr: 1649,
       activityFactor: 1.2,
       maintenance: 1979,
-      adjustment: -500,
-      kgPerWeek: -0.45,
+      adjustment: -550,
+      kgPerWeek: -0.5,
     });
-    const gain = await api.put(`/profiles/${id}/goal`, { ...defaultGoal, goal: "gain" }, id);
-    expect(gain.json.profile.goal.breakdown).toMatchObject({ adjustment: 300, kgPerWeek: 0.27 });
   });
 
-  it("adjusts for lose and gain goals", async () => {
+  it("loses weight at the chosen weekly pace, 0.5 kg by default", async () => {
     const id = await freshProfile();
-    const lose = await api.put(`/profiles/${id}/goal`, { ...defaultGoal, goal: "lose" }, id);
-    expect(lose.json.profile.goal.computedTarget).toBe(1480);
-    const gain = await api.put(`/profiles/${id}/goal`, { ...defaultGoal, goal: "gain" }, id);
-    expect(gain.json.profile.goal.computedTarget).toBe(2280);
+    const standard = await api.put(`/profiles/${id}/goal`, { ...defaultGoal, goal: "lose" }, id);
+    expect(standard.json.profile.goal).toMatchObject({ computedTarget: 1430, weeklyKg: 0.5 });
+    const gentle = await api.put(`/profiles/${id}/goal`, { ...defaultGoal, goal: "lose", weeklyKg: 0.25 }, id);
+    // 1978.5 − 275 = 1703.5
+    expect(gentle.json.profile.goal.computedTarget).toBe(1700);
+  });
+
+  it("builds muscle with a small surplus and more protein", async () => {
+    const id = await freshProfile();
+    const res = await api.put(`/profiles/${id}/goal`, { ...defaultGoal, goal: "build_muscle" }, id);
+    // 1978.5 + 275 (0.25 kg a week) = 2253.5
+    expect(res.json.profile.goal).toMatchObject({ computedTarget: 2250, weeklyKg: 0.25 });
+    // protein 1.6 g per kg (112 g), fat 30% (75 g), carbs fill the rest: (2250 − 448 − 675) / 4
+    expect(res.json.profile.goal.targets).toEqual({ calories: 2250, protein: 112, carbs: 282, fat: 75, fibre: 30 });
+  });
+
+  it("only offers safe weekly paces for each goal", async () => {
+    const id = await freshProfile();
+    expect((await api.put(`/profiles/${id}/goal`, { ...defaultGoal, goal: "lose", weeklyKg: 1.5 }, id)).status).toBe(400);
+    expect(
+      (await api.put(`/profiles/${id}/goal`, { ...defaultGoal, goal: "build_muscle", weeklyKg: 1 }, id)).status,
+    ).toBe(400);
+  });
+
+  it("works out when a goal weight will be reached", async () => {
+    const id = await freshProfile();
+    const res = await api.put(
+      `/profiles/${id}/goal`,
+      { ...defaultGoal, goal: "lose", weeklyKg: 0.5, targetWeightKg: 65 },
+      id,
+    );
+    expect(res.json.profile.goal).toMatchObject({ targetWeightKg: 65 });
+    expect(res.json.profile.goal.breakdown.weeksToGoal).toBe(10);
+  });
+
+  it("rejects a goal weight in the wrong direction", async () => {
+    const id = await freshProfile();
+    const res = await api.put(`/profiles/${id}/goal`, { ...defaultGoal, goal: "lose", targetWeightKg: 75 }, id);
+    expect(res.status).toBe(400);
+    expect(res.json.message).toMatch(/below/);
   });
 
   it("uses the female formula and activity multipliers", async () => {

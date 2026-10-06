@@ -6,7 +6,7 @@ import { Kimbo } from "@/components/Kimbo";
 import { Button, ErrorState, Icon, Loading, Screen, Sheet, Surface, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
-import { formatWeight, useUnits } from "@/lib/units";
+import { formatPace, formatWeight, useUnits } from "@/lib/units";
 import { colors, space } from "@/lib/theme";
 
 const ACTIVITY_LABEL = {
@@ -16,7 +16,7 @@ const ACTIVITY_LABEL = {
   active: "Very active",
   very_active: "Extremely active",
 } as const;
-const GOAL_LABEL = { lose: "Lose weight", maintain: "Maintain", gain: "Gain weight" } as const;
+const GOAL_LABEL = { lose: "Lose weight", maintain: "Maintain", build_muscle: "Build muscle" } as const;
 
 /** Settings live in one predictable place instead of scattered links. */
 export default function You() {
@@ -90,7 +90,13 @@ export default function You() {
           </View>
           <T variant="number">{goal.effectiveTarget} kcal</T>
           <T variant="label">
-            {GOAL_LABEL[goal.goal]} · {ACTIVITY_LABEL[goal.activity]} · {formatWeight(goal.weightKg, weightUnit)}
+            {GOAL_LABEL[goal.goal]}
+            {goal.goal !== "maintain" ? ` ${formatPace(goal.weeklyKg, weightUnit)} a week` : ""} ·{" "}
+            {ACTIVITY_LABEL[goal.activity]}
+          </T>
+          <T variant="caption">
+            Now {formatWeight(goal.weightKg, weightUnit)}
+            {goal.targetWeightKg ? ` · goal ${formatWeight(goal.targetWeightKg, weightUnit)}` : ""}
           </T>
           {goal.targetOverride ? (
             <T variant="caption">Adjusted by you (Kimbo suggested {goal.computedTarget} kcal)</T>

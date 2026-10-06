@@ -16,6 +16,8 @@ export interface ProfileRow {
   goal: GoalRequest["goal"] | null;
   computed_target: number | null;
   target_override: number | null;
+  weekly_kg: number | null;
+  target_weight_kg: number | null;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -40,7 +42,7 @@ export async function insertProfile(
 export async function saveGoal(db: Db, id: string, input: GoalRequest, computedTarget: number): Promise<ProfileRow> {
   const res = await db.query<ProfileRow>(
     `UPDATE profiles SET age = $2, sex = $3, height_cm = $4, weight_kg = $5, activity = $6, goal = $7,
-       computed_target = $8, target_override = $9
+       computed_target = $8, target_override = $9, weekly_kg = $10, target_weight_kg = $11
      WHERE id = $1 RETURNING *`,
     [
       id,
@@ -52,6 +54,8 @@ export async function saveGoal(db: Db, id: string, input: GoalRequest, computedT
       input.goal,
       computedTarget,
       input.targetOverride ?? null,
+      input.weeklyKg ?? null,
+      input.targetWeightKg ?? null,
     ],
   );
   return res.rows[0]!;
@@ -68,7 +72,10 @@ export function goalOf(row: ProfileRow): Goal | null {
       heightCm: row.height_cm,
       weightKg: row.weight_kg,
       activity: row.activity,
-      goal: row.goal,
+      // Profiles saved before "build muscle" replaced "gain" read as building muscle.
+      goal: (row.goal as string) === "gain" ? "build_muscle" : row.goal,
+      weeklyKg: row.weekly_kg ?? undefined,
+      targetWeightKg: row.target_weight_kg,
     },
     row.target_override,
   );

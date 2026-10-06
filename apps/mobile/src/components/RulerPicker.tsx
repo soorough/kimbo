@@ -87,7 +87,9 @@ export function RulerPicker({
   const ticks = useMemo(
     () =>
       Array.from({ length: count }, (_, i) => {
-        const major = i % majorEvery === 0;
+        // Long ticks sit on round values (150, 160…), whatever the ruler's lower limit is.
+        const units = valueAt(i) / (step * majorEvery);
+        const major = Math.abs(units - Math.round(units)) < 1e-6;
         return (
           <View key={i} style={styles.tickSlot}>
             <View style={[styles.tick, major ? styles.tickMajor : styles.tickMinor]} />
@@ -99,7 +101,7 @@ export function RulerPicker({
           </View>
         );
       }),
-    [count, majorEvery, valueAt, tickFormat],
+    [count, majorEvery, step, valueAt, tickFormat],
   );
 
   return (
