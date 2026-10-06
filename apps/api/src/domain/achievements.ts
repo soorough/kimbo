@@ -12,6 +12,12 @@ export const ACHIEVEMENT_TITLES: Record<KimboEventType, string> = {
   meal_supported_focus: "Meal supported your focus",
   report_became_focus: "Report became your focus",
   correction_accepted: "Correction saved",
+  first_weigh_in: "First weigh-in",
+  kg_progress: "A kilogram closer",
+  halfway_to_goal: "Halfway to your goal",
+  goal_reached: "Goal weight reached",
+  on_target_3: "3 days on target",
+  on_target_7: "A week on target",
 };
 
 const MESSAGES: Partial<Record<KimboEventType, string>> = {

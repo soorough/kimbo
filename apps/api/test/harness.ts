@@ -60,7 +60,7 @@ export function useTestApp() {
 
   beforeEach(async () => {
     await db.query(
-      "TRUNCATE profiles, meals, meal_items, reports, report_markers, focus_assignments, achievements CASCADE",
+      "TRUNCATE profiles, meals, meal_items, reports, report_markers, focus_assignments, achievements, weigh_ins CASCADE",
     );
     ctx.clock = new TestClock();
     ctx.recognizer = new FakeRecognizer();

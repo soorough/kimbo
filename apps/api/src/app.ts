@@ -4,6 +4,7 @@ import { AiUnavailableError, type MealRecognizer, type ReportExtractor } from ".
 import type { Clock } from "./clock.js";
 import type { Db } from "./db/index.js";
 import { HttpError } from "./errors.js";
+import { journeyRoutes } from "./routes/journey.js";
 import { mealRoutes } from "./routes/meals.js";
 import { profileRoutes } from "./routes/profiles.js";
 import { progressRoutes } from "./routes/progress.js";
@@ -52,5 +53,6 @@ export async function createApp(deps: Deps, opts: { logger?: boolean } = {}) {
   reportRoutes(app, deps);
   todayRoutes(app, deps);
   progressRoutes(app, deps);
+  journeyRoutes(app, deps);
   return app;
 }

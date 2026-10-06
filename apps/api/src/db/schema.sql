@@ -81,3 +81,11 @@ CREATE TABLE IF NOT EXISTS achievements (
 -- Goal pace and goal weight (added for weekly-pace goals).
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS weekly_kg numeric;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS target_weight_kg numeric;
+
+CREATE TABLE IF NOT EXISTS weigh_ins (
+  profile_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  measured_on date NOT NULL,
+  kg numeric NOT NULL,
+  created_at timestamptz NOT NULL,
+  PRIMARY KEY (profile_id, measured_on)
+);

@@ -46,6 +46,12 @@ export const KimboEventType = z.enum([
   "meal_supported_focus",
   "report_became_focus",
   "correction_accepted",
+  "first_weigh_in",
+  "kg_progress",
+  "halfway_to_goal",
+  "goal_reached",
+  "on_target_3",
+  "on_target_7",
 ]);
 export type KimboEventType = z.infer<typeof KimboEventType>;
 
@@ -392,6 +398,33 @@ export const ProgressResponse = z.object({
   achievements: z.array(Achievement),
 });
 export type ProgressResponse = z.infer<typeof ProgressResponse>;
+
+// ---------- Goal journey ----------
+
+export const WeighInRequest = z.object({
+  kg: z.number().min(30, "Weight must be at least 30 kg").max(300, "Weight must be at most 300 kg"),
+  date: LocalDate.optional(),
+});
+export type WeighInRequest = z.infer<typeof WeighInRequest>;
+
+export const JourneyResponse = z.object({
+  goal: GoalType,
+  startKg: z.number(),
+  currentKg: z.number(),
+  targetKg: z.number().nullable(),
+  kgToGo: z.number().nullable(),
+  /** 0–100 progress from start to goal weight */
+  pct: z.number().nullable(),
+  weeklyKg: z.number(),
+  lastWeighIn: LocalDate.nullable(),
+  /** consecutive days within the calorie band (today counts only once it's on target) */
+  onTargetStreak: z.number(),
+  history: z.array(z.object({ date: LocalDate, kg: z.number() })),
+});
+export type JourneyResponse = z.infer<typeof JourneyResponse>;
+
+export const WeighInResponse = z.object({ journey: JourneyResponse, events: z.array(KimboEvent) });
+export type WeighInResponse = z.infer<typeof WeighInResponse>;
 
 export const CheckinResponse = z.object({ events: z.array(KimboEvent) });
 export type CheckinResponse = z.infer<typeof CheckinResponse>;

@@ -3,8 +3,7 @@ import type { ExtractedReport } from "../ai/types.js";
 import { HttpError } from "../errors.js";
 import { FOCUS_PRIORITY, MARKER_THRESHOLDS } from "./config.js";
 
-export const DISCLAIMER =
-  "Kimbo doesn't diagnose or treat anything. Talk to your doctor about your results.";
+export const DISCLAIMER = "Kimbo doesn't diagnose or treat anything. Talk to your doctor about your results.";
 
 interface MarkerDef {
   label: string;

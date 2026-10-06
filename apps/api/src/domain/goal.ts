@@ -1,10 +1,4 @@
-import {
-  computeGoal,
-  macroTargetsFor,
-  TARGET_BOUNDS_KCAL,
-  type Goal,
-  type GoalInput,
-} from "@kimbo/shared";
+import { computeGoal, macroTargetsFor, TARGET_BOUNDS_KCAL, type Goal, type GoalInput } from "@kimbo/shared";
 
 /** The shared calculation plus the plain-language explanation the API returns. */
 export function computeTarget(input: GoalInput) {
