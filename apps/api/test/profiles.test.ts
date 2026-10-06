@@ -55,7 +55,7 @@ describe("onboarding & goal", () => {
     // 1978.5 + 275 (0.25 kg a week) = 2253.5
     expect(res.json.profile.goal).toMatchObject({ computedTarget: 2250, weeklyKg: 0.25 });
     // protein 1.6 g per kg (112 g), fat 30% (75 g), carbs fill the rest: (2250 − 448 − 675) / 4
-    expect(res.json.profile.goal.targets).toEqual({ calories: 2250, protein: 112, carbs: 282, fat: 75, fibre: 30 });
+    expect(res.json.profile.goal.targets).toEqual({ calories: 2250, protein: 112, carbs: 282, fat: 75, fibre: 30, satFat: 25 });
   });
 
   it("only offers safe weekly paces for each goal", async () => {
@@ -111,7 +111,7 @@ describe("onboarding & goal", () => {
     const res = await api.put(`/profiles/${id}/goal`, { ...defaultGoal, targetOverride: 2000 }, id);
     expect(res.json.profile.goal).toMatchObject({ computedTarget: 1980, targetOverride: 2000, effectiveTarget: 2000 });
     // 20% protein / 50% carbs / 30% fat
-    expect(res.json.profile.goal.targets).toEqual({ calories: 2000, protein: 100, carbs: 250, fat: 67, fibre: 30 });
+    expect(res.json.profile.goal.targets).toEqual({ calories: 2000, protein: 100, carbs: 250, fat: 67, fibre: 30, satFat: 22 });
   });
 
   it("rejects an adjusted target outside safe bounds", async () => {

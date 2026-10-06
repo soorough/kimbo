@@ -38,7 +38,35 @@ export function onTargetStreak(
   return { days, start };
 }
 
-export function computeJourney(goal: Goal, weighIns: WeighIn[], streak: number): JourneyResponse {
+export type CalendarDay = JourneyResponse["calendar"][number];
+
+/**
+ * Every day from `start` to today: nothing logged, logged, or within the calorie band.
+ * Feeds the contribution-style grid on the road to the goal weight.
+ */
+export function journeyCalendar(meals: StoredMeal[], targetKcal: number, start: string, today: string) {
+  const byDay = new Map<string, number>();
+  for (const m of meals) byDay.set(m.localDate, (byDay.get(m.localDate) ?? 0) + m.totals.calories);
+  const band = (targetKcal * GOAL_BAND_PCT) / 100;
+  const low = Math.round(targetKcal - band);
+  const high = Math.round(targetKcal + band);
+
+  const calendar: CalendarDay[] = [];
+  let run = 0;
+  let best = 0;
+  for (let d = start; d <= today; d = addDays(d, 1)) {
+    const kcal = byDay.get(d);
+    const status = kcal === undefined ? "empty" : kcal >= low && kcal <= high ? "on_target" : "logged";
+    calendar.push({ date: d, status });
+    run = status === "on_target" ? run + 1 : 0;
+    best = Math.max(best, run);
+  }
+  return { calendar, bestOnTargetStreak: best };
+}
+
+type WeightJourney = Omit<JourneyResponse, "calendar" | "bestOnTargetStreak">;
+
+export function computeJourney(goal: Goal, weighIns: WeighIn[], streak: number): WeightJourney {
   const startKg = goal.weightKg;
   const last = weighIns.at(-1) ?? null;
   const currentKg = last?.kg ?? startKg;
@@ -69,7 +97,7 @@ export function computeJourney(goal: Goal, weighIns: WeighIn[], streak: number):
 const event = (type: KimboEvent["type"], message: string): KimboEvent => ({ type, message });
 
 /** Weight milestones the journey has reached; the caller persists keys so each fires once. */
-export function weightCandidates(j: JourneyResponse, isFirstWeighIn: boolean): Candidate[] {
+export function weightCandidates(j: WeightJourney, isFirstWeighIn: boolean): Candidate[] {
   const out: Candidate[] = [];
   if (isFirstWeighIn) {
     out.push({

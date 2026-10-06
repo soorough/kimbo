@@ -135,3 +135,45 @@ describe("on-target streak", () => {
     expect((await api.get("/journey", id)).json.onTargetStreak).toBe(1);
   });
 });
+
+describe("road to the goal calendar", () => {
+  const kcal = (calories: number) => [
+    {
+      kind: "estimate",
+      name: "Thali",
+      quantity: 1,
+      unit: "plate",
+      nutrition: { calories, protein: 20, carbs: 50, fat: 10, fibre: 5, satFat: 3 },
+    },
+  ];
+  const eat = (id: string, date: string, calories: number) =>
+    api.post("/meals", { mealType: "lunch", source: "text", eatenAt: `${date}T06:00:00Z`, items: kcal(calories) }, id);
+  const calendar = async (id: string) => (await api.get("/journey", id)).json.calendar;
+
+  it("starts on the day you joined", async () => {
+    const id = await losing();
+    expect(await calendar(id)).toEqual([{ date: "2026-10-06", status: "empty" }]);
+  });
+
+  it("marks each day as empty, logged or on target", async () => {
+    const id = await losing();
+    await eat(id, "2026-10-03", 1430);
+    await eat(id, "2026-10-04", 500);
+    await eat(id, "2026-10-06", 1430);
+    expect(await calendar(id)).toEqual([
+      { date: "2026-10-03", status: "on_target" },
+      { date: "2026-10-04", status: "logged" },
+      { date: "2026-10-05", status: "empty" },
+      { date: "2026-10-06", status: "on_target" },
+    ]);
+  });
+
+  it("remembers the best run of on-target days", async () => {
+    const id = await losing();
+    for (const d of ["2026-10-01", "2026-10-02", "2026-10-03", "2026-10-05"]) await eat(id, d, 1430);
+    const res = await api.get("/journey", id);
+    expect(res.json.bestOnTargetStreak).toBe(3);
+    // Today is still going, so the current run is just yesterday.
+    expect(res.json.onTargetStreak).toBe(1);
+  });
+});

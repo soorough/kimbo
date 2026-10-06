@@ -1,7 +1,7 @@
 import { WeighInRequest } from "@kimbo/shared";
 import type { FastifyInstance } from "fastify";
 import type { Deps } from "../app.js";
-import { computeJourney, onTargetStreak, weightCandidates } from "../domain/journey.js";
+import { computeJourney, journeyCalendar, onTargetStreak, weightCandidates } from "../domain/journey.js";
 import { localDate } from "../domain/time.js";
 import { badRequest, HttpError } from "../errors.js";
 import { parse, requireProfile } from "../http.js";
@@ -15,7 +15,14 @@ async function journeyFor(deps: Deps, profile: ProfileRow) {
   if (!goal) throw new HttpError(409, "GOAL_REQUIRED", "Set a goal first");
   const input = await loadProgressInput(deps, profile);
   const streak = onTargetStreak(input.meals, goal.effectiveTarget, input.today);
-  return computeJourney(goal, await listWeighIns(deps.db, profile.id), streak.days);
+  // Demo profiles come with meals from before the profile existed, so start at whichever is earlier.
+  const joined = localDate(new Date(profile.created_at), profile.timezone);
+  const firstMeal = input.meals[0]?.localDate;
+  const start = firstMeal && firstMeal < joined ? firstMeal : joined;
+  return {
+    ...computeJourney(goal, await listWeighIns(deps.db, profile.id), streak.days),
+    ...journeyCalendar(input.meals, goal.effectiveTarget, start, input.today),
+  };
 }
 
 export function journeyRoutes(app: FastifyInstance, deps: Deps) {

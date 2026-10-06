@@ -120,6 +120,8 @@ export const MacroTargets = z.object({
   carbs: z.number(),
   fat: z.number(),
   fibre: z.number(),
+  /** upper limit in grams */
+  satFat: z.number(),
 });
 export type MacroTargets = z.infer<typeof MacroTargets>;
 
@@ -449,6 +451,9 @@ export const JourneyResponse = z.object({
   /** consecutive days within the calorie band (today counts only once it's on target) */
   onTargetStreak: z.number(),
   history: z.array(z.object({ date: LocalDate, kg: z.number() })),
+  /** one entry per day from the first logged day (or joining) to today */
+  calendar: z.array(z.object({ date: LocalDate, status: z.enum(["empty", "logged", "on_target"]) })),
+  bestOnTargetStreak: z.number(),
 });
 export type JourneyResponse = z.infer<typeof JourneyResponse>;
 

@@ -102,12 +102,16 @@ export function computeGoal(i: GoalInput): GoalNumbers {
   };
 }
 
+/** Saturated fat ceiling: under 10% of daily energy (WHO). A limit, not a target to reach. */
+const SAT_FAT_MAX_ENERGY_SHARE = 0.1;
+
 export function macroTargetsFor(calories: number, goal: GoalKey, weightKg: number) {
   const fat = Math.round((calories * MACRO_SPLIT.fat) / 9);
+  const satFat = Math.round((calories * SAT_FAT_MAX_ENERGY_SHARE) / 9);
   if (goal === "build_muscle") {
     const protein = Math.round(MUSCLE_PROTEIN_G_PER_KG * weightKg);
     const carbs = Math.max(0, Math.round((calories - protein * 4 - fat * 9) / 4));
-    return { calories, protein, carbs, fat, fibre: FIBRE_TARGET_G };
+    return { calories, protein, carbs, fat, fibre: FIBRE_TARGET_G, satFat };
   }
   return {
     calories,
@@ -115,5 +119,6 @@ export function macroTargetsFor(calories: number, goal: GoalKey, weightKg: numbe
     carbs: Math.round((calories * MACRO_SPLIT.carbs) / 4),
     fat,
     fibre: FIBRE_TARGET_G,
+    satFat,
   };
 }
