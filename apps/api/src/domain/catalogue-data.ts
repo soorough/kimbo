@@ -10,7 +10,7 @@ import type { FoodTag, Unit } from "@kimbo/shared";
  *
  * Bump CATALOGUE_VERSION whenever any value changes; meals snapshot nutrition at save time.
  */
-export const CATALOGUE_VERSION = "2026-10-06.2";
+export const CATALOGUE_VERSION = "2026-10-06.4";
 
 /** [calories, protein, carbs, fat, fibre, saturated fat] per 100 g */
 type Per100 = [number, number, number, number, number, number];
@@ -59,6 +59,7 @@ export const CATALOGUE: CatalogueEntry[] = [
   { id: "dal_tadka", name: "Dal (toor/arhar)", aliases: ["dal", "daal", "dhal", "dal tadka", "toor dal", "arhar dal", "tuvar dal", "yellow dal", "dal fry", "plain dal"], per100: [105, 6, 14, 3, 3.2, 0.6], units: curry, defaultUnit: "katori", tags: ["fibre_rich", "lean_protein"] },
   { id: "moong_dal", name: "Moong dal", aliases: ["moong dal", "mung dal", "moong daal", "yellow moong dal"], per100: [95, 6.5, 13, 2, 2.5, 0.4], units: curry, defaultUnit: "katori", tags: ["fibre_rich", "lean_protein"] },
   { id: "masoor_dal", name: "Masoor dal", aliases: ["masoor dal", "masoor daal", "red lentil dal", "lentil soup"], per100: [100, 7, 14, 2, 3, 0.4], units: curry, defaultUnit: "katori", tags: ["fibre_rich", "lean_protein"] },
+  { id: "chana_dal", name: "Chana dal", aliases: ["chana dal", "chane ki dal", "bengal gram dal", "cholar dal"], per100: [120, 7, 17, 3, 4.5, 0.6], units: curry, defaultUnit: "katori", tags: ["fibre_rich", "lean_protein"] },
   { id: "dal_makhani", name: "Dal makhani", aliases: ["dal makhani", "daal makhani", "maa ki dal", "kaali dal"], per100: [140, 5.5, 13, 7.5, 3.5, 4], units: curry, defaultUnit: "katori", tags: ["fibre_rich", "high_sat_fat"] },
   { id: "rajma", name: "Rajma", aliases: ["rajma", "rajma masala", "kidney beans", "rajma curry"], per100: [125, 6.5, 17, 3.5, 5.5, 0.6], units: curry, defaultUnit: "katori", tags: ["fibre_rich"] },
   { id: "chole", name: "Chole", aliases: ["chole", "chhole", "chana masala", "chole masala", "chickpea curry", "kabuli chana"], per100: [150, 7, 20, 5, 6, 0.8], units: curry, defaultUnit: "katori", tags: ["fibre_rich"] },
@@ -71,6 +72,7 @@ export const CATALOGUE: CatalogueEntry[] = [
   { id: "palak_paneer", name: "Palak paneer", aliases: ["palak paneer", "saag paneer"], per100: [145, 7, 6, 10.5, 2.5, 5], units: curry, defaultUnit: "katori", tags: ["high_sat_fat"] },
   { id: "paneer_butter_masala", name: "Paneer butter masala", aliases: ["paneer butter masala", "paneer makhani", "shahi paneer", "butter paneer"], per100: [230, 8, 9, 18, 1.5, 9.5], units: curry, defaultUnit: "katori", tags: ["high_sat_fat"] },
   { id: "matar_paneer", name: "Matar paneer", aliases: ["matar paneer", "mutter paneer", "peas paneer"], per100: [165, 7.5, 9, 11, 3, 5.5], units: curry, defaultUnit: "katori", tags: ["high_sat_fat"] },
+  { id: "kadai_paneer", name: "Kadai paneer", aliases: ["kadai paneer", "kadhai paneer", "karahi paneer", "paneer masala", "paneer do pyaza"], per100: [180, 9, 8, 13, 2, 6], units: curry, defaultUnit: "katori", tags: ["high_sat_fat"] },
   { id: "paneer_bhurji", name: "Paneer bhurji", aliases: ["paneer bhurji", "scrambled paneer"], per100: [220, 13, 5, 16.5, 1, 9], units: curry, defaultUnit: "katori", tags: ["high_sat_fat"] },
   { id: "paneer", name: "Paneer", aliases: ["paneer", "cottage cheese", "paneer tikka"], per100: [265, 18, 1.2, 21, 0, 13], units: { piece: 25, katori: 100 }, defaultUnit: "piece", tags: ["high_sat_fat"] },
 
@@ -88,7 +90,7 @@ export const CATALOGUE: CatalogueEntry[] = [
   { id: "raita", name: "Raita", aliases: ["raita", "boondi raita", "cucumber raita"], per100: [70, 3, 6, 3.5, 0.5, 2.2], units: { katori: KATORI, bowl: BOWL }, defaultUnit: "katori", tags: [] },
   { id: "curd", name: "Curd (dahi)", aliases: ["curd", "dahi", "yogurt", "yoghurt", "plain curd"], per100: [60, 3.1, 4.7, 3.3, 0, 2.1], units: { katori: KATORI, bowl: BOWL, cup: CUP }, defaultUnit: "katori", tags: [] },
   { id: "coconut_chutney", name: "Coconut chutney", aliases: ["coconut chutney", "chutney", "nariyal chutney"], per100: [230, 2.5, 9, 20, 4, 17], units: { tbsp: TBSP, katori: 50 }, defaultUnit: "tbsp", tags: ["high_sat_fat"] },
-  { id: "pickle", name: "Pickle (achaar)", aliases: ["pickle", "achaar", "achar", "aachar"], per100: [180, 1, 6, 17, 1.5, 2], units: { tbsp: TBSP }, defaultUnit: "tbsp", tags: [] },
+  { id: "pickle", name: "Pickle (achaar)", aliases: ["pickle", "achaar", "achar", "aachar", "mango pickle", "aam ka achar", "lime pickle", "nimbu achar", "mixed pickle"], per100: [180, 1, 6, 17, 1.5, 2], units: { tbsp: TBSP }, defaultUnit: "tbsp", tags: [] },
   { id: "papad", name: "Papad", aliases: ["papad", "papadum", "appalam", "roasted papad"], per100: [370, 25, 60, 3, 10, 0.5], units: { piece: 12 }, defaultUnit: "piece", tags: [] },
   { id: "ghee", name: "Ghee", aliases: ["ghee", "desi ghee", "clarified butter"], per100: [900, 0, 0, 100, 0, 62], units: { tbsp: 13 }, defaultUnit: "tbsp", tags: ["high_sat_fat"] },
 
@@ -136,6 +138,7 @@ export const CATALOGUE: CatalogueEntry[] = [
   // --- Drinks ---
   { id: "masala_chai", name: "Chai", aliases: ["chai", "tea", "masala chai", "milk tea", "cutting chai", "adrak chai"], per100: [50, 1.6, 7.5, 1.6, 0, 1], units: { cup: CUP, glass: GLASS }, defaultUnit: "cup", tags: ["high_sugar"] },
   { id: "coffee", name: "Coffee with milk", aliases: ["coffee", "filter coffee", "milk coffee", "cold coffee"], per100: [55, 1.8, 7, 2, 0, 1.3], units: { cup: CUP, glass: GLASS }, defaultUnit: "cup", tags: ["high_sugar"] },
+  { id: "unsweetened_tea", name: "Tea or coffee (no milk or sugar)", aliases: ["green tea", "black tea", "black coffee", "herbal tea", "lemon tea", "unsweetened tea", "americano"], per100: [1, 0.1, 0.2, 0, 0, 0], units: { cup: CUP, glass: GLASS }, defaultUnit: "cup", tags: [] },
   { id: "milk", name: "Milk", aliases: ["milk", "doodh", "toned milk", "haldi doodh"], per100: [62, 3.2, 4.8, 3.3, 0, 2.1], units: { glass: GLASS, cup: CUP }, defaultUnit: "glass", tags: [] },
   { id: "sweet_lassi", name: "Sweet lassi", aliases: ["lassi", "sweet lassi", "mango lassi"], per100: [90, 3, 15, 2.5, 0, 1.6], units: { glass: GLASS }, defaultUnit: "glass", tags: ["high_sugar"] },
   { id: "buttermilk", name: "Buttermilk (chaas)", aliases: ["buttermilk", "chaas", "chhaas", "chaach", "masala chaas", "salted lassi"], per100: [25, 1.5, 2.5, 1, 0, 0.6], units: { glass: GLASS }, defaultUnit: "glass", tags: [] },

@@ -104,6 +104,12 @@ describe("parsing a meal into a reviewable draft", () => {
     ["veg fried rice", "fried_rice"],
     ["chowmein", "chowmein"],
     ["vada pav", "vada_pav"],
+    ["chana dal", "chana_dal"],
+    ["kadai paneer", "kadai_paneer"],
+    ["mango pickle", "pickle"],
+    ["aam ka achar", "pickle"],
+    ["green tea", "unsweetened_tea"],
+    ["black coffee", "unsweetened_tea"],
   ])("knows everyday dishes like %s", async (name, foodId) => {
     const id = await profile();
     api.ctx.recognizer.next = [{ name, quantity: null, unit: null, confidence: 0.9 }];

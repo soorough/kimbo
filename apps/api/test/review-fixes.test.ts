@@ -36,7 +36,7 @@ describe("gram portions", () => {
 });
 
 describe("dish matching stays honest", () => {
-  it.each(["green tea", "rice paper rolls"])("treats '%s' as an estimate rather than a near miss", async (name) => {
+  it.each(["tea cake", "rice paper rolls"])("treats '%s' as an estimate rather than a near miss", async (name) => {
     const id = await profile();
     api.ctx.recognizer.next = [{ name, quantity: 1, unit: null, confidence: 0.8 }];
     const res = await api.post("/meals/parse", { text: name }, id);

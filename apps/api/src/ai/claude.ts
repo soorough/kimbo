@@ -94,21 +94,27 @@ If a value is unreadable, leave it out.`;
 
 export class ClaudeAdapters implements MealRecognizer, ReportExtractor {
   private client: Anthropic;
+  private mealSystem: string;
 
+  /** knownDishes: Kimbo's catalogue names, offered so Claude names dishes the way Kimbo will recognise. */
   constructor(
     apiKey: string,
     private model: string,
+    knownDishes: string[] = [],
   ) {
     this.client = new Anthropic({ apiKey, maxRetries: 1, timeout: 45_000 });
+    this.mealSystem = knownDishes.length
+      ? `${MEAL_SYSTEM}\nWhen a dish is one of these, use exactly this name: ${knownDishes.join(", ")}.\nOtherwise use its common Indian name — never force a dish into this list.`
+      : MEAL_SYSTEM;
   }
 
   async fromText(text: string): Promise<RecognizedItem[]> {
-    const input = await this.callJson(MEAL_SYSTEM, MEAL_SCHEMA, [{ type: "text", text: `Meal: ${text}` }]);
+    const input = await this.callJson(this.mealSystem, MEAL_SCHEMA, [{ type: "text", text: `Meal: ${text}` }]);
     return checked(() => RecognizedItems.parse(input).items);
   }
 
   async fromImage(image: { base64: string; mimeType: string }): Promise<RecognizedItem[]> {
-    const input = await this.callJson(MEAL_SYSTEM, MEAL_SCHEMA, [
+    const input = await this.callJson(this.mealSystem, MEAL_SCHEMA, [
       { type: "image", source: { type: "base64", media_type: imageType(image.mimeType), data: image.base64 } },
       { type: "text", text: "Identify the foods on this plate with estimated portions." },
     ]);
