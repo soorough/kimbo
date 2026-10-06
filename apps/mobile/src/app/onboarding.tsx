@@ -474,7 +474,8 @@ function Reveal({
   onBack: () => void;
 }) {
   const shown = useCountUp(target);
-  const [why, setWhy] = useState(false);
+  // Open by default: the breakdown is the most useful thing on this screen, not a footnote.
+  const [why, setWhy] = useState(true);
   const b = goal.breakdown;
   const macros = [
     { label: "Protein", grams: goal.targets.protein, kcalPerGram: 4, color: macroColors.protein },
@@ -536,6 +537,16 @@ function Reveal({
           </View>
         ))}
       </View>
+      <View style={styles.extraRow}>
+        <View style={styles.extra}>
+          <View style={[styles.macroDot, { backgroundColor: macroColors.fibre, marginBottom: 0 }]} />
+          <T variant="label">Fibre {goal.targets.fibre} g or more</T>
+        </View>
+        <View style={styles.extra}>
+          <View style={[styles.macroDot, { backgroundColor: "#8E4A6B", marginBottom: 0 }]} />
+          <T variant="label">Sat fat under {goal.targets.satFat} g</T>
+        </View>
+      </View>
 
       <View style={styles.adjust}>
         <Chip label="−50" disabled={target <= 1200} onPress={() => onAdjust(Math.max(1200, target - 50))} />
@@ -569,6 +580,15 @@ function Reveal({
               <Term value={goal.computedTarget} label="target" highlight />
             </>
           ) : null}
+        </View>
+      ) : null}
+      {why ? (
+        <View style={styles.whyText}>
+          {goal.explanation.map((line) => (
+            <T key={line} variant="caption">
+              {line}
+            </T>
+          ))}
         </View>
       ) : null}
 
@@ -781,6 +801,18 @@ const styles = StyleSheet.create({
   },
   macroDot: { width: 10, height: 10, borderRadius: 5, marginBottom: 4 },
   adjust: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  extraRow: { flexDirection: "row", gap: space.sm, marginTop: -space.sm },
+  extra: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: space.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+  },
+  whyText: { gap: 4, paddingHorizontal: space.sm },
   whyToggle: {
     flexDirection: "row",
     alignItems: "center",
