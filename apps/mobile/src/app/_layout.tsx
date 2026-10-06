@@ -1,4 +1,4 @@
-import { Fraunces_600SemiBold } from "@expo-google-fonts/fraunces";
+import { Fraunces_600SemiBold, Fraunces_600SemiBold_Italic } from "@expo-google-fonts/fraunces";
 import {
   PlusJakartaSans_400Regular,
   PlusJakartaSans_500Medium,
@@ -42,6 +42,7 @@ export default function RootLayout() {
   // Only the weights the type scale uses, to keep the bundle small.
   const [fontsLoaded, fontError] = useFonts({
     Fraunces_600SemiBold,
+    Fraunces_600SemiBold_Italic,
     PlusJakartaSans_400Regular,
     PlusJakartaSans_500Medium,
     PlusJakartaSans_600SemiBold,

@@ -46,7 +46,8 @@ export default function Welcome() {
             <T variant="display" align="center" style={[styles.h1, { color: night.text }]}>
               Eat like home.
             </T>
-            <T variant="display" align="center" style={[styles.h1, { color: night.accent }]}>
+            {/* Emphasis by italic, not colour: a second hue fought the pastel wall and Kimbo's orange. */}
+            <T variant="display" align="center" style={[styles.h1, { color: night.text, fontFamily: fonts.displayItalic }]}>
               Feel the progress.
             </T>
             <T variant="body" align="center" style={{ marginTop: space.sm, color: night.muted }}>

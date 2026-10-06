@@ -77,6 +77,7 @@ export const radius = { sm: 10, md: 16, lg: 22, xl: 28, pill: 999 } as const;
 
 export const fonts = {
   display: "Fraunces_600SemiBold",
+  displayItalic: "Fraunces_600SemiBold_Italic",
   regular: "PlusJakartaSans_400Regular",
   medium: "PlusJakartaSans_500Medium",
   semibold: "PlusJakartaSans_600SemiBold",
