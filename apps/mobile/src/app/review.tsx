@@ -1,7 +1,7 @@
 import type { MealType } from "@kimbo/shared";
 import { useMutation } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
 import { Button, Chip, Icon, Notice, Screen, Segmented, Sheet, Stepper, T, formatQty } from "@/components/ui";
@@ -25,16 +25,25 @@ export default function Review() {
   const totals = draftTotals(draft.lines);
   const editingLine = draft.lines.find((l) => l.key === editing) ?? null;
   const isAiDraft = !draft.mealId && (draft.source === "photo" || draft.source === "text");
+  const [keep, setKeep] = useState(false);
+  const [keepName, setKeepName] = useState("");
+  // Saved once per screen, so retrying a failed meal save doesn't duplicate it in My meals.
+  const kept = useRef(false);
 
   const save = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
+      const items = toConfirmItems(draft.lines);
+      if (keep && !kept.current) {
+        await api.saveMeal({ name: keepName.trim() || defaultName(draft.lines), items });
+        kept.current = true;
+      }
       const body = {
         mealType: draft.mealType,
         source: draft.source,
         eatenAt: draft.eatenAt.toISOString(),
         // Only an AI suggestion can be "corrected"; manual logs and edits aren't corrections.
         wasCorrected: draft.touched && isAiDraft,
-        items: toConfirmItems(draft.lines),
+        items,
       };
       return draft.mealId ? api.updateMeal(draft.mealId, body) : api.confirmMeal(body);
     },
@@ -125,6 +134,33 @@ export default function Review() {
           disabled={Date.now() - draft.eatenAt.getTime() < 60_000}
           onPress={() => draft.shiftTime(30)}
         />
+      </View>
+
+      <View style={styles.keep}>
+        <Pressable
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: keep }}
+          onPress={() => setKeep((k) => !k)}
+          style={styles.keepRow}
+        >
+          <Icon name={keep ? "check-square" : "square"} size={20} color={keep ? colors.leaf : colors.inkSoft} />
+          <View style={{ flex: 1 }}>
+            <T variant="bodyStrong">Save to My meals</T>
+            <T variant="caption">Log it again in one tap next time.</T>
+          </View>
+          <Icon name="bookmark" size={18} color={colors.inkFaint} />
+        </Pressable>
+        {keep ? (
+          <TextInput
+            value={keepName}
+            onChangeText={setKeepName}
+            placeholder={defaultName(draft.lines) || "Name this meal"}
+            placeholderTextColor={colors.inkFaint}
+            maxLength={40}
+            style={styles.keepInput}
+            accessibilityLabel="Name for this saved meal"
+          />
+        ) : null}
       </View>
 
       {save.error ? (
@@ -272,6 +308,13 @@ function PortionEditor({ line, onSwap, onDone }: { line: DraftLine; onSwap: () =
   );
 }
 
+/** "Rajma, Steamed rice +1" — a sensible name when the user doesn't type one. */
+function defaultName(lines: DraftLine[]): string {
+  const names = lines.map(lineName);
+  const shown = names.slice(0, 2).join(", ");
+  return names.length > 2 ? `${shown} +${names.length - 2}` : shown;
+}
+
 function lineName(line: DraftLine): string {
   return line.kind === "catalogue" ? line.food.name : line.name;
 }
@@ -312,6 +355,19 @@ const styles = StyleSheet.create({
   },
   estimate: { backgroundColor: colors.plumSoft, borderRadius: radius.pill, paddingHorizontal: space.sm },
   timeRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  keep: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: space.md, gap: space.md },
+  keepRow: { flexDirection: "row", alignItems: "center", gap: space.md },
+  keepInput: {
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    borderRadius: radius.sm,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    fontFamily: fonts.medium,
+    fontSize: 15,
+    color: colors.ink,
+    backgroundColor: colors.paper,
+  },
   footer: { flexDirection: "row", alignItems: "center", gap: space.lg },
   editorTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },

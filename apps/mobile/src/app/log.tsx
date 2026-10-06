@@ -1,4 +1,4 @@
-import type { MealSource, ParseMealRequest, RecentMeal } from "@kimbo/shared";
+import type { MealDraft, MealSource, ParseMealRequest, RecentMeal } from "@kimbo/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
@@ -60,6 +60,11 @@ export default function LogMeal() {
     if (body.text) analyse.mutate({ load: async () => body, source: "text" });
   }
 
+  function quickAdd(draft: MealDraft) {
+    startFromAi(draft, "repeat", presetType);
+    router.replace("/review");
+  }
+
   const title = presetType ? `Log ${MEAL_LABEL[presetType].toLowerCase()}` : "What did you eat?";
 
   return (
@@ -68,12 +73,8 @@ export default function LogMeal() {
         <Analysing />
       ) : (
         <View style={{ gap: space.lg }}>
-          <RecentMeals
-            onPick={(meal) => {
-              startFromAi(meal.draft, "repeat", presetType);
-              router.replace("/review");
-            }}
-          />
+          <SavedMeals onPick={(draft) => quickAdd(draft)} />
+          <RecentMeals onPick={(meal) => quickAdd(meal.draft)} />
           <View style={styles.tiles}>
             <Tile icon="camera" title="Camera" subtitle="Best for a full thali" onPress={() => photo(true)} />
             <Tile icon="image" title="Gallery" subtitle="A photo you took earlier" onPress={() => photo(false)} />
@@ -139,6 +140,53 @@ export default function LogMeal() {
         </View>
       )}
     </SheetPanel>
+  );
+}
+
+/** Meals the user named and kept; "Edit" opens the list to rename or delete them. */
+function SavedMeals({ onPick }: { onPick: (draft: MealDraft) => void }) {
+  const saved = useQuery({ queryKey: ["savedMeals"], queryFn: api.savedMeals });
+  const meals = saved.data?.meals ?? [];
+  if (!meals.length) return null;
+  return (
+    <View style={{ gap: space.sm }}>
+      <View style={styles.sectionHead}>
+        <T variant="overline" tone="soft">
+          MY MEALS
+        </T>
+        <Pressable accessibilityRole="button" accessibilityLabel="Edit my meals" hitSlop={10} onPress={() => router.push("/my-meals")}>
+          <T variant="label" tone="leaf">
+            Edit
+          </T>
+        </Pressable>
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.recentRow}
+        style={styles.recentScroll}
+      >
+        {meals.map((m) => (
+          <Pressable
+            key={m.id}
+            accessibilityRole="button"
+            accessibilityLabel={`${m.name}, ${m.calories} kilocalories. Add`}
+            onPress={() => onPick(m.draft)}
+            style={({ pressed }) => [styles.recent, styles.saved, pressed && { opacity: 0.7 }]}
+          >
+            <View style={styles.recentBody}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Icon name="bookmark" size={13} color={colors.leaf} />
+                <T variant="bodyStrong" numberOfLines={1} style={{ flexShrink: 1 }}>
+                  {m.name}
+                </T>
+              </View>
+              <T variant="caption">{m.calories} kcal</T>
+            </View>
+          </Pressable>
+        ))}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -256,6 +304,8 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
   },
   recentBody: { flexShrink: 1, paddingLeft: space.md, paddingRight: space.xs, paddingVertical: space.sm, gap: 2 },
+  saved: { borderColor: colors.leaf, backgroundColor: colors.leafSoft, paddingRight: space.md },
+  sectionHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   recentRemove: { paddingHorizontal: space.sm, alignSelf: "stretch", justifyContent: "center" },
   tile: {
     flex: 1,

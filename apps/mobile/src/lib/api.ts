@@ -11,6 +11,8 @@ import {
   Profile,
   ProgressResponse,
   RecentMealsResponse,
+  SavedMealResponse,
+  SavedMealsResponse,
   ReportDraft,
   ReportsResponse,
   TodayResponse,
@@ -20,6 +22,7 @@ import {
   type ExtractReportRequest,
   type GoalRequest,
   type ParseMealRequest,
+  type SaveMealRequest,
 } from "@kimbo/shared";
 import { Platform } from "react-native";
 import { z } from "zod";
@@ -86,6 +89,10 @@ export const api = {
   meals: (date: string) => request(MealsResponse, "GET", `/meals?date=${date}`),
   recentMeals: () => request(RecentMealsResponse, "GET", "/meals/recent"),
   hideRecentMeal: (key: string) => request(Empty, "DELETE", `/meals/recent/${encodeURIComponent(key)}`),
+  savedMeals: () => request(SavedMealsResponse, "GET", "/saved-meals"),
+  saveMeal: (body: SaveMealRequest) => request(SavedMealResponse, "POST", "/saved-meals", body),
+  renameSavedMeal: (id: string, name: string) => request(SavedMealResponse, "PATCH", `/saved-meals/${id}`, { name }),
+  deleteSavedMeal: (id: string) => request(Empty, "DELETE", `/saved-meals/${id}`),
   repeatYesterday: (mealType: string) => request(ConfirmMealResponse, "POST", "/meals/repeat-yesterday", { mealType }),
   searchFoods: (q: string) => request(FoodSearchResponse, "GET", `/foods/search?q=${encodeURIComponent(q)}`),
 
