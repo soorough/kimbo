@@ -1,10 +1,11 @@
-import { readFile } from "node:fs/promises";
 import pg from "pg";
+import { SCHEMA } from "./schema.js";
 
 export type Db = pg.Pool;
 
 export function createDb(connectionString: string): Db {
-  const pool = new pg.Pool({ connectionString });
+  // Small pool: on serverless each instance holds its own; Neon's pooler fans in.
+  const pool = new pg.Pool({ connectionString, max: Number(process.env.DB_POOL_MAX ?? 5) });
   // numeric columns come back as strings by default; Kimbo's values are small decimals.
   pg.types.setTypeParser(pg.types.builtins.NUMERIC, (v) => Number(v));
   // date columns stay as YYYY-MM-DD strings rather than JS Dates in server-local time.
@@ -13,8 +14,7 @@ export function createDb(connectionString: string): Db {
 }
 
 export async function migrate(db: Db): Promise<void> {
-  const sql = await readFile(new URL("./schema.sql", import.meta.url), "utf8");
-  await db.query(sql);
+  await db.query(SCHEMA);
 }
 
 export async function withTransaction<T>(db: Db, fn: (client: pg.PoolClient) => Promise<T>): Promise<T> {

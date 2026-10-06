@@ -1,3 +1,5 @@
+/** Idempotent schema, applied on startup. Inlined so serverless bundles always include it. */
+export const SCHEMA = `
 CREATE TABLE IF NOT EXISTS profiles (
   id uuid PRIMARY KEY,
   created_at timestamptz NOT NULL,
@@ -89,3 +91,4 @@ CREATE TABLE IF NOT EXISTS weigh_ins (
   created_at timestamptz NOT NULL,
   PRIMARY KEY (profile_id, measured_on)
 );
+`;

@@ -42,6 +42,19 @@
           "resizeMode": "contain",
           "backgroundColor": "#FBF6EE"
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "buildArchs": [
+              "arm64-v8a"
+            ],
+            "usesCleartextTraffic": false
+          }
+        }
       ]
     ],
     "scheme": "kimbo",
