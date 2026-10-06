@@ -95,6 +95,11 @@ export function gramsPerUnit(entry: CatalogueEntry, unit: Unit): number | null {
   return entry.units[unit] ?? null;
 }
 
+/** A free-form unit word as a Kimbo unit, if Kimbo knows it. */
+export function normaliseUnitWord(raw: string): Unit | null {
+  return UNIT_ALIASES[normalise(raw)] ?? null;
+}
+
 /** Maps a free-form unit to one this food supports, defaulting to the food's usual portion. */
 export function resolveUnit(entry: CatalogueEntry, rawUnit: string | null): Unit {
   if (rawUnit) {

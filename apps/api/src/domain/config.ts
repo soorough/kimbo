@@ -36,8 +36,20 @@ export const MIN_MEALS_FOR_FOCUS_COMPARISON = 3;
 export const MEAL_TYPE_HOURS = { breakfastBefore: 11, lunchBefore: 16, snackBefore: 19 } as const;
 
 // --- Unknown dishes ---
-/** Editable per-serving placeholder for dishes outside the catalogue (a typical mixed home dish). */
+/** Editable placeholder for one serving of a dish outside the catalogue (a typical mixed home dish). */
 export const UNKNOWN_DISH_PER_SERVING = { calories: 250, protein: 8, carbs: 30, fat: 10, fibre: 3, satFat: 3 } as const;
+/** Placeholder kcal per unit for unknown dishes, so "6 pieces" isn't priced as 6 plates. */
+export const UNKNOWN_DISH_KCAL_PER_UNIT = {
+  piece: 100,
+  katori: 200,
+  bowl: 300,
+  plate: 400,
+  glass: 150,
+  cup: 100,
+  tbsp: 45,
+  g: 2,
+  serving: 250,
+} as const;
 
 // --- Health markers ---
 /**

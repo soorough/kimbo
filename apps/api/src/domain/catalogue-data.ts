@@ -10,7 +10,7 @@ import type { FoodTag, Unit } from "@kimbo/shared";
  *
  * Bump CATALOGUE_VERSION whenever any value changes; meals snapshot nutrition at save time.
  */
-export const CATALOGUE_VERSION = "2026-10-06.1";
+export const CATALOGUE_VERSION = "2026-10-06.2";
 
 /** [calories, protein, carbs, fat, fibre, saturated fat] per 100 g */
 type Per100 = [number, number, number, number, number, number];
@@ -118,6 +118,11 @@ export const CATALOGUE: CatalogueEntry[] = [
   // --- Snacks ---
   { id: "samosa", name: "Samosa", aliases: ["samosa", "samosas", "aloo samosa"], per100: [262, 4.5, 30, 14, 2.5, 3], units: { piece: 70 }, defaultUnit: "piece", tags: ["fried", "refined_carb"] },
   { id: "pakora", name: "Pakora", aliases: ["pakora", "pakoda", "bhajiya", "bhaji", "onion pakora", "pakode"], per100: [300, 7, 28, 18, 3, 2.5], units: { piece: 25, plate: 150 }, defaultUnit: "piece", tags: ["fried"] },
+  { id: "momos", name: "Momos", aliases: ["momos", "momo", "veg momos", "chicken momos", "steamed momos", "dumplings"], per100: [190, 7, 28, 5.5, 2, 1.5], units: { piece: 30, plate: 180 }, defaultUnit: "piece", tags: ["refined_carb"] },
+  { id: "pav_bhaji", name: "Pav bhaji", aliases: ["pav bhaji", "pao bhaji", "paav bhaji"], per100: [150, 3.5, 20, 6.5, 2.5, 3], units: { plate: 350, katori: KATORI }, defaultUnit: "plate", tags: ["refined_carb"] },
+  { id: "vada_pav", name: "Vada pav", aliases: ["vada pav", "wada pav", "vadapav", "vada pao"], per100: [290, 6, 40, 12, 2.5, 2.5], units: { piece: 130 }, defaultUnit: "piece", tags: ["fried", "refined_carb"] },
+  { id: "fried_rice", name: "Fried rice", aliases: ["fried rice", "veg fried rice", "egg fried rice", "chicken fried rice", "schezwan fried rice"], per100: [165, 4, 26, 5, 1.2, 1], units: { plate: 300, katori: KATORI, bowl: BOWL }, defaultUnit: "plate", tags: ["refined_carb"] },
+  { id: "chowmein", name: "Chowmein", aliases: ["chowmein", "chow mein", "hakka noodles", "veg noodles", "chicken noodles", "schezwan noodles"], per100: [170, 4, 25, 6, 1.5, 1], units: { plate: 250, bowl: BOWL }, defaultUnit: "plate", tags: ["refined_carb"] },
   { id: "biscuits", name: "Biscuits", aliases: ["biscuit", "biscuits", "cookies", "marie biscuit", "rusk"], per100: [450, 7, 70, 16, 2, 7], units: { piece: 8 }, defaultUnit: "piece", tags: ["refined_carb", "high_sugar"] },
   { id: "namkeen", name: "Namkeen", aliases: ["namkeen", "bhujia", "mixture", "chivda", "sev"], per100: [530, 12, 45, 34, 5, 6], units: { katori: 30, tbsp: 10 }, defaultUnit: "katori", tags: ["fried"] },
 

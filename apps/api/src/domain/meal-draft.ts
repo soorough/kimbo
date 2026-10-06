@@ -1,7 +1,7 @@
 import type { DraftItem, MealDraft, MealType } from "@kimbo/shared";
 import type { RecognizedItem } from "../ai/types.js";
-import { match, nutritionFor, resolveUnit, scale, sumNutrition, toFood } from "./catalogue.js";
-import { UNKNOWN_DISH_PER_SERVING } from "./config.js";
+import { match, normaliseUnitWord, nutritionFor, resolveUnit, scale, sumNutrition, toFood } from "./catalogue.js";
+import { UNKNOWN_DISH_KCAL_PER_UNIT, UNKNOWN_DISH_PER_SERVING } from "./config.js";
 
 /** Resolves AI candidates against the catalogue. Pure: nothing here is persisted. */
 export function buildDraft(candidates: RecognizedItem[], suggestedMealType: MealType): MealDraft {
@@ -21,13 +21,15 @@ export function buildDraft(candidates: RecognizedItem[], suggestedMealType: Meal
           nutrition: nutritionFor(entry, quantity, unit),
         };
       }
+      const unit = (c.unit && normaliseUnitWord(c.unit)) || "serving";
+      const perUnitFactor = UNKNOWN_DISH_KCAL_PER_UNIT[unit] / UNKNOWN_DISH_PER_SERVING.calories;
       return {
         kind: "estimate",
         heardAs: c.name,
         name: capitalise(c.name.trim()),
         quantity,
-        unit: "serving",
-        nutrition: scale(UNKNOWN_DISH_PER_SERVING, quantity),
+        unit,
+        nutrition: scale(UNKNOWN_DISH_PER_SERVING, quantity * perUnitFactor),
       };
     });
   return { items, totals: sumNutrition(items.map((i) => i.nutrition)), suggestedMealType };

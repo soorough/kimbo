@@ -85,6 +85,32 @@ describe("parsing a meal into a reviewable draft", () => {
     expect(res.json.items[1].nutrition.calories).toBeGreaterThan(0);
   });
 
+  it("estimates unknown dishes per the portion named, not per plate", async () => {
+    const id = await profile();
+    api.ctx.recognizer.next = [
+      { name: "kuzhi paniyaram", quantity: 6, unit: "piece", confidence: 0.7 },
+      { name: "kuzhambu", quantity: 1, unit: "katori", confidence: 0.7 },
+    ];
+    const res = await api.post("/meals/parse", { text: "6 paniyaram and kuzhambu" }, id);
+    expect(res.json.items[0]).toMatchObject({ kind: "estimate", quantity: 6, unit: "piece" });
+    expect(res.json.items[0].nutrition.calories).toBe(600);
+    expect(res.json.items[1]).toMatchObject({ kind: "estimate", quantity: 1, unit: "katori" });
+    expect(res.json.items[1].nutrition.calories).toBe(200);
+  });
+
+  it.each([
+    ["momos", "momos"],
+    ["pav bhaji", "pav_bhaji"],
+    ["veg fried rice", "fried_rice"],
+    ["chowmein", "chowmein"],
+    ["vada pav", "vada_pav"],
+  ])("knows everyday dishes like %s", async (name, foodId) => {
+    const id = await profile();
+    api.ctx.recognizer.next = [{ name, quantity: null, unit: null, confidence: 0.9 }];
+    const res = await api.post("/meals/parse", { text: name }, id);
+    expect(res.json.items[0].food?.id).toBe(foodId);
+  });
+
   it("sends photos to the recognizer", async () => {
     const id = await profile();
     api.ctx.recognizer.next = [{ name: "idli", quantity: 3, unit: "piece", confidence: 0.85 }];
