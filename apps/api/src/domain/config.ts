@@ -38,3 +38,19 @@ export const MEAL_TYPE_HOURS = { breakfastBefore: 11, lunchBefore: 16, snackBefo
 // --- Unknown dishes ---
 /** Editable per-serving placeholder for dishes outside the catalogue (a typical mixed home dish). */
 export const UNKNOWN_DISH_PER_SERVING = { calories: 250, protein: 8, carbs: 30, fat: 10, fibre: 3, satFat: 3 } as const;
+
+// --- Health markers ---
+/**
+ * Status thresholds in canonical units (lower bound of each band).
+ * LDL: NCEP ATP III (<100 optimal, 160+ high). HbA1c: ADA (5.7–6.4 prediabetes range, 6.5+).
+ * Triglycerides: NCEP ATP III (<150 normal, 150–199 borderline, 200+ high).
+ * Kimbo words these non-diagnostically; review before release.
+ */
+export const MARKER_THRESHOLDS = {
+  ldl: { worthWatching: 100, high: 160 },
+  hba1c: { worthWatching: 5.7, high: 6.5 },
+  triglycerides: { worthWatching: 150, high: 200 },
+} as const;
+
+/** When markers are equally out of range, the earlier one decides the focus. */
+export const FOCUS_PRIORITY = ["ldl", "hba1c", "triglycerides"] as const;

@@ -6,6 +6,7 @@ import type { Db } from "./db/index.js";
 import { HttpError } from "./errors.js";
 import { mealRoutes } from "./routes/meals.js";
 import { profileRoutes } from "./routes/profiles.js";
+import { reportRoutes } from "./routes/reports.js";
 
 export interface Deps {
   db: Db;
@@ -46,5 +47,6 @@ export async function createApp(deps: Deps, opts: { logger?: boolean } = {}) {
   app.get("/health", async () => ({ ok: true }));
   profileRoutes(app, deps);
   mealRoutes(app, deps);
+  reportRoutes(app, deps);
   return app;
 }
