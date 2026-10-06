@@ -1,0 +1,143 @@
+import type { FoodTag, Unit } from "@kimbo/shared";
+
+/**
+ * Kimbo's Phase 1 Indian food dataset.
+ *
+ * Nutrition is per 100 g as typically served (home-style recipes), approximated
+ * from IFCT 2017 (NIN) composition data and standard recipe calculations.
+ * Portion weights are typical Indian household measures. Values are estimates
+ * for habit tracking, not clinical use — review before release.
+ *
+ * Bump CATALOGUE_VERSION whenever any value changes; meals snapshot nutrition at save time.
+ */
+export const CATALOGUE_VERSION = "2026-10-06.1";
+
+/** [calories, protein, carbs, fat, fibre, saturated fat] per 100 g */
+type Per100 = [number, number, number, number, number, number];
+
+export interface CatalogueEntry {
+  id: string;
+  name: string;
+  aliases: string[];
+  per100: Per100;
+  /** grams per one unit; "g" is always available */
+  units: Partial<Record<Exclude<Unit, "g">, number>>;
+  defaultUnit: Unit;
+  tags: FoodTag[];
+}
+
+const KATORI = 150;
+const BOWL = 250;
+const CUP = 150;
+const GLASS = 250;
+const TBSP = 15;
+const curry = { katori: KATORI, bowl: BOWL };
+const rice = { katori: KATORI, bowl: BOWL, plate: 300, cup: CUP };
+
+export const CATALOGUE: CatalogueEntry[] = [
+  // --- Breads ---
+  { id: "roti", name: "Roti", aliases: ["roti", "chapati", "chapatti", "phulka", "rotli", "fulka", "wheat roti"], per100: [297, 9.8, 46, 7.5, 4.9, 1.2], units: { piece: 40 }, defaultUnit: "piece", tags: [] },
+  { id: "paratha", name: "Plain paratha", aliases: ["paratha", "plain paratha", "parantha", "lachha paratha"], per100: [326, 7, 45, 13, 4, 4], units: { piece: 80 }, defaultUnit: "piece", tags: [] },
+  { id: "aloo_paratha", name: "Aloo paratha", aliases: ["aloo paratha", "alu paratha", "potato paratha", "aloo parantha"], per100: [260, 5.5, 36, 10.5, 3, 3.5], units: { piece: 120 }, defaultUnit: "piece", tags: [] },
+  { id: "puri", name: "Puri", aliases: ["puri", "poori"], per100: [340, 6, 42, 17, 2.5, 3], units: { piece: 25 }, defaultUnit: "piece", tags: ["fried", "refined_carb"] },
+  { id: "naan", name: "Naan", aliases: ["naan", "nan", "butter naan", "garlic naan"], per100: [290, 9, 50, 5.5, 2, 1.5], units: { piece: 90 }, defaultUnit: "piece", tags: ["refined_carb"] },
+  { id: "bhatura", name: "Bhatura", aliases: ["bhatura", "bhature", "bhatoora"], per100: [330, 7, 45, 14, 1.5, 3], units: { piece: 80 }, defaultUnit: "piece", tags: ["fried", "refined_carb"] },
+  { id: "white_bread", name: "White bread", aliases: ["bread", "white bread", "toast", "bread slice", "pav", "pao"], per100: [265, 9, 49, 3.2, 2.7, 0.7], units: { piece: 25 }, defaultUnit: "piece", tags: ["refined_carb"] },
+  { id: "brown_bread", name: "Brown bread", aliases: ["brown bread", "whole wheat bread", "atta bread", "multigrain bread"], per100: [250, 10, 43, 3.5, 6, 0.7], units: { piece: 28 }, defaultUnit: "piece", tags: ["fibre_rich"] },
+
+  // --- Rice ---
+  { id: "white_rice", name: "Steamed rice", aliases: ["rice", "chawal", "white rice", "steamed rice", "plain rice", "bhaat", "boiled rice", "sada chawal"], per100: [130, 2.7, 28, 0.3, 0.4, 0.1], units: rice, defaultUnit: "katori", tags: ["refined_carb"] },
+  { id: "brown_rice", name: "Brown rice", aliases: ["brown rice"], per100: [112, 2.6, 23, 0.9, 1.8, 0.2], units: rice, defaultUnit: "katori", tags: ["fibre_rich"] },
+  { id: "jeera_rice", name: "Jeera rice", aliases: ["jeera rice", "zeera rice", "cumin rice"], per100: [155, 3, 29, 3, 0.6, 0.8], units: rice, defaultUnit: "katori", tags: ["refined_carb"] },
+  { id: "veg_pulao", name: "Veg pulao", aliases: ["pulao", "veg pulao", "pulav", "vegetable pulao", "matar pulao"], per100: [150, 3.5, 26, 4, 1.5, 0.8], units: rice, defaultUnit: "katori", tags: ["refined_carb"] },
+  { id: "veg_biryani", name: "Veg biryani", aliases: ["veg biryani", "vegetable biryani", "biryani"], per100: [165, 4, 25, 5.5, 1.8, 1.5], units: { plate: 300, bowl: BOWL, katori: KATORI }, defaultUnit: "plate", tags: ["refined_carb"] },
+  { id: "chicken_biryani", name: "Chicken biryani", aliases: ["chicken biryani", "murgh biryani"], per100: [190, 10, 22, 7, 0.8, 2], units: { plate: 350, bowl: BOWL, katori: KATORI }, defaultUnit: "plate", tags: ["refined_carb"] },
+  { id: "khichdi", name: "Khichdi", aliases: ["khichdi", "khichri", "khichuri", "moong dal khichdi"], per100: [120, 4.5, 20, 2.5, 2, 0.8], units: { katori: 200, bowl: 300, plate: 300 }, defaultUnit: "katori", tags: ["fibre_rich"] },
+  { id: "curd_rice", name: "Curd rice", aliases: ["curd rice", "dahi chawal", "thayir sadam", "dahi rice"], per100: [140, 3.5, 20, 5, 0.4, 3], units: { katori: 200, bowl: BOWL, plate: 300 }, defaultUnit: "katori", tags: [] },
+
+  // --- Dals & legumes ---
+  { id: "dal_tadka", name: "Dal (toor/arhar)", aliases: ["dal", "daal", "dhal", "dal tadka", "toor dal", "arhar dal", "tuvar dal", "yellow dal", "dal fry", "plain dal"], per100: [105, 6, 14, 3, 3.2, 0.6], units: curry, defaultUnit: "katori", tags: ["fibre_rich", "lean_protein"] },
+  { id: "moong_dal", name: "Moong dal", aliases: ["moong dal", "mung dal", "moong daal", "yellow moong dal"], per100: [95, 6.5, 13, 2, 2.5, 0.4], units: curry, defaultUnit: "katori", tags: ["fibre_rich", "lean_protein"] },
+  { id: "masoor_dal", name: "Masoor dal", aliases: ["masoor dal", "masoor daal", "red lentil dal", "lentil soup"], per100: [100, 7, 14, 2, 3, 0.4], units: curry, defaultUnit: "katori", tags: ["fibre_rich", "lean_protein"] },
+  { id: "dal_makhani", name: "Dal makhani", aliases: ["dal makhani", "daal makhani", "maa ki dal", "kaali dal"], per100: [140, 5.5, 13, 7.5, 3.5, 4], units: curry, defaultUnit: "katori", tags: ["fibre_rich", "high_sat_fat"] },
+  { id: "rajma", name: "Rajma", aliases: ["rajma", "rajma masala", "kidney beans", "rajma curry"], per100: [125, 6.5, 17, 3.5, 5.5, 0.6], units: curry, defaultUnit: "katori", tags: ["fibre_rich"] },
+  { id: "chole", name: "Chole", aliases: ["chole", "chhole", "chana masala", "chole masala", "chickpea curry", "kabuli chana"], per100: [150, 7, 20, 5, 6, 0.8], units: curry, defaultUnit: "katori", tags: ["fibre_rich"] },
+  { id: "sambar", name: "Sambar", aliases: ["sambar", "sambhar", "saambar"], per100: [65, 3, 9, 2, 2.5, 0.4], units: curry, defaultUnit: "katori", tags: ["fibre_rich"] },
+  { id: "kadhi", name: "Kadhi", aliases: ["kadhi", "kadi", "kadhi pakora", "punjabi kadhi"], per100: [90, 3, 7, 5.5, 0.5, 2.5], units: curry, defaultUnit: "katori", tags: [] },
+  { id: "sprouts", name: "Sprouts salad", aliases: ["sprouts", "moong sprouts", "sprouts salad", "sprouted moong"], per100: [50, 4, 7, 0.5, 2.5, 0.1], units: { katori: 100, bowl: 200 }, defaultUnit: "katori", tags: ["fibre_rich", "lean_protein"] },
+  { id: "roasted_chana", name: "Roasted chana", aliases: ["roasted chana", "bhuna chana", "roasted gram", "chana"], per100: [370, 20, 58, 5, 17, 0.6], units: { katori: 50, cup: 50 }, defaultUnit: "katori", tags: ["fibre_rich", "lean_protein"] },
+
+  // --- Paneer ---
+  { id: "palak_paneer", name: "Palak paneer", aliases: ["palak paneer", "saag paneer"], per100: [145, 7, 6, 10.5, 2.5, 5], units: curry, defaultUnit: "katori", tags: ["high_sat_fat"] },
+  { id: "paneer_butter_masala", name: "Paneer butter masala", aliases: ["paneer butter masala", "paneer makhani", "shahi paneer", "butter paneer"], per100: [230, 8, 9, 18, 1.5, 9.5], units: curry, defaultUnit: "katori", tags: ["high_sat_fat"] },
+  { id: "matar_paneer", name: "Matar paneer", aliases: ["matar paneer", "mutter paneer", "peas paneer"], per100: [165, 7.5, 9, 11, 3, 5.5], units: curry, defaultUnit: "katori", tags: ["high_sat_fat"] },
+  { id: "paneer_bhurji", name: "Paneer bhurji", aliases: ["paneer bhurji", "scrambled paneer"], per100: [220, 13, 5, 16.5, 1, 9], units: curry, defaultUnit: "katori", tags: ["high_sat_fat"] },
+  { id: "paneer", name: "Paneer", aliases: ["paneer", "cottage cheese", "paneer tikka"], per100: [265, 18, 1.2, 21, 0, 13], units: { piece: 25, katori: 100 }, defaultUnit: "piece", tags: ["high_sat_fat"] },
+
+  // --- Sabzis & sides ---
+  { id: "aloo_gobi", name: "Aloo gobi", aliases: ["aloo gobi", "alu gobi", "aloo gobhi", "gobi aloo", "potato cauliflower"], per100: [95, 2.5, 11, 4.5, 3, 0.6], units: curry, defaultUnit: "katori", tags: ["fibre_rich"] },
+  { id: "bhindi", name: "Bhindi masala", aliases: ["bhindi", "bhindi masala", "bhindi fry", "okra", "bhendi"], per100: [100, 2.5, 9, 6, 4, 0.8], units: curry, defaultUnit: "katori", tags: ["fibre_rich"] },
+  { id: "baingan_bharta", name: "Baingan bharta", aliases: ["baingan bharta", "baingan", "brinjal", "eggplant", "bharta", "vangi"], per100: [90, 2, 8, 6, 3.5, 0.9], units: curry, defaultUnit: "katori", tags: ["fibre_rich"] },
+  { id: "mixed_veg", name: "Mixed veg sabzi", aliases: ["mixed veg", "mix veg", "mixed vegetable", "mixed vegetables", "sabzi", "sabji", "subzi", "veg curry", "vegetable curry"], per100: [85, 2.5, 9, 4.5, 3.5, 0.7], units: curry, defaultUnit: "katori", tags: ["fibre_rich"] },
+  { id: "aloo_sabzi", name: "Aloo sabzi", aliases: ["aloo sabzi", "aloo sabji", "aloo", "alu", "potato curry", "jeera aloo", "aloo jeera", "dum aloo"], per100: [105, 2, 15, 4.5, 2, 0.6], units: curry, defaultUnit: "katori", tags: [] },
+  { id: "saag", name: "Saag", aliases: ["saag", "sarson ka saag", "palak", "spinach", "palak sabzi", "methi"], per100: [80, 3, 6, 5, 3.5, 1.2], units: curry, defaultUnit: "katori", tags: ["fibre_rich"] },
+  { id: "cabbage_sabzi", name: "Cabbage sabzi", aliases: ["cabbage", "patta gobi", "cabbage sabzi", "bandh gobi", "cabbage poriyal"], per100: [70, 2, 7, 4, 2.8, 0.5], units: curry, defaultUnit: "katori", tags: ["fibre_rich"] },
+  { id: "lauki", name: "Lauki sabzi", aliases: ["lauki", "lauki sabzi", "doodhi", "bottle gourd", "ghiya", "tori", "turai"], per100: [55, 1, 6, 3, 2, 0.4], units: curry, defaultUnit: "katori", tags: [] },
+  { id: "beans_poriyal", name: "Beans sabzi", aliases: ["beans", "beans sabzi", "beans poriyal", "french beans", "green beans"], per100: [75, 2.2, 7, 4.2, 3.4, 0.6], units: curry, defaultUnit: "katori", tags: ["fibre_rich"] },
+  { id: "salad", name: "Green salad", aliases: ["salad", "green salad", "kachumber", "cucumber", "kheera", "onion tomato salad"], per100: [25, 1, 5, 0.2, 2, 0], units: { bowl: 150, plate: 150, katori: 100 }, defaultUnit: "bowl", tags: ["fibre_rich"] },
+  { id: "raita", name: "Raita", aliases: ["raita", "boondi raita", "cucumber raita"], per100: [70, 3, 6, 3.5, 0.5, 2.2], units: { katori: KATORI, bowl: BOWL }, defaultUnit: "katori", tags: [] },
+  { id: "curd", name: "Curd (dahi)", aliases: ["curd", "dahi", "yogurt", "yoghurt", "plain curd"], per100: [60, 3.1, 4.7, 3.3, 0, 2.1], units: { katori: KATORI, bowl: BOWL, cup: CUP }, defaultUnit: "katori", tags: [] },
+  { id: "coconut_chutney", name: "Coconut chutney", aliases: ["coconut chutney", "chutney", "nariyal chutney"], per100: [230, 2.5, 9, 20, 4, 17], units: { tbsp: TBSP, katori: 50 }, defaultUnit: "tbsp", tags: ["high_sat_fat"] },
+  { id: "pickle", name: "Pickle (achaar)", aliases: ["pickle", "achaar", "achar", "aachar"], per100: [180, 1, 6, 17, 1.5, 2], units: { tbsp: TBSP }, defaultUnit: "tbsp", tags: [] },
+  { id: "papad", name: "Papad", aliases: ["papad", "papadum", "appalam", "roasted papad"], per100: [370, 25, 60, 3, 10, 0.5], units: { piece: 12 }, defaultUnit: "piece", tags: [] },
+  { id: "ghee", name: "Ghee", aliases: ["ghee", "desi ghee", "clarified butter"], per100: [900, 0, 0, 100, 0, 62], units: { tbsp: 13 }, defaultUnit: "tbsp", tags: ["high_sat_fat"] },
+
+  // --- Breakfast & South Indian ---
+  { id: "poha", name: "Poha", aliases: ["poha", "pohe", "aval", "kanda poha"], per100: [130, 2.5, 23, 3.5, 1.5, 0.5], units: { plate: 200, bowl: 200, katori: KATORI }, defaultUnit: "plate", tags: ["refined_carb"] },
+  { id: "upma", name: "Upma", aliases: ["upma", "uppittu", "rava upma", "suji upma"], per100: [140, 3.5, 20, 5, 1.5, 1.2], units: { plate: 200, bowl: 200, katori: KATORI }, defaultUnit: "plate", tags: ["refined_carb"] },
+  { id: "idli", name: "Idli", aliases: ["idli", "idly", "iddli"], per100: [130, 4, 27, 0.5, 1.2, 0.1], units: { piece: 40 }, defaultUnit: "piece", tags: [] },
+  { id: "plain_dosa", name: "Plain dosa", aliases: ["dosa", "plain dosa", "sada dosa", "dosai"], per100: [170, 4, 28, 4.5, 1, 0.8], units: { piece: 100 }, defaultUnit: "piece", tags: ["refined_carb"] },
+  { id: "masala_dosa", name: "Masala dosa", aliases: ["masala dosa", "masala dosai", "mysore masala dosa"], per100: [180, 4, 27, 6.5, 2, 1.5], units: { piece: 175 }, defaultUnit: "piece", tags: ["refined_carb"] },
+  { id: "uttapam", name: "Uttapam", aliases: ["uttapam", "uthappam", "oothappam"], per100: [160, 4.5, 26, 4, 1.8, 0.8], units: { piece: 150 }, defaultUnit: "piece", tags: [] },
+  { id: "medu_vada", name: "Medu vada", aliases: ["vada", "medu vada", "vadai", "uddina vada"], per100: [290, 7, 28, 17, 3, 2.5], units: { piece: 40 }, defaultUnit: "piece", tags: ["fried"] },
+  { id: "dhokla", name: "Dhokla", aliases: ["dhokla", "khaman", "khaman dhokla"], per100: [160, 6, 25, 4, 2, 0.6], units: { piece: 30 }, defaultUnit: "piece", tags: [] },
+  { id: "oats", name: "Oats porridge", aliases: ["oats", "oatmeal", "porridge", "masala oats", "dalia", "daliya"], per100: [90, 3.5, 13, 2.5, 1.8, 1.2], units: { bowl: BOWL, katori: KATORI }, defaultUnit: "bowl", tags: ["fibre_rich"] },
+  { id: "instant_noodles", name: "Instant noodles", aliases: ["maggi", "noodles", "instant noodles", "maggi noodles"], per100: [140, 3.5, 19, 5.5, 1, 2.5], units: { plate: 220, bowl: 220 }, defaultUnit: "plate", tags: ["refined_carb"] },
+
+  // --- Eggs, chicken, fish, mutton ---
+  { id: "boiled_egg", name: "Boiled egg", aliases: ["egg", "boiled egg", "anda", "ubla anda", "hard boiled egg"], per100: [155, 13, 1.1, 11, 0, 3.3], units: { piece: 50 }, defaultUnit: "piece", tags: ["lean_protein"] },
+  { id: "omelette", name: "Omelette", aliases: ["omelette", "omelet", "masala omelette", "anda omelette", "egg bhurji", "scrambled egg", "scrambled eggs"], per100: [185, 11, 2, 15, 0.5, 4], units: { piece: 90 }, defaultUnit: "piece", tags: ["lean_protein"] },
+  { id: "egg_curry", name: "Egg curry", aliases: ["egg curry", "anda curry", "egg masala"], per100: [150, 8.5, 5, 10.5, 1, 2.5], units: curry, defaultUnit: "katori", tags: ["lean_protein"] },
+  { id: "chicken_curry", name: "Chicken curry", aliases: ["chicken curry", "chicken", "chicken masala", "chicken gravy", "home style chicken"], per100: [145, 14, 4, 8, 1, 2.2], units: curry, defaultUnit: "katori", tags: ["lean_protein"] },
+  { id: "butter_chicken", name: "Butter chicken", aliases: ["butter chicken", "murgh makhani", "chicken makhani"], per100: [205, 13, 6, 14.5, 1, 7], units: curry, defaultUnit: "katori", tags: ["high_sat_fat"] },
+  { id: "tandoori_chicken", name: "Tandoori chicken", aliases: ["tandoori chicken", "chicken tandoori", "grilled chicken"], per100: [165, 25, 2, 6.5, 0.5, 1.8], units: { piece: 100, plate: 250 }, defaultUnit: "piece", tags: ["lean_protein"] },
+  { id: "chicken_tikka", name: "Chicken tikka", aliases: ["chicken tikka", "tikka", "chicken kebab", "chicken kabab"], per100: [150, 24, 3, 5, 0.5, 1.5], units: { piece: 30, plate: 200 }, defaultUnit: "plate", tags: ["lean_protein"] },
+  { id: "fish_curry", name: "Fish curry", aliases: ["fish curry", "fish", "machli", "macher jhol", "meen curry"], per100: [120, 13, 4, 6, 0.7, 1.5], units: curry, defaultUnit: "katori", tags: ["lean_protein"] },
+  { id: "mutton_curry", name: "Mutton curry", aliases: ["mutton curry", "mutton", "gosht", "lamb curry", "rogan josh"], per100: [200, 15, 4, 14, 1, 5.5], units: curry, defaultUnit: "katori", tags: ["high_sat_fat"] },
+
+  // --- Snacks ---
+  { id: "samosa", name: "Samosa", aliases: ["samosa", "samosas", "aloo samosa"], per100: [262, 4.5, 30, 14, 2.5, 3], units: { piece: 70 }, defaultUnit: "piece", tags: ["fried", "refined_carb"] },
+  { id: "pakora", name: "Pakora", aliases: ["pakora", "pakoda", "bhajiya", "bhaji", "onion pakora", "pakode"], per100: [300, 7, 28, 18, 3, 2.5], units: { piece: 25, plate: 150 }, defaultUnit: "piece", tags: ["fried"] },
+  { id: "biscuits", name: "Biscuits", aliases: ["biscuit", "biscuits", "cookies", "marie biscuit", "rusk"], per100: [450, 7, 70, 16, 2, 7], units: { piece: 8 }, defaultUnit: "piece", tags: ["refined_carb", "high_sugar"] },
+  { id: "namkeen", name: "Namkeen", aliases: ["namkeen", "bhujia", "mixture", "chivda", "sev"], per100: [530, 12, 45, 34, 5, 6], units: { katori: 30, tbsp: 10 }, defaultUnit: "katori", tags: ["fried"] },
+
+  // --- Fruit ---
+  { id: "banana", name: "Banana", aliases: ["banana", "kela"], per100: [89, 1.1, 23, 0.3, 2.6, 0.1], units: { piece: 120 }, defaultUnit: "piece", tags: ["fibre_rich"] },
+  { id: "apple", name: "Apple", aliases: ["apple", "seb"], per100: [52, 0.3, 14, 0.2, 2.4, 0], units: { piece: 180 }, defaultUnit: "piece", tags: ["fibre_rich"] },
+  { id: "papaya", name: "Papaya", aliases: ["papaya", "papita"], per100: [43, 0.5, 11, 0.3, 1.7, 0], units: { katori: 120, bowl: 200 }, defaultUnit: "katori", tags: ["fibre_rich"] },
+  { id: "guava", name: "Guava", aliases: ["guava", "amrood", "peru"], per100: [68, 2.6, 14, 1, 5.4, 0.3], units: { piece: 100 }, defaultUnit: "piece", tags: ["fibre_rich"] },
+  { id: "fruit_bowl", name: "Mixed fruit", aliases: ["fruit", "fruits", "mixed fruit", "fruit bowl", "fruit salad"], per100: [60, 0.8, 15, 0.2, 2.2, 0], units: { bowl: 150, katori: 100 }, defaultUnit: "bowl", tags: ["fibre_rich"] },
+
+  // --- Drinks ---
+  { id: "masala_chai", name: "Chai", aliases: ["chai", "tea", "masala chai", "milk tea", "cutting chai", "adrak chai"], per100: [50, 1.6, 7.5, 1.6, 0, 1], units: { cup: CUP, glass: GLASS }, defaultUnit: "cup", tags: ["high_sugar"] },
+  { id: "coffee", name: "Coffee with milk", aliases: ["coffee", "filter coffee", "milk coffee", "cold coffee"], per100: [55, 1.8, 7, 2, 0, 1.3], units: { cup: CUP, glass: GLASS }, defaultUnit: "cup", tags: ["high_sugar"] },
+  { id: "milk", name: "Milk", aliases: ["milk", "doodh", "toned milk", "haldi doodh"], per100: [62, 3.2, 4.8, 3.3, 0, 2.1], units: { glass: GLASS, cup: CUP }, defaultUnit: "glass", tags: [] },
+  { id: "sweet_lassi", name: "Sweet lassi", aliases: ["lassi", "sweet lassi", "mango lassi"], per100: [90, 3, 15, 2.5, 0, 1.6], units: { glass: GLASS }, defaultUnit: "glass", tags: ["high_sugar"] },
+  { id: "buttermilk", name: "Buttermilk (chaas)", aliases: ["buttermilk", "chaas", "chhaas", "chaach", "masala chaas", "salted lassi"], per100: [25, 1.5, 2.5, 1, 0, 0.6], units: { glass: GLASS }, defaultUnit: "glass", tags: [] },
+
+  // --- Sweets ---
+  { id: "gulab_jamun", name: "Gulab jamun", aliases: ["gulab jamun", "gulabjamun", "jamun"], per100: [320, 5, 50, 12, 0.5, 6], units: { piece: 40 }, defaultUnit: "piece", tags: ["high_sugar", "fried"] },
+  { id: "jalebi", name: "Jalebi", aliases: ["jalebi", "jilebi"], per100: [380, 2, 60, 15, 0.5, 4], units: { piece: 30 }, defaultUnit: "piece", tags: ["high_sugar", "fried", "refined_carb"] },
+  { id: "kheer", name: "Kheer", aliases: ["kheer", "payasam", "rice kheer", "phirni"], per100: [140, 4, 20, 4.5, 0.3, 2.8], units: { katori: KATORI }, defaultUnit: "katori", tags: ["high_sugar"] },
+  { id: "halwa", name: "Halwa", aliases: ["halwa", "sooji halwa", "gajar halwa", "sheera"], per100: [330, 4, 45, 15, 1.5, 8], units: { katori: 100 }, defaultUnit: "katori", tags: ["high_sugar", "high_sat_fat"] },
+];

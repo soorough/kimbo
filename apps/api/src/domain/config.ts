@@ -34,3 +34,7 @@ export const MIN_MEALS_FOR_FOCUS_COMPARISON = 3;
 
 // --- Meal-type suggestion by local hour ---
 export const MEAL_TYPE_HOURS = { breakfastBefore: 11, lunchBefore: 16, snackBefore: 19 } as const;
+
+// --- Unknown dishes ---
+/** Editable per-serving placeholder for dishes outside the catalogue (a typical mixed home dish). */
+export const UNKNOWN_DISH_PER_SERVING = { calories: 250, protein: 8, carbs: 30, fat: 10, fibre: 3, satFat: 3 } as const;

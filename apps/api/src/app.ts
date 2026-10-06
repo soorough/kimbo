@@ -4,6 +4,7 @@ import { AiUnavailableError, type MealRecognizer, type ReportExtractor } from ".
 import type { Clock } from "./clock.js";
 import type { Db } from "./db/index.js";
 import { HttpError } from "./errors.js";
+import { mealRoutes } from "./routes/meals.js";
 import { profileRoutes } from "./routes/profiles.js";
 
 export interface Deps {
@@ -44,5 +45,6 @@ export async function createApp(deps: Deps, opts: { logger?: boolean } = {}) {
 
   app.get("/health", async () => ({ ok: true }));
   profileRoutes(app, deps);
+  mealRoutes(app, deps);
   return app;
 }
