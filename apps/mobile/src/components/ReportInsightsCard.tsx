@@ -85,7 +85,8 @@ export function ReportInsightsCard({ insights: i }: { insights: ReportInsights }
           {i.cutBackOn.length ? (
             <View style={styles.cut}>
               <T variant="caption" tone="soft">
-                WORTH HAVING LESS OFTEN{markerName ? ` FOR YOUR ${markerName.toUpperCase()}` : ""}
+                WORTH HAVING LESS OFTEN
+                {i.cutBackFor.length ? ` FOR YOUR ${joinAnd(i.cutBackFor).toUpperCase()}` : ""}
               </T>
               {i.cutBackOn.map((c) => (
                 <View key={c.name} style={styles.cutRow}>
@@ -122,6 +123,8 @@ export function ReportInsightsCard({ insights: i }: { insights: ReportInsights }
     </Surface>
   );
 }
+
+const joinAnd = (xs: string[]) => (xs.length < 2 ? (xs[0] ?? "") : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);
 
 /** Two measured values side by side. Lower is better for every marker Kimbo reads. */
 function Compare({ c }: { c: NonNullable<ReportInsights["compare"]> }) {

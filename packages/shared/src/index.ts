@@ -401,6 +401,8 @@ export const ReportInsights = z.object({
   helpers: z.array(z.string()),
   /** dishes eaten since the report that work against the focus, most frequent first */
   cutBackOn: z.array(z.object({ name: z.string(), times: z.number(), reason: z.string() })),
+  /** labels of the markers worth watching that the list is for */
+  cutBackFor: z.array(z.string()),
   compare: z
     .object({
       marker: MarkerKey,

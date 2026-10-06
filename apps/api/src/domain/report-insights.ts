@@ -62,7 +62,11 @@ export function reportInsights(i: InsightsInput): ReportInsights | null {
     .slice(0, MAX_HELPERS)
     .map(([name]) => name);
 
-  const against = AGAINST[current.focus];
+  // Every marker worth watching counts, the one behind the focus first (it names the reason).
+  const watched = latest.markers
+    .filter((m) => m.status !== "in_range")
+    .sort((a, b) => Number(MARKER_FOCUS[b.marker] === current.focus) - Number(MARKER_FOCUS[a.marker] === current.focus));
+  const against = [...new Set(watched.flatMap((m) => AGAINST[MARKER_FOCUS[m.marker]]))];
   const flagged = new Map<string, { times: number; reason: string }>();
   for (const j of judged) {
     for (const item of j.meal.items) {
@@ -96,6 +100,7 @@ export function reportInsights(i: InsightsInput): ReportInsights | null {
     weeks: weeks.slice(-MAX_WEEKS),
     helpers,
     cutBackOn,
+    cutBackFor: watched.map((m) => m.label),
     compare:
       compared && earlier
         ? {

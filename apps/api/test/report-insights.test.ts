@@ -134,6 +134,23 @@ describe("report insights", () => {
     ]);
   });
 
+  it("covers every marker worth watching, not only the one behind the focus", async () => {
+    const id = await profile();
+    await report(id, "2026-09-28T08:00:00Z", [
+      { marker: "ldl", value: 142, unit: "mg/dL" },
+      { marker: "triglycerides", value: 200, unit: "mg/dL" },
+    ]);
+    await log(id, "2026-09-29", [{ kind: "catalogue", foodId: "naan", quantity: 1, unit: "piece" }]);
+    await log(id, "2026-09-30", paneerNaan);
+    const res = await insights(id);
+    // triglycerides at 200 are further out of range, so they set the focus and lead the list
+    expect(res.cutBackFor).toEqual(["Triglycerides", "LDL cholesterol"]);
+    expect(res.cutBackOn).toEqual([
+      { name: "Naan", times: 2, reason: "refined carbs" },
+      { name: "Paneer butter masala", times: 1, reason: "high in saturated fat" },
+    ]);
+  });
+
   it("has nothing to cut back on when the markers are in range", async () => {
     const id = await profile();
     await report(id, "2026-09-28T08:00:00Z", [{ marker: "ldl", value: 90, unit: "mg/dL" }]);
