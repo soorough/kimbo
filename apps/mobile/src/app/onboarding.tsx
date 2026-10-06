@@ -181,7 +181,7 @@ export default function Onboarding() {
   const current = steps[Math.min(step, steps.length - 1)]!;
   const body = { age, sex: sex ?? "other", heightCm: height, weightKg: weight };
   const goalWeightValue =
-    goalWeight ?? (goalType === "build_muscle" ? weight + 3 : Math.max(35, Math.round(weight - 5)));
+    goalWeight ?? (goalType === "build_muscle" ? Math.round((weight + 3) * 10) / 10 : Math.max(35, Math.round(weight - 5)));
 
   const footer =
     current === "age" || current === "height" || current === "weight" ? (
@@ -399,7 +399,8 @@ function GoalWeightStep({
           onChange={onChange}
           min={min}
           max={max}
-          step={0.5}
+          step={0.1}
+          majorEvery={10}
           unit="kg"
         />
       ) : (
@@ -597,7 +598,17 @@ function WeightStep({ kg, onChange }: { kg: number; onChange: (kg: number) => vo
         onChange={(weight) => setUnits({ weight })}
       />
       {unit === "kg" ? (
-        <RulerPicker key="kg" label="Weight" value={kg} onChange={onChange} min={30} max={200} step={0.5} unit="kg" />
+        <RulerPicker
+          key="kg"
+          label="Weight"
+          value={kg}
+          onChange={onChange}
+          min={30}
+          max={200}
+          step={0.1}
+          majorEvery={10}
+          unit="kg"
+        />
       ) : (
         <RulerPicker
           key="lb"
