@@ -13,6 +13,7 @@ Use the sample report and the thali photo in `demo-assets/` so every step is pre
 - Tap **Get started**.
 
 ## 2. Onboarding (40 s)
+- Name: Kimbo introduces itself — *"Hi, I'm Kimbo. What should I call you?"* Type a first name (or Skip). Today will greet you by it.
 - Goal: **Lose weight** (cards advance on tap — no Next buttons).
 - Sex, age, height (toggle **ft / in ↔ cm** once), weight on the rulers. *"No keyboard, so no invalid input."*
 - Activity: point at the kcal on each option. *"Each answer shows what it does to your day."*

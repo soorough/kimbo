@@ -17,7 +17,8 @@ Phase 1 loop: **Report → Food focus → Log meals → Track progress**. See [S
 report-to-focus diagram) drift up behind the headline on warm charcoal, in pastel colours with a mint
 accent. "See a sample week" opens a demo profile with a week of meals and a report.
 
-**Onboarding.** One question per screen; numbers are picked on rulers (no keyboard). Kimbo acts out each
+**Onboarding.** Kimbo introduces itself and asks what to call you (optional; the name greets you on Today and
+can be changed on the You tab). Then one question per screen; numbers are picked on rulers (no keyboard). Kimbo acts out each
 question and reacts to the answer: a signpost for the goal, a cake for age, a ruler that tracks height, a
 scale that reads the weight, a jog that speeds up with activity, a bullseye with the goal weight and a
 stopwatch for pace. Weights go to 0.1 kg; a "build muscle" goal is always at least 2 kg above today's
@@ -70,7 +71,7 @@ feel like a well-kept recipe notebook, not a clinical dashboard or a gym tracker
   Kimbo is the only orange on it.
 - **Two typefaces, two jobs.** Fraunces (a soft serif) for moments that should feel personal: greetings,
   the target and focus reveals. Plus Jakarta Sans for anything scanned quickly: numbers, lists, labels.
-  Only the five weights in use are bundled.
+  Only the six weights in use are bundled (per-weight imports; the package roots would pull in all 32).
 - **Bottom sheets for short tasks.** Logging a meal, picking a food and editing a portion slide up over
   the current screen, so you never lose your place. Full screens are kept for decisions with consequences
   (reviewing a meal, confirming report values).
@@ -173,7 +174,7 @@ Cloud build (uses `EXPO_PUBLIC_API_URL` from `eas.json`):
 cd apps/mobile && npx eas-cli@latest build -p android --profile preview
 ```
 
-Local release build (about 33 MB):
+Local release build (about 32 MB):
 
 ```sh
 cd apps/mobile/android
