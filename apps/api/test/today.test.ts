@@ -80,7 +80,7 @@ describe("connecting meals to the report focus", () => {
   it("shows how many of today's meals supported the focus, without judging the others", async () => {
     const id = await onboarded();
     await setFocus(id, ldlWatch);
-    await api.post("/meals", dalRoti, id);
+    await api.post("/meals", { ...dalRoti, eatenAt: "2026-10-06T06:00:00Z" }, id);
     await api.post("/meals", paneerNaan, id);
     const res = await api.get("/today", id);
     expect(res.json.focus).toMatchObject({ key: "fibre_focus", title: "More fibre-rich meals" });

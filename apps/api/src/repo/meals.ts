@@ -101,7 +101,7 @@ export async function listMeals(
   range: { from: Date; to: Date },
 ): Promise<StoredMeal[]> {
   const res = await db.query<Row>(
-    `${SELECT} WHERE m.profile_id = $1 AND m.eaten_at >= $2 AND m.eaten_at < $3 ORDER BY m.eaten_at, m.id, i.position`,
+    `${SELECT} WHERE m.profile_id = $1 AND m.eaten_at >= $2 AND m.eaten_at < $3 ORDER BY m.eaten_at, m.created_at, m.id, i.position`,
     [profileId, range.from, range.to],
   );
   return group(res.rows, timezone);

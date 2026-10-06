@@ -9,6 +9,7 @@ import { buildDraft } from "../domain/meal-draft.js";
 import { addDays, localDate, startOfLocalDay, suggestMealType } from "../domain/time.js";
 import { badRequest, notFound } from "../errors.js";
 import { parse, requireProfile } from "../http.js";
+import { unlockMilestones } from "../progress-input.js";
 import { deleteMeal, getMeal, insertMeal, listMeals, replaceMeal, toApiMeal, type MealWrite } from "../repo/meals.js";
 import type { ProfileRow } from "../repo/profiles.js";
 import { listFocusAssignments } from "../repo/reports.js";
@@ -89,5 +90,6 @@ async function respondWithMeal(deps: Deps, profile: ProfileRow, id: string, writ
   const events: KimboEvent[] = [];
   if (write.wasCorrected) events.push({ type: "correction_accepted", message: "Thanks for the fix — saved just as you ate it." });
   if (focusResult?.supports) events.push({ type: "meal_supported_focus", message: supportedMessage(focusResult.focus) });
+  events.push(...(await unlockMilestones(deps, profile)));
   return { meal: toApiMeal(meal), focusResult, events };
 }

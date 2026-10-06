@@ -31,7 +31,7 @@ export class FakeExtractor implements ReportExtractor {
   }
 }
 
-/** Settable clock; defaults to Mon 6 Oct 2026, 13:00 IST. */
+/** Settable clock; defaults to Tue 6 Oct 2026, 13:00 IST. */
 export class TestClock {
   now = new Date("2026-10-06T07:30:00Z");
   set(iso: string) {
