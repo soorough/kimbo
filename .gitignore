@@ -11,3 +11,8 @@ android/
 ios/
 .vercel
 .env*
+
+# Local AI-assistant settings and notes
+.claude/
+AGENTS.md
+CLAUDE.md

@@ -95,7 +95,7 @@ function Row({ row, value, target }: { row: (typeof ROWS)[number]; value: number
   );
 }
 
-/** MyFitnessPal-style heads-ups: what crossed a limit, and which dish did most of it. */
+/** Heads-ups when a limit is crossed, naming the dish that did most of it. */
 function Warnings({ data, targets, cutting }: { data: TodayResponse; targets: MacroTargets; cutting: boolean }) {
   const items = data.meals.flatMap((m) => m.items);
   const top = (k: keyof Nutrition) =>
