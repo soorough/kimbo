@@ -99,7 +99,7 @@ export function Kimbo({ mood = "idle", size = 96, leaves = 1 }: { mood?: KimboMo
         ))}
         {/* body */}
         <Ellipse cx={50} cy={63} rx={39} ry={34} fill={BODY} />
-        <Ellipse cx={50} cy={86} rx={30} ry={8} fill={BODY_SHADE} opacity={0.35} />
+        <Ellipse cx={50} cy={84} rx={26} ry={7} fill={BODY_SHADE} opacity={0.35} />
         <Ellipse cx={37} cy={48} rx={11} ry={7} fill="#FFFFFF" opacity={0.28} />
         {/* cheeks */}
         <Ellipse cx={29} cy={70} rx={6} ry={3.6} fill={CHEEK} opacity={0.75} />

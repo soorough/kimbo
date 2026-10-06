@@ -10,9 +10,10 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { Intro } from "@/components/Intro";
 import { Celebration, MomentToast } from "@/components/Moments";
 import { useSession } from "@/lib/session";
 import { useUnits } from "@/lib/units";
@@ -34,6 +35,9 @@ const sheet = {
 
 export default function RootLayout() {
   const load = useSession((s) => s.load);
+  // The intro plays once per cold start, over whichever screen the app opens on.
+  const [introDone, setIntroDone] = useState(false);
+  const finishIntro = useCallback(() => setIntroDone(true), []);
   const loadUnits = useUnits((s) => s.load);
   // Only the weights the type scale uses, to keep the bundle small.
   const [fontsLoaded, fontError] = useFonts({
@@ -75,6 +79,7 @@ export default function RootLayout() {
           </Stack>
           <MomentToast />
           <Celebration />
+          {introDone ? null : <Intro onDone={finishIntro} />}
         </View>
       </QueryClientProvider>
     </SafeAreaProvider>
