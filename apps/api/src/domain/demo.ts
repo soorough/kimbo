@@ -30,13 +30,14 @@ const BREAKFASTS: ConfirmItem[][] = [
   [c("upma", 1, "plate"), c("masala_chai", 1, "cup")],
   [c("masala_dosa", 1, "piece"), c("sambar", 1, "katori")],
 ];
+// Lunch index = (daysAgo + 1) % 7, so yesterday gets index 2 — kept light for a clear demo story.
 const LUNCHES: ConfirmItem[][] = [
   [c("roti", 2, "piece"), c("dal_tadka", 1, "katori"), c("bhindi", 1, "katori")],
   [c("white_rice", 1, "katori"), c("rajma", 1, "katori"), c("salad", 1, "bowl")],
-  [c("paneer_butter_masala", 1, "katori"), c("naan", 2, "piece")],
+  [c("chicken_curry", 1, "katori"), c("white_rice", 1, "katori"), c("salad", 1, "bowl")],
   [c("roti", 2, "piece"), c("chole", 1, "katori"), c("raita", 1, "katori")],
   [c("white_rice", 1, "katori"), c("sambar", 1, "katori"), c("cabbage_sabzi", 1, "katori")],
-  [c("chicken_curry", 1, "katori"), c("white_rice", 1, "katori"), c("salad", 1, "bowl")],
+  [c("paneer_butter_masala", 1, "katori"), c("naan", 2, "piece")],
   [c("khichdi", 1, "katori"), c("curd", 1, "katori")],
 ];
 const DINNERS: ConfirmItem[][] = [

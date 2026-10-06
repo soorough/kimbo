@@ -9,6 +9,7 @@ import { colors, space } from "@/lib/theme";
 
 /** Routes a launch to welcome, onboarding or Today depending on what this device has set up. */
 export default function Index() {
+  const loaded = useSession((s) => s.loaded);
   const profileId = useSession((s) => s.profileId);
   const clear = useSession((s) => s.clear);
   const profile = useQuery({
@@ -22,13 +23,25 @@ export default function Index() {
     if (missing) clear();
   }, [missing, clear]);
 
+  if (!loaded) return <Splash />;
   if (!profileId || missing) return <Redirect href="/welcome" />;
   if (profile.data) {
     return profile.data.profile.goal ? <Redirect href="/(tabs)" /> : <Redirect href="/onboarding" />;
   }
+  if (profile.error) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: "center", padding: space.lg }}>
+        <ErrorState message={errorMessage(profile.error)} onRetry={() => profile.refetch()} />
+      </View>
+    );
+  }
+  return <Splash />;
+}
+
+function Splash() {
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: "center", padding: space.lg }}>
-      {profile.error ? <ErrorState message={errorMessage(profile.error)} onRetry={() => profile.refetch()} /> : <Loading />}
+    <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: "center" }}>
+      <Loading />
     </View>
   );
 }

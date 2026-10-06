@@ -5,7 +5,6 @@ import { useEffect } from "react";
 import { View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { MomentToast } from "@/components/Moments";
-import { Loading } from "@/components/ui";
 import { useSession } from "@/lib/session";
 import { colors } from "@/lib/theme";
 
@@ -14,7 +13,6 @@ const queryClient = new QueryClient({
 });
 
 export default function RootLayout() {
-  const loaded = useSession((s) => s.loaded);
   const load = useSession((s) => s.load);
 
   useEffect(() => {
@@ -25,8 +23,8 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <StatusBar style="dark" />
-        {loaded ? (
-          <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        {/* The navigator must mount on the first render; the index route waits for the session. */}
+        <View style={{ flex: 1, backgroundColor: colors.bg }}>
             <Stack
               screenOptions={{
                 headerShadowVisible: false,
@@ -45,12 +43,7 @@ export default function RootLayout() {
               <Stack.Screen name="report-review" options={{ title: "Check your report" }} />
             </Stack>
             <MomentToast />
-          </View>
-        ) : (
-          <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: "center" }}>
-            <Loading />
-          </View>
-        )}
+        </View>
       </QueryClientProvider>
     </SafeAreaProvider>
   );
