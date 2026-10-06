@@ -1,0 +1,9 @@
+**/node_modules
+apps/mobile
+!apps/mobile/package.json
+**/.expo
+**/android
+**/ios
+**/.env*
+.git
+demo-assets

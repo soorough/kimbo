@@ -48,6 +48,22 @@ export const colors = {
   scrim: "rgba(35, 32, 27, 0.45)",
 };
 
+/**
+ * The start screen's night palette: warm charcoal (not black) so the drifting feature
+ * cards read clearly, Kimbo's orange and the food colours carry the warmth, and the
+ * headline has strong contrast (cream 16.3:1, turmeric 9.6:1).
+ */
+export const night = {
+  bg: "#1C1916",
+  card: "#2A2621",
+  cardLine: "rgba(251,246,238,0.1)",
+  inset: "rgba(251,246,238,0.07)",
+  text: "#FBF6EE",
+  muted: "#B9AFA2",
+  accent: "#F2B544",
+  path: "rgba(251,246,238,0.22)",
+} as const;
+
 /** Macro bars: a quiet data palette, each ≥3:1 on the track, kept apart from the role colours above. */
 export const macroColors = {
   protein: "#B5532F",
