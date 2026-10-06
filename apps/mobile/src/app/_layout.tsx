@@ -15,6 +15,7 @@ import { View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Celebration, MomentToast } from "@/components/Moments";
 import { useSession } from "@/lib/session";
+import { useUnits } from "@/lib/units";
 import { colors } from "@/lib/theme";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -33,6 +34,7 @@ const sheet = {
 
 export default function RootLayout() {
   const load = useSession((s) => s.load);
+  const loadUnits = useUnits((s) => s.load);
   // Only the weights the type scale uses, to keep the bundle small.
   const [fontsLoaded, fontError] = useFonts({
     Fraunces_600SemiBold,
@@ -44,7 +46,8 @@ export default function RootLayout() {
 
   useEffect(() => {
     load();
-  }, [load]);
+    loadUnits();
+  }, [load, loadUnits]);
 
   useEffect(() => {
     if (fontsLoaded || fontError) SplashScreen.hideAsync().catch(() => {});

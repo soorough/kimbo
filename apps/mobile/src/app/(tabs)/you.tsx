@@ -6,6 +6,7 @@ import { Kimbo } from "@/components/Kimbo";
 import { Button, ErrorState, Icon, Loading, Screen, Sheet, Surface, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
+import { formatWeight, useUnits } from "@/lib/units";
 import { colors, space } from "@/lib/theme";
 
 const ACTIVITY_LABEL = {
@@ -20,6 +21,7 @@ const GOAL_LABEL = { lose: "Lose weight", maintain: "Maintain", gain: "Gain weig
 /** Settings live in one predictable place instead of scattered links. */
 export default function You() {
   const profileId = useSession((s) => s.profileId);
+  const weightUnit = useUnits((u) => u.weight);
   const clear = useSession((s) => s.clear);
   const queryClient = useQueryClient();
   const profile = useQuery({
@@ -72,7 +74,7 @@ export default function You() {
           </View>
           <T variant="number">{goal.effectiveTarget} kcal</T>
           <T variant="label">
-            {GOAL_LABEL[goal.goal]} · {ACTIVITY_LABEL[goal.activity]} · {goal.weightKg} kg
+            {GOAL_LABEL[goal.goal]} · {ACTIVITY_LABEL[goal.activity]} · {formatWeight(goal.weightKg, weightUnit)}
           </T>
           {goal.targetOverride ? (
             <T variant="caption">Adjusted by you (Kimbo suggested {goal.computedTarget} kcal)</T>

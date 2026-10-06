@@ -6,9 +6,19 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
 import { RulerPicker } from "@/components/RulerPicker";
-import { Button, Chip, Icon, Screen, SegmentRing, T, type IconName } from "@/components/ui";
+import { Button, Chip, Icon, Screen, Segmented, SegmentRing, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
+import {
+  cmToIn,
+  formatFeetInches,
+  inToCm,
+  kgToLb,
+  lbToKg,
+  useUnits,
+  type HeightUnit,
+  type WeightUnit,
+} from "@/lib/units";
 import { colors, macroColors, radius, space } from "@/lib/theme";
 
 type Sex = GoalRequest["sex"];
@@ -195,21 +205,8 @@ export default function Onboarding() {
       {current === "age" ? (
         <RulerPicker label="Age" value={age} onChange={setAge} min={15} max={100} majorEvery={5} unit="years" />
       ) : null}
-      {current === "height" ? (
-        <RulerPicker label="Height" value={height} onChange={setHeight} min={120} max={220} unit="cm" />
-      ) : null}
-      {current === "weight" ? (
-        <RulerPicker
-          label="Weight"
-          value={weight}
-          onChange={setWeight}
-          min={30}
-          max={200}
-          step={0.5}
-          majorEvery={10}
-          unit="kg"
-        />
-      ) : null}
+      {current === "height" ? <HeightStep cm={height} onChange={setHeight} /> : null}
+      {current === "weight" ? <WeightStep kg={weight} onChange={setWeight} /> : null}
 
       {current === "activity" ? (
         <Options>
@@ -342,6 +339,73 @@ function Reveal({
 
       <Button label="Edit answers" kind="ghost" onPress={onBack} />
     </Screen>
+  );
+}
+
+/**
+ * Height in cm or feet/inches. State stays in cm (what the API stores); the ruler
+ * remounts per unit so it scrolls to the converted value.
+ */
+function HeightStep({ cm, onChange }: { cm: number; onChange: (cm: number) => void }) {
+  const unit = useUnits((u) => u.height);
+  const setUnits = useUnits((u) => u.set);
+  return (
+    <View style={{ gap: space.lg }}>
+      <Segmented<HeightUnit>
+        options={[
+          { value: "ftin", label: "ft / in" },
+          { value: "cm", label: "cm" },
+        ]}
+        value={unit}
+        onChange={(height) => setUnits({ height })}
+      />
+      {unit === "cm" ? (
+        <RulerPicker key="cm" label="Height" value={Math.round(cm)} onChange={onChange} min={120} max={220} unit="cm" />
+      ) : (
+        <RulerPicker
+          key="in"
+          label="Height"
+          value={cmToIn(cm)}
+          onChange={(inches) => onChange(inToCm(inches))}
+          min={48}
+          max={86}
+          majorEvery={12}
+          unit=""
+          format={formatFeetInches}
+          tickFormat={(inches) => `${inches / 12} ft`}
+        />
+      )}
+    </View>
+  );
+}
+
+function WeightStep({ kg, onChange }: { kg: number; onChange: (kg: number) => void }) {
+  const unit = useUnits((u) => u.weight);
+  const setUnits = useUnits((u) => u.set);
+  return (
+    <View style={{ gap: space.lg }}>
+      <Segmented<WeightUnit>
+        options={[
+          { value: "kg", label: "kg" },
+          { value: "lb", label: "lb" },
+        ]}
+        value={unit}
+        onChange={(weight) => setUnits({ weight })}
+      />
+      {unit === "kg" ? (
+        <RulerPicker key="kg" label="Weight" value={kg} onChange={onChange} min={30} max={200} step={0.5} unit="kg" />
+      ) : (
+        <RulerPicker
+          key="lb"
+          label="Weight"
+          value={kgToLb(kg)}
+          onChange={(lb) => onChange(lbToKg(lb))}
+          min={70}
+          max={440}
+          unit="lb"
+        />
+      )}
+    </View>
   );
 }
 

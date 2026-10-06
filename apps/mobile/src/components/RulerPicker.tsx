@@ -26,6 +26,8 @@ export function RulerPicker({
   majorEvery = 10,
   unit,
   label,
+  format,
+  tickFormat = format,
 }: {
   value: number;
   onChange: (v: number) => void;
@@ -36,6 +38,10 @@ export function RulerPicker({
   majorEvery?: number;
   unit: string;
   label: string;
+  /** how to show a value, e.g. 66 → 5′ 6″; defaults to the number itself */
+  format?: (v: number) => string;
+  /** label for major ticks, if shorter than the readout (5′ 0″ → 5 ft) */
+  tickFormat?: (v: number) => string;
 }) {
   const scroll = useRef<ScrollView>(null);
   const [width, setWidth] = useState(0);
@@ -87,13 +93,13 @@ export function RulerPicker({
             <View style={[styles.tick, major ? styles.tickMajor : styles.tickMinor]} />
             {major ? (
               <T variant="caption" style={styles.tickLabel}>
-                {valueAt(i)}
+                {tickFormat ? tickFormat(valueAt(i)) : valueAt(i)}
               </T>
             ) : null}
           </View>
         );
       }),
-    [count, majorEvery, valueAt],
+    [count, majorEvery, valueAt, tickFormat],
   );
 
   return (
@@ -102,13 +108,13 @@ export function RulerPicker({
       accessible
       accessibilityRole="adjustable"
       accessibilityLabel={label}
-      accessibilityValue={{ text: `${value} ${unit}` }}
+      accessibilityValue={{ text: `${format ? format(value) : value} ${unit}` }}
       accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
       onAccessibilityAction={(e) => nudge(e.nativeEvent.actionName === "increment" ? 1 : -1)}
     >
       <View style={styles.readout}>
         <T variant="display" style={styles.value}>
-          {Number.isInteger(value) ? value : value.toFixed(1)}
+          {format ? format(value) : Number.isInteger(value) ? value : value.toFixed(1)}
         </T>
         <T variant="title" tone="soft">
           {unit}
