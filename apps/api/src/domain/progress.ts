@@ -21,6 +21,8 @@ export interface WeekStats {
   daysElapsed: number;
   trackedDates: string[];
   goalDaysMet: number | null;
+  /** Completed tracked days, plus today once it's within the band — today never counts as a miss. */
+  goalDaysEvaluated: number | null;
   focus: { key: FocusKey; supported: number; total: number; pct: number } | null;
   /** per-meal focus results, for insights */
   evaluated: { mealType: MealType; supports: boolean }[];
@@ -42,12 +44,19 @@ export function weekStats(input: ProgressInput, anyDateInWeek: string): WeekStat
   const trackedDates = [...caloriesByDay.keys()].sort();
 
   let goalDaysMet: number | null = null;
+  let goalDaysEvaluated: number | null = null;
   if (input.targetCalories) {
     const band = (input.targetCalories * GOAL_BAND_PCT) / 100;
     // Compare in whole kcal so ±10% boundaries are inclusive despite float error.
     const low = Math.round(input.targetCalories - band);
     const high = Math.round(input.targetCalories + band);
-    goalDaysMet = [...caloriesByDay.values()].filter((c) => c >= low && c <= high).length;
+    goalDaysMet = 0;
+    goalDaysEvaluated = 0;
+    for (const [date, calories] of caloriesByDay) {
+      const met = calories >= low && calories <= high;
+      if (met) goalDaysMet++;
+      if (met || date < input.today) goalDaysEvaluated++;
+    }
   }
 
   const evaluated: WeekStats["evaluated"] = [];
@@ -66,7 +75,7 @@ export function weekStats(input: ProgressInput, anyDateInWeek: string): WeekStat
       }
     : null;
 
-  return { weekStart: start, weekEnd: end, daysElapsed, trackedDates, goalDaysMet, focus, evaluated };
+  return { weekStart: start, weekEnd: end, daysElapsed, trackedDates, goalDaysMet, goalDaysEvaluated, focus, evaluated };
 }
 
 /**

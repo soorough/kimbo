@@ -1,14 +1,13 @@
 import type { ExtractReportRequest, Report } from "@kimbo/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import * as DocumentPicker from "expo-document-picker";
-import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
 import { Button, Card, ErrorState, Loading, Screen } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
-import { toUploadableJpeg } from "@/lib/image";
+import { readAsBase64, toUploadableJpeg } from "@/lib/image";
 import { useReportDraft } from "@/lib/report-draft";
 import { colors, font, radius, space } from "@/lib/theme";
 
@@ -18,7 +17,8 @@ export default function ReportTab() {
   const setDraft = useReportDraft((s) => s.set);
 
   const extract = useMutation({
-    mutationFn: ({ body }: { body: ExtractReportRequest; source: "upload" | "sample" }) => api.extractReport(body),
+    mutationFn: async ({ load }: { load: () => Promise<ExtractReportRequest>; source: "upload" | "sample" }) =>
+      api.extractReport(await load()),
     onSuccess: (draft, { source }) => {
       setDraft(draft, source);
       router.push("/report-review");
@@ -29,8 +29,17 @@ export default function ReportTab() {
     const res = await DocumentPicker.getDocumentAsync({ type: ["application/pdf", "image/*"], copyToCacheDirectory: true });
     const asset = res.canceled ? null : res.assets[0];
     if (!asset) return;
-    const fileBase64 = await new File(asset.uri).base64();
-    extract.mutate({ body: { fileBase64, mimeType: asset.mimeType ?? "application/pdf" }, source: "upload" });
+    const mimeType = asset.mimeType ?? "application/pdf";
+    extract.mutate({
+      source: "upload",
+      load: async () => {
+        if (mimeType.startsWith("image/")) {
+          const image = await toUploadableJpeg(asset.uri);
+          return { fileBase64: image.base64, mimeType: image.mimeType };
+        }
+        return { fileBase64: await readAsBase64(asset.uri), mimeType };
+      },
+    });
   }
 
   async function snapReport() {
@@ -39,8 +48,13 @@ export default function ReportTab() {
     const res = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"] });
     const asset = res.canceled ? null : res.assets[0];
     if (!asset) return;
-    const image = await toUploadableJpeg(asset);
-    extract.mutate({ body: { fileBase64: image.base64, mimeType: image.mimeType }, source: "upload" });
+    extract.mutate({
+      source: "upload",
+      load: async () => {
+        const image = await toUploadableJpeg(asset.uri);
+        return { fileBase64: image.base64, mimeType: image.mimeType };
+      },
+    });
   }
 
   function enterManually() {
@@ -104,7 +118,7 @@ export default function ReportTab() {
       <Text style={font.h2}>{latest ? "Add a newer report" : "Add your report"}</Text>
       <Button label="Upload PDF or image" icon="📄" onPress={pickPdf} />
       <Button label="Photograph a printed report" icon="📷" kind="secondary" onPress={snapReport} />
-      <Button label="Use a sample report" kind="secondary" onPress={() => extract.mutate({ body: { sample: true }, source: "sample" })} />
+      <Button label="Use a sample report" kind="secondary" onPress={() => extract.mutate({ load: async () => ({ sample: true }), source: "sample" })} />
       <Button label="Enter values myself" kind="ghost" onPress={enterManually} />
 
       <Text style={styles.disclaimer}>

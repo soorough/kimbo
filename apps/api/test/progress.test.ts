@@ -87,6 +87,21 @@ describe("weekly progress", () => {
     expect((await api.get("/progress", id)).json.goal).toEqual({ daysMet: 2, daysTracked: 4, bandPct: 10 });
   });
 
+  it("doesn't count today against the goal while the day is still going", async () => {
+    const id = await onboarded();
+    await log(id, "2026-10-08", kcal(1980));
+    await log(id, "2026-10-09", kcal(900)); // today, half-way through
+    expect((await api.get("/progress", id)).json.goal).toEqual({ daysMet: 1, daysTracked: 1, bandPct: 10 });
+    await log(id, "2026-10-09", kcal(1000)); // today reaches the band
+    expect((await api.get("/progress", id)).json.goal).toEqual({ daysMet: 2, daysTracked: 2, bandPct: 10 });
+  });
+
+  it("only compares with last week once there was a last week", async () => {
+    const id = await onboarded();
+    await log(id, "2026-10-08");
+    expect((await api.get("/progress", id)).json.weekOverWeek).toEqual({ daysTracked: null, goalDaysMet: null, focusPct: null });
+  });
+
   it("measures focus adherence across the week's meals", async () => {
     const id = await onboarded();
     await setFocusAt(id, "2026-10-01T07:30:00Z", LDL);

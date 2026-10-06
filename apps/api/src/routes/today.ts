@@ -11,13 +11,16 @@ import { listMeals, toApiMeal } from "../repo/meals.js";
 import { goalOf } from "../repo/profiles.js";
 import { listFocusAssignments } from "../repo/reports.js";
 
+const MEAL_ORDER = ["breakfast", "lunch", "snack", "dinner"] as const;
+
 export function todayRoutes(app: FastifyInstance, deps: Deps) {
   app.get<{ Querystring: { date?: string } }>("/today", async (req): Promise<TodayResponse> => {
     const profile = await requireProfile(deps, req);
     const tz = profile.timezone;
     const date = req.query.date ? parse(LocalDate, req.query.date) : localDate(deps.clock(), tz);
-    const [meals, history] = await Promise.all([
+    const [meals, yesterdayMeals, history] = await Promise.all([
       listMeals(deps.db, profile.id, tz, { from: startOfLocalDay(date, tz), to: startOfLocalDay(addDays(date, 1), tz) }),
+      listMeals(deps.db, profile.id, tz, { from: startOfLocalDay(addDays(date, -1), tz), to: startOfLocalDay(date, tz) }),
       listFocusAssignments(deps.db, profile.id),
     ]);
     const focus = focusForDay(history, date, tz);
@@ -34,6 +37,7 @@ export function todayRoutes(app: FastifyInstance, deps: Deps) {
       focusSummary: focus
         ? { supported: todayMeals.filter((m) => m.supportsFocus).length, total: todayMeals.length }
         : null,
+      repeatableMealTypes: MEAL_ORDER.filter((t) => yesterdayMeals.some((m) => m.mealType === t)),
     };
   });
 }

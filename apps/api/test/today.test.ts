@@ -69,6 +69,14 @@ describe("Today", () => {
     expect((await api.get("/today", id)).json.totals.calories).toBe(0);
   });
 
+  it("says which meals from yesterday can be repeated", async () => {
+    const id = await onboarded();
+    expect((await api.get("/today", id)).json.repeatableMealTypes).toEqual([]);
+    await api.post("/meals", meal("breakfast", [item("poha", 1, "plate")], "2026-10-05T03:00:00Z"), id);
+    await api.post("/meals", meal("dinner", [item("khichdi", 1, "katori")], "2026-10-05T15:00:00Z"), id);
+    expect((await api.get("/today", id)).json.repeatableMealTypes).toEqual(["breakfast", "dinner"]);
+  });
+
   it("works before a goal is set", async () => {
     const res = await api.post("/profiles", { mode: "fresh" });
     const id = res.json.profile.id;

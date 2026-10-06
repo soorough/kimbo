@@ -52,7 +52,7 @@ export default function Today() {
 
         <CaloriesCard data={data} />
         <FocusCard data={data} />
-        <MealsSection meals={data.meals} />
+        <MealsSection meals={data.meals} repeatable={data.repeatableMealTypes} />
       </Screen>
       <Pressable accessibilityRole="button" style={styles.fab} onPress={() => router.push("/log")}>
         <Text style={styles.fabText}>+ Log a meal</Text>
@@ -131,19 +131,20 @@ function FocusCard({ data }: { data: TodayResponse }) {
   );
 }
 
-function MealsSection({ meals }: { meals: TodayMeal[] }) {
+function MealsSection({ meals, repeatable }: { meals: TodayMeal[]; repeatable: MealType[] }) {
   const repeatType = currentMealType();
   const afterWrite = useAfterWrite();
   const repeat = useMutation({
     mutationFn: () => api.repeatYesterday(repeatType),
     onSuccess: (res) => afterWrite(res.events),
   });
-  const alreadyLogged = meals.some((m) => m.mealType === repeatType);
+  // Offer a repeat only when yesterday had this meal and today doesn't yet.
+  const canRepeat = repeatable.includes(repeatType) && !meals.some((m) => m.mealType === repeatType);
 
   return (
     <View style={{ gap: space.md }}>
       <Text style={font.h2}>What you ate</Text>
-      {!alreadyLogged ? (
+      {canRepeat ? (
         <View style={styles.rowCenter}>
           <Chip
             label={`Same ${MEAL_LABEL[repeatType].toLowerCase()} as yesterday?`}

@@ -30,14 +30,20 @@ export function progressRoutes(app: FastifyInstance, deps: Deps) {
       goal:
         week.goalDaysMet === null
           ? null
-          : { daysMet: week.goalDaysMet, daysTracked: week.trackedDates.length, bandPct: GOAL_BAND_PCT },
+          : { daysMet: week.goalDaysMet, daysTracked: week.goalDaysEvaluated!, bandPct: GOAL_BAND_PCT },
       focus: week.focus ? { ...week.focus, title: FOCI[week.focus.key].title } : null,
-      weekOverWeek: {
-        daysTracked: week.trackedDates.length - previous.trackedDates.length,
-        goalDaysMet:
-          week.goalDaysMet === null || previous.goalDaysMet === null ? null : week.goalDaysMet - previous.goalDaysMet,
-        focusPct: focusComparable(week, previous) ? week.focus!.pct - previous.focus!.pct : null,
-      },
+      // Nothing to compare against until the previous week had some tracking.
+      weekOverWeek:
+        previous.trackedDates.length === 0
+          ? { daysTracked: null, goalDaysMet: null, focusPct: null }
+          : {
+              daysTracked: week.trackedDates.length - previous.trackedDates.length,
+              goalDaysMet:
+                week.goalDaysMet === null || previous.goalDaysMet === null
+                  ? null
+                  : week.goalDaysMet - previous.goalDaysMet,
+              focusPct: focusComparable(week, previous) ? week.focus!.pct - previous.focus!.pct : null,
+            },
       insights: insights(week),
       achievements: await listAchievements(deps.db, profile.id),
     };

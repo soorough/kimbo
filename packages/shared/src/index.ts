@@ -339,6 +339,8 @@ export const TodayResponse = z.object({
   meals: z.array(TodayMeal),
   focus: FocusInfo.nullable(),
   focusSummary: z.object({ supported: z.number(), total: z.number() }).nullable(),
+  /** Meal types logged yesterday, i.e. what "same as yesterday" can repeat. */
+  repeatableMealTypes: z.array(MealType),
 });
 export type TodayResponse = z.infer<typeof TodayResponse>;
 
@@ -356,7 +358,7 @@ export const ProgressResponse = z.object({
     .object({ key: FocusKey, title: z.string(), supported: z.number(), total: z.number(), pct: z.number() })
     .nullable(),
   weekOverWeek: z.object({
-    daysTracked: z.number(),
+    daysTracked: z.number().nullable(),
     goalDaysMet: z.number().nullable(),
     focusPct: z.number().nullable(),
   }),

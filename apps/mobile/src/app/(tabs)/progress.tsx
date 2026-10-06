@@ -49,7 +49,7 @@ export default function Progress() {
         </Card>
       ) : null}
 
-      {p.goal ? (
+      {p.goal && p.goal.daysTracked > 0 ? (
         <Card>
           <Text style={font.h2}>
             {p.goal.daysMet} of {p.goal.daysTracked} tracked days near your goal
@@ -115,7 +115,7 @@ function WeekDots({ p }: { p: ProgressResponse }) {
 function WeekOverWeek({ p }: { p: ProgressResponse }) {
   const lines: string[] = [];
   const w = p.weekOverWeek;
-  if (w.daysTracked > 0) lines.push(`+${w.daysTracked} day${w.daysTracked === 1 ? "" : "s"} tracked vs last week`);
+  if (w.daysTracked && w.daysTracked > 0) lines.push(`+${w.daysTracked} day${w.daysTracked === 1 ? "" : "s"} tracked vs last week`);
   if (w.goalDaysMet && w.goalDaysMet > 0) lines.push(`+${w.goalDaysMet} goal day${w.goalDaysMet === 1 ? "" : "s"} vs last week`);
   if (w.focusPct && w.focusPct > 0) lines.push(`Focus up ${w.focusPct} points from last week`);
   if (!lines.length) return null;

@@ -19,7 +19,8 @@ export default function LogMeal() {
   const startManual = useDraft((s) => s.startManual);
 
   const analyse = useMutation({
-    mutationFn: ({ body }: { body: ParseMealRequest; source: MealSource }) => api.parseMeal(body),
+    mutationFn: async ({ load }: { load: () => Promise<ParseMealRequest>; source: MealSource }) =>
+      api.parseMeal(await load()),
     onSuccess: (draft, { source }) => {
       startFromAi(draft, source);
       router.replace("/review");
@@ -35,8 +36,13 @@ export default function LogMeal() {
     const result = fromCamera ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
     const asset = result.canceled ? null : result.assets[0];
     if (!asset) return;
-    const image = await toUploadableJpeg(asset);
-    analyse.mutate({ body: { imageBase64: image.base64, mimeType: image.mimeType }, source: "photo" });
+    analyse.mutate({
+      source: "photo",
+      load: async () => {
+        const image = await toUploadableJpeg(asset.uri);
+        return { imageBase64: image.base64, mimeType: image.mimeType };
+      },
+    });
   }
 
   if (analyse.isPending) {
@@ -73,7 +79,10 @@ export default function LogMeal() {
         <Button
           label="Analyse"
           disabled={!text.trim()}
-          onPress={() => analyse.mutate({ body: { text: text.trim() }, source: "text" })}
+          onPress={() => {
+            const body = { text: text.trim() };
+            analyse.mutate({ load: async () => body, source: "text" });
+          }}
         />
       </Card>
 
