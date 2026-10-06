@@ -10,7 +10,7 @@ const KIND = {
   ghost: { bg: "transparent", fg: colors.leaf, border: "transparent" },
   danger: { bg: "transparent", fg: colors.terracotta, border: "transparent" },
   // For dark surfaces (the start screen).
-  light: { bg: night.accent, fg: night.bg, border: night.accent },
+  light: { bg: night.text, fg: night.bg, border: night.text },
   outlineLight: { bg: "transparent", fg: night.text, border: "rgba(255,255,255,0.55)" },
 } as const;
 

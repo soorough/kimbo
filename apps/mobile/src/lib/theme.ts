@@ -49,9 +49,9 @@ export const colors = {
 };
 
 /**
- * The start screen's night palette: warm charcoal (not black) so the drifting feature
- * cards read clearly, Kimbo's orange and the food colours carry the warmth, and the
- * headline has strong contrast (cream 16.3:1, turmeric 9.6:1).
+ * The start screen's night palette: warm charcoal (not black) so the pastel feature cards
+ * read clearly. The accent is the wall's mint, not a second orange next to Kimbo's;
+ * cream 16.3:1, mint 10.8:1 on the background.
  */
 export const night = {
   bg: "#1C1916",
@@ -60,7 +60,7 @@ export const night = {
   inset: "rgba(251,246,238,0.07)",
   text: "#FBF6EE",
   muted: "#B9AFA2",
-  accent: "#F2B544",
+  accent: "#9FD8B8",
   path: "rgba(251,246,238,0.22)",
 } as const;
 
