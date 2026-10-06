@@ -1,4 +1,4 @@
-import type { Goal, JourneyResponse, KimboEvent } from "@kimbo/shared";
+import { isWeightGoal, type Goal, type JourneyResponse, type KimboEvent } from "@kimbo/shared";
 import type { WeighIn } from "../repo/weigh-ins.js";
 import type { StoredMeal } from "../repo/meals.js";
 import type { Candidate } from "./achievements.js";
@@ -70,7 +70,7 @@ export function computeJourney(goal: Goal, weighIns: WeighIn[], streak: number):
   const startKg = goal.weightKg;
   const last = weighIns.at(-1) ?? null;
   const currentKg = last?.kg ?? startKg;
-  const targetKg = goal.goal === "maintain" ? null : goal.targetWeightKg;
+  const targetKg = isWeightGoal(goal.goal) ? goal.targetWeightKg : null;
   let kgToGo: number | null = null;
   let pct: number | null = null;
   if (targetKg !== null) {

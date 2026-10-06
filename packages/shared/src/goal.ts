@@ -5,7 +5,11 @@
  */
 
 export type ActivityKey = "sedentary" | "light" | "moderate" | "active" | "very_active";
-export type GoalKey = "lose" | "maintain" | "build_muscle";
+/** "recomp" is maingaining: maintenance calories with muscle-building protein, weight held steady. */
+export type GoalKey = "lose" | "maintain" | "build_muscle" | "recomp";
+/** Goals that move the scale, and so have a goal weight and a weekly pace. */
+export type WeightGoalKey = "lose" | "build_muscle";
+export const isWeightGoal = (g: GoalKey): g is WeightGoalKey => g === "lose" || g === "build_muscle";
 export type SexKey = "male" | "female" | "other";
 
 /** Mifflin–St Jeor (1990) activity multipliers. */
@@ -21,11 +25,11 @@ export const ACTIVITY_FACTORS: Record<ActivityKey, number> = {
  * Weekly paces offered per goal (kg). Losing up to 1 kg a week and gaining
  * 0.25–0.5 kg a week are common safe ranges; muscle gain is kept slow to limit fat gain.
  */
-export const PACES: Record<Exclude<GoalKey, "maintain">, readonly number[]> = {
+export const PACES: Record<WeightGoalKey, readonly number[]> = {
   lose: [0.25, 0.5, 0.75, 1],
   build_muscle: [0.25, 0.5],
 };
-export const DEFAULT_PACE: Record<Exclude<GoalKey, "maintain">, number> = { lose: 0.5, build_muscle: 0.25 };
+export const DEFAULT_PACE: Record<WeightGoalKey, number> = { lose: 0.5, build_muscle: 0.25 };
 
 export const TARGET_BOUNDS_KCAL = { min: 1200, max: 4000 } as const;
 export const TARGET_ROUNDING_KCAL = 10;
@@ -84,7 +88,7 @@ export function computeGoal(i: GoalInput): GoalNumbers {
   const bmr = bmrFor(i);
   const activityFactor = ACTIVITY_FACTORS[i.activity];
   const maintenance = bmr * activityFactor;
-  const weeklyKg = i.goal === "maintain" ? 0 : (i.weeklyKg ?? DEFAULT_PACE[i.goal]);
+  const weeklyKg = isWeightGoal(i.goal) ? (i.weeklyKg ?? DEFAULT_PACE[i.goal]) : 0;
   const sign = i.goal === "lose" ? -1 : i.goal === "build_muscle" ? 1 : 0;
   const adjustment = Math.round((sign * weeklyKg * KCAL_PER_KG) / 7);
   const raw = maintenance + adjustment;
@@ -108,7 +112,7 @@ const SAT_FAT_MAX_ENERGY_SHARE = 0.1;
 export function macroTargetsFor(calories: number, goal: GoalKey, weightKg: number) {
   const fat = Math.round((calories * MACRO_SPLIT.fat) / 9);
   const satFat = Math.round((calories * SAT_FAT_MAX_ENERGY_SHARE) / 9);
-  if (goal === "build_muscle") {
+  if (goal === "build_muscle" || goal === "recomp") {
     const protein = Math.round(MUSCLE_PROTEIN_G_PER_KG * weightKg);
     const carbs = Math.max(0, Math.round((calories - protein * 4 - fat * 9) / 4));
     return { calories, protein, carbs, fat, fibre: FIBRE_TARGET_G, satFat };
@@ -146,7 +150,7 @@ export interface TimelineAssessment {
 
 export function assessTimeline(
   i: Omit<GoalInput, "goal" | "weeklyKg" | "targetWeightKg"> & {
-    goal: Exclude<GoalKey, "maintain">;
+    goal: WeightGoalKey;
     targetWeightKg: number;
   },
   weeks: number,

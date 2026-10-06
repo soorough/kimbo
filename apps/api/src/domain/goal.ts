@@ -1,4 +1,4 @@
-import { computeGoal, macroTargetsFor, TARGET_BOUNDS_KCAL, type Goal, type GoalInput } from "@kimbo/shared";
+import { computeGoal, isWeightGoal, macroTargetsFor, TARGET_BOUNDS_KCAL, type Goal, type GoalInput } from "@kimbo/shared";
 
 /** The shared calculation plus the plain-language explanation the API returns. */
 export function computeTarget(input: GoalInput) {
@@ -10,6 +10,11 @@ export function computeTarget(input: GoalInput) {
   if (n.adjustment < 0) explanation.push(`To lose ${n.weeklyKg} kg a week, Kimbo takes off ${-n.adjustment} kcal.`);
   if (n.adjustment > 0) {
     explanation.push(`To build muscle at ${n.weeklyKg} kg a week, Kimbo adds ${n.adjustment} kcal and more protein.`);
+  }
+  if (input.goal === "recomp") {
+    explanation.push(
+      "Maingaining keeps you at maintenance with more protein, so muscle can slowly replace fat while your weight stays about the same.",
+    );
   }
   if (n.raw < TARGET_BOUNDS_KCAL.min || n.raw > TARGET_BOUNDS_KCAL.max) {
     explanation.push(
@@ -47,7 +52,7 @@ export function buildGoal(input: GoalInput, targetOverride: number | null): Goal
     activity: input.activity,
     goal: input.goal,
     weeklyKg,
-    targetWeightKg: input.targetWeightKg ?? null,
+    targetWeightKg: isWeightGoal(input.goal) ? (input.targetWeightKg ?? null) : null,
     computedTarget: target,
     targetOverride,
     effectiveTarget,

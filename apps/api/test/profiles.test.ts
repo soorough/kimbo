@@ -95,6 +95,25 @@ describe("onboarding & goal", () => {
     expect(res.json.profile.goal.computedTarget).toBe(1920);
   });
 
+  it("maingains at maintenance calories with muscle-building protein", async () => {
+    const id = await freshProfile();
+    const body = { age: 40, sex: "female", heightCm: 160, weightKg: 60, activity: "moderate" };
+    const res = await api.put(`/profiles/${id}/goal`, { ...body, goal: "recomp" }, id);
+    expect(res.status).toBe(200);
+    const goal = res.json.profile.goal;
+    // same 1920 kcal as maintaining; protein 1.6 g × 60 kg = 96 g, fat 30%, carbs the rest
+    expect(goal).toMatchObject({ goal: "recomp", computedTarget: 1920, weeklyKg: 0, targetWeightKg: null });
+    expect(goal.targets).toEqual({ calories: 1920, protein: 96, carbs: 240, fat: 64, fibre: 30, satFat: 21 });
+    expect(goal.explanation.join(" ")).toMatch(/keeps you at maintenance/);
+  });
+
+  it("ignores a goal weight or pace when maingaining", async () => {
+    const id = await freshProfile();
+    const body = { age: 40, sex: "female", heightCm: 160, weightKg: 60, activity: "moderate" };
+    const res = await api.put(`/profiles/${id}/goal`, { ...body, goal: "recomp", weeklyKg: 0.5, targetWeightKg: 65 }, id);
+    expect(res.json.profile.goal).toMatchObject({ computedTarget: 1920, weeklyKg: 0, targetWeightKg: null });
+  });
+
   it("never suggests a target below the safe floor", async () => {
     const id = await freshProfile();
     // 10*40 + 6.25*145 - 5*60 - 161 = 845.25 BMR; ×1.2 = 1014 - 500 → clamped to 1200

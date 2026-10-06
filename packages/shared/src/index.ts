@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PACES } from "./goal";
+import { isWeightGoal, PACES } from "./goal";
 
 // ---------- Common ----------
 
@@ -74,7 +74,7 @@ export type Achievement = z.infer<typeof Achievement>;
 export const Sex = z.enum(["male", "female", "other"]);
 export const ActivityLevel = z.enum(["sedentary", "light", "moderate", "active", "very_active"]);
 export type ActivityLevel = z.infer<typeof ActivityLevel>;
-export const GoalType = z.enum(["lose", "maintain", "build_muscle"]);
+export const GoalType = z.enum(["lose", "maintain", "build_muscle", "recomp"]);
 
 export const CreateProfileRequest = z.object({
   mode: z.enum(["fresh", "demo"]),
@@ -96,7 +96,7 @@ const GoalFields = z.object({
 });
 
 export const GoalRequest = GoalFields.superRefine((g, ctx) => {
-  if (g.goal !== "maintain" && g.weeklyKg !== undefined && !PACES[g.goal].includes(g.weeklyKg)) {
+  if (isWeightGoal(g.goal) && g.weeklyKg !== undefined && !PACES[g.goal].includes(g.weeklyKg)) {
     ctx.addIssue({
       code: "custom",
       path: ["weeklyKg"],

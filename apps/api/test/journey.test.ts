@@ -82,6 +82,13 @@ describe("goal journey", () => {
     expect((await weigh(id, 68, "2026-10-09")).status).toBe(400);
   });
 
+  it("has no distance to go when maingaining", async () => {
+    const res = await api.post("/profiles", { mode: "fresh" });
+    const id = res.json.profile.id as string;
+    await api.put(`/profiles/${id}/goal`, { ...defaultGoal, goal: "recomp" }, id);
+    expect((await api.get("/journey", id)).json).toMatchObject({ goal: "recomp", targetKg: null, kgToGo: null, pct: null });
+  });
+
   it("has no distance to go when maintaining", async () => {
     const res = await api.post("/profiles", { mode: "fresh" });
     const id = res.json.profile.id as string;
