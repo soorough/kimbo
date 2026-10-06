@@ -107,6 +107,40 @@ describe("report insights", () => {
     expect(res.compare).toMatchObject({ marker: "ldl", before: { value: 142 }, after: { value: 95 } });
   });
 
+  it("lists the dishes worth eating less often for a high LDL, from what was actually eaten", async () => {
+    const id = await profile();
+    await report(id, "2026-09-28T08:00:00Z", LDL_HIGH);
+    await log(id, "2026-09-29", paneerNaan);
+    await log(id, "2026-09-30", paneerNaan);
+    await log(id, "2026-10-01", [{ kind: "catalogue", foodId: "samosa", quantity: 1, unit: "piece" }]);
+    await log(id, "2026-10-02", dalRoti);
+    // naan is a refined carb, which matters for blood sugar, not LDL
+    expect((await insights(id)).cutBackOn).toEqual([
+      { name: "Paneer butter masala", times: 2, reason: "high in saturated fat" },
+      { name: "Samosa", times: 1, reason: "fried" },
+    ]);
+  });
+
+  it("picks sweets and refined carbs when HbA1c is the one worth watching", async () => {
+    const id = await profile();
+    await report(id, "2026-09-28T08:00:00Z", [{ marker: "hba1c", value: 6.1, unit: "%" }]);
+    const gulabJamun = [{ kind: "catalogue", foodId: "gulab_jamun", quantity: 2, unit: "piece" }];
+    await log(id, "2026-09-29", gulabJamun);
+    await log(id, "2026-09-30", gulabJamun);
+    await log(id, "2026-10-01", paneerNaan);
+    expect((await insights(id)).cutBackOn).toEqual([
+      { name: "Gulab jamun", times: 2, reason: "sweet" },
+      { name: "Naan", times: 1, reason: "refined carbs" },
+    ]);
+  });
+
+  it("has nothing to cut back on when the markers are in range", async () => {
+    const id = await profile();
+    await report(id, "2026-09-28T08:00:00Z", [{ marker: "ldl", value: 90, unit: "mg/dL" }]);
+    await log(id, "2026-09-29", paneerNaan);
+    expect((await insights(id)).cutBackOn).toEqual([]);
+  });
+
   it("says how long it has been since the report", async () => {
     const id = await profile();
     await report(id, "2026-08-20T08:00:00Z", LDL_HIGH);

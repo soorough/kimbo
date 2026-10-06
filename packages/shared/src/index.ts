@@ -399,6 +399,8 @@ export const ReportInsights = z.object({
   pct: z.number(),
   weeks: z.array(z.object({ weekStart: LocalDate, supported: z.number(), total: z.number() })),
   helpers: z.array(z.string()),
+  /** dishes eaten since the report that work against the focus, most frequent first */
+  cutBackOn: z.array(z.object({ name: z.string(), times: z.number(), reason: z.string() })),
   compare: z
     .object({
       marker: MarkerKey,

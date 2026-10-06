@@ -1,4 +1,4 @@
-import type { FoodTag, Report, ReportInsights } from "@kimbo/shared";
+import type { FocusKey, FoodTag, Report, ReportInsights } from "@kimbo/shared";
 import type { StoredMeal } from "../repo/meals.js";
 import type { FocusAssignment } from "../repo/reports.js";
 import { mealSupportsFocus } from "./focus-match.js";
@@ -9,6 +9,20 @@ const MAX_WEEKS = 8;
 const MAX_HELPERS = 3;
 /** Dishes worth naming as helpers: the ones that carry a "good" tag, not every item on the plate. */
 const HELPER_TAGS: FoodTag[] = ["fibre_rich", "lean_protein"];
+const MAX_CUT_BACK = 3;
+/** What works against each focus, in the order used to name the reason. Balanced plate: nothing flagged. */
+const AGAINST: Record<FocusKey, FoodTag[]> = {
+  fibre_focus: ["high_sat_fat", "fried"],
+  steady_carbs: ["high_sugar", "refined_carb"],
+  less_sugar_refined: ["high_sugar", "fried", "refined_carb"],
+  balanced_plate: [],
+};
+const REASON: Partial<Record<FoodTag, string>> = {
+  high_sat_fat: "high in saturated fat",
+  fried: "fried",
+  high_sugar: "sweet",
+  refined_carb: "refined carbs",
+};
 
 export interface InsightsInput {
   /** newest first */
@@ -48,6 +62,21 @@ export function reportInsights(i: InsightsInput): ReportInsights | null {
     .slice(0, MAX_HELPERS)
     .map(([name]) => name);
 
+  const against = AGAINST[current.focus];
+  const flagged = new Map<string, { times: number; reason: string }>();
+  for (const j of judged) {
+    for (const item of j.meal.items) {
+      const tag = against.find((t) => item.tags.includes(t));
+      if (!tag) continue;
+      const seen = flagged.get(item.name);
+      flagged.set(item.name, { times: (seen?.times ?? 0) + 1, reason: REASON[tag]! });
+    }
+  }
+  const cutBackOn = [...flagged.entries()]
+    .sort((a, b) => b[1].times - a[1].times)
+    .slice(0, MAX_CUT_BACK)
+    .map(([name, v]) => ({ name, ...v }));
+
   const markerFor = (focus: FocusAssignment | undefined) =>
     focus ? latest.markers.find((m) => MARKER_FOCUS[m.marker] === focus.focus) : undefined;
   const marker = markerFor(current) ?? null;
@@ -66,6 +95,7 @@ export function reportInsights(i: InsightsInput): ReportInsights | null {
     pct: judged.length ? Math.round((supported / judged.length) * 100) : 0,
     weeks: weeks.slice(-MAX_WEEKS),
     helpers,
+    cutBackOn,
     compare:
       compared && earlier
         ? {
