@@ -14,6 +14,7 @@ import {
   SavedMealResponse,
   SavedMealsResponse,
   ReportDraft,
+  ReportInsightsResponse,
   ReportsResponse,
   TodayResponse,
   type ConfirmMealRequest,
@@ -99,6 +100,7 @@ export const api = {
   extractReport: (body: ExtractReportRequest) => request(ReportDraft, "POST", "/reports/extract", body),
   confirmReport: (body: ConfirmReportRequest) => request(ConfirmReportResponse, "POST", "/reports", body),
   reports: () => request(ReportsResponse, "GET", "/reports"),
+  reportInsights: () => request(ReportInsightsResponse, "GET", "/reports/insights"),
 
   today: () => request(TodayResponse, "GET", "/today"),
   progress: () => request(ProgressResponse, "GET", "/progress"),

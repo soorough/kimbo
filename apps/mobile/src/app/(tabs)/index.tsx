@@ -146,8 +146,8 @@ function FocusCard({ data }: { data: TodayResponse }) {
   return (
     <Surface
       tint="leaf"
-      onPress={() => router.push("/(tabs)/progress")}
-      accessibilityLabel={`Focus: ${data.focus.title}`}
+      onPress={() => router.push("/(tabs)/report")}
+      accessibilityLabel={`Focus: ${data.focus.title}. Open report insights`}
     >
       <View style={styles.rowCenter}>
         <Kimbo mood={s.supported ? "proud" : "focus"} size={64} leaves={1 + s.supported} />

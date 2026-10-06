@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
+import { ReportInsightsCard } from "@/components/ReportInsightsCard";
 import { CardSkeleton } from "@/components/Skeleton";
 import { ErrorState, Icon, Screen, Surface, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
@@ -13,6 +14,7 @@ import { colors, radius, space } from "@/lib/theme";
 export default function ReportTab() {
   const reports = useQuery({ queryKey: ["reports"], queryFn: api.reports });
   const today = useQuery({ queryKey: ["today"], queryFn: api.today });
+  const insights = useQuery({ queryKey: ["reportInsights"], queryFn: api.reportInsights });
   const intake = useReportIntake();
 
   if (intake.reading) {
@@ -56,6 +58,8 @@ export default function ReportTab() {
           <T variant="body">{focus.description}</T>
         </Surface>
       ) : null}
+
+      {latest && insights.data?.insights ? <ReportInsightsCard insights={insights.data.insights} /> : null}
 
       {latest ? <ReportCard report={latest} /> : null}
 
