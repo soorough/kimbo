@@ -383,6 +383,35 @@ export type ConfirmReportResponse = z.infer<typeof ConfirmReportResponse>;
 
 export const ReportsResponse = z.object({ reports: z.array(Report) });
 
+/**
+ * What changed since the latest report. Meal counts describe behaviour only; marker
+ * values are compared only when two real reports exist.
+ */
+export const ReportInsights = z.object({
+  reportDate: LocalDate,
+  since: LocalDate,
+  daysSinceReport: z.number(),
+  focus: z.object({ key: FocusKey, title: z.string() }),
+  /** the reading that set the focus; null for a balanced plate */
+  marker: MarkerReading.nullable(),
+  supported: z.number(),
+  total: z.number(),
+  pct: z.number(),
+  weeks: z.array(z.object({ weekStart: LocalDate, supported: z.number(), total: z.number() })),
+  helpers: z.array(z.string()),
+  compare: z
+    .object({
+      marker: MarkerKey,
+      label: z.string(),
+      unit: z.string(),
+      before: z.object({ value: z.number(), reportDate: LocalDate }),
+      after: z.object({ value: z.number(), reportDate: LocalDate }),
+    })
+    .nullable(),
+});
+export type ReportInsights = z.infer<typeof ReportInsights>;
+export const ReportInsightsResponse = z.object({ insights: ReportInsights.nullable() });
+
 // ---------- Today ----------
 
 export const TodayMeal = Meal.extend({

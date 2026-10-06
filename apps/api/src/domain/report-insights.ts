@@ -1,0 +1,80 @@
+import type { FoodTag, Report, ReportInsights } from "@kimbo/shared";
+import type { StoredMeal } from "../repo/meals.js";
+import type { FocusAssignment } from "../repo/reports.js";
+import { mealSupportsFocus } from "./focus-match.js";
+import { FOCI, MARKER_FOCUS } from "./health.js";
+import { addDays, daysBetween, localDate, weekStart } from "./time.js";
+
+const MAX_WEEKS = 8;
+const MAX_HELPERS = 3;
+/** Dishes worth naming as helpers: the ones that carry a "good" tag, not every item on the plate. */
+const HELPER_TAGS: FoodTag[] = ["fibre_rich", "lean_protein"];
+
+export interface InsightsInput {
+  /** newest first */
+  reports: Report[];
+  /** oldest first */
+  focusHistory: FocusAssignment[];
+  meals: StoredMeal[];
+  today: string;
+  timezone: string;
+}
+
+export function reportInsights(i: InsightsInput): ReportInsights | null {
+  const latest = i.reports[0];
+  const current = i.focusHistory.at(-1);
+  if (!latest || !current) return null;
+
+  const since = localDate(current.activeFrom, i.timezone);
+  const judged = i.meals
+    .filter((m) => m.localDate >= since && m.localDate <= i.today)
+    .map((m) => ({ meal: m, supports: mealSupportsFocus(m, current.focus).supports }));
+  const supported = judged.filter((j) => j.supports).length;
+
+  const weeks: ReportInsights["weeks"] = [];
+  for (let w = weekStart(since); w <= weekStart(i.today); w = addDays(w, 7)) {
+    const inWeek = judged.filter((j) => weekStart(j.meal.localDate) === w);
+    weeks.push({ weekStart: w, supported: inWeek.filter((j) => j.supports).length, total: inWeek.length });
+  }
+
+  const counts = new Map<string, number>();
+  for (const j of judged.filter((x) => x.supports)) {
+    for (const item of j.meal.items) {
+      if (item.tags.some((t) => HELPER_TAGS.includes(t))) counts.set(item.name, (counts.get(item.name) ?? 0) + 1);
+    }
+  }
+  const helpers = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, MAX_HELPERS)
+    .map(([name]) => name);
+
+  const markerFor = (focus: FocusAssignment | undefined) =>
+    focus ? latest.markers.find((m) => MARKER_FOCUS[m.marker] === focus.focus) : undefined;
+  const marker = markerFor(current) ?? null;
+  // Once a marker is back in range the focus moves on; compare the one the last focus was about.
+  const compared = marker ?? markerFor(i.focusHistory.at(-2));
+  const earlier = compared ? i.reports[1]?.markers.find((m) => m.marker === compared.marker) : undefined;
+
+  return {
+    reportDate: latest.reportDate,
+    since,
+    daysSinceReport: daysBetween(latest.reportDate, i.today),
+    focus: { key: current.focus, title: FOCI[current.focus].title },
+    marker,
+    supported,
+    total: judged.length,
+    pct: judged.length ? Math.round((supported / judged.length) * 100) : 0,
+    weeks: weeks.slice(-MAX_WEEKS),
+    helpers,
+    compare:
+      compared && earlier
+        ? {
+            marker: compared.marker,
+            label: compared.label,
+            unit: compared.unit,
+            before: { value: earlier.value, reportDate: i.reports[1]!.reportDate },
+            after: { value: compared.value, reportDate: latest.reportDate },
+          }
+        : null,
+  };
+}

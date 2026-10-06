@@ -164,7 +164,7 @@ export const FOCI: Record<FocusKey, FocusInfo> = {
   },
 };
 
-const MARKER_FOCUS: Record<MarkerKey, FocusKey> = {
+export const MARKER_FOCUS: Record<MarkerKey, FocusKey> = {
   ldl: "fibre_focus",
   hba1c: "steady_carbs",
   triglycerides: "less_sugar_refined",

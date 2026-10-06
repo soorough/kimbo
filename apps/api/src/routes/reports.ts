@@ -13,6 +13,8 @@ import { badRequest } from "../errors.js";
 import { parse, requireProfile } from "../http.js";
 import { assertImageSize } from "./meals.js";
 import { insertReportWithFocus, listReports } from "../repo/reports.js";
+import { reportInsights } from "../domain/report-insights.js";
+import { loadProgressInput } from "../progress-input.js";
 
 export function reportRoutes(app: FastifyInstance, deps: Deps) {
   app.post("/reports/extract", async (req): Promise<ReportDraft> => {
@@ -51,6 +53,12 @@ export function reportRoutes(app: FastifyInstance, deps: Deps) {
       events: [{ type: "report_became_focus", message: `New focus: ${focus.title}.` }],
       disclaimer: DISCLAIMER,
     };
+  });
+
+  app.get("/reports/insights", async (req) => {
+    const profile = await requireProfile(deps, req);
+    const [input, reports] = await Promise.all([loadProgressInput(deps, profile), listReports(deps.db, profile.id)]);
+    return { insights: reportInsights({ ...input, reports }) };
   });
 
   app.get("/reports", async (req) => {
