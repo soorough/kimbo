@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import type { ReactNode } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, space } from "@/lib/theme";
 import { Icon } from "./Icon";
@@ -29,34 +29,37 @@ export function Screen({
   const body = [padded && styles.padded, { paddingBottom: footer ? space.xl : space.xxxl * 3 }];
   return (
     <SafeAreaView style={styles.root} edges={["top", "left", "right"]}>
-      {back || title ? (
-        <View style={styles.header}>
-          {back ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Back"
-              onPress={() => router.back()}
-              hitSlop={12}
-              style={styles.back}
-            >
-              <Icon name="arrow-left" size={22} />
-            </Pressable>
-          ) : null}
-          {title ? <T variant="title">{title}</T> : null}
-        </View>
-      ) : null}
-      {scroll ? (
-        <ScrollView
-          contentContainerStyle={body}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {children}
-        </ScrollView>
-      ) : (
-        <View style={[{ flex: 1 }, body]}>{children}</View>
-      )}
-      {footer ? <View style={[styles.footer, { paddingBottom: insets.bottom + space.md }]}>{footer}</View> : null}
+      {/* Keeps the sticky footer above the keyboard (edge-to-edge Android no longer resizes for it). */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+        {back || title ? (
+          <View style={styles.header}>
+            {back ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Back"
+                onPress={() => router.back()}
+                hitSlop={12}
+                style={styles.back}
+              >
+                <Icon name="arrow-left" size={22} />
+              </Pressable>
+            ) : null}
+            {title ? <T variant="title">{title}</T> : null}
+          </View>
+        ) : null}
+        {scroll ? (
+          <ScrollView
+            contentContainerStyle={body}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {children}
+          </ScrollView>
+        ) : (
+          <View style={[{ flex: 1 }, body]}>{children}</View>
+        )}
+        {footer ? <View style={[styles.footer, { paddingBottom: insets.bottom + space.md }]}>{footer}</View> : null}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
