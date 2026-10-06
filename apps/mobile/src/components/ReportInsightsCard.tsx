@@ -47,15 +47,16 @@ export function ReportInsightsCard({ insights: i }: { insights: ReportInsights }
             </T>
           </View>
 
-          {/* One dot per meal since the report: filled when it helped the focus. */}
+          {/* One segment per meal since the report: green when it helped the focus. */}
           <View style={{ gap: 6 }}>
             <View style={styles.strip} accessibilityLabel={`${i.supported} of ${i.total} meals helped`}>
               {i.timeline.map((t, n) => (
-                <View key={n} style={[styles.dot, t.supports ? styles.dotOn : styles.dotOff]} />
+                <View key={n} style={[styles.segment, t.supports ? styles.segOn : styles.segOff]} />
               ))}
             </View>
             <T variant="caption">
-              Each dot is a meal{first && last && i.weeks.length > 1 ? ` · week of ${shortDate(first.weekStart)}: ${pctOf(first)}% → this week: ${pctOf(last)}%` : ""}
+              Oldest to newest
+              {first && last && i.weeks.length > 1 ? ` · ${pctOf(first)}% → ${pctOf(last)}% this week` : ""}
             </T>
           </View>
 
@@ -184,10 +185,11 @@ function Compare({ c }: { c: NonNullable<ReportInsights["compare"]> }) {
 const styles = StyleSheet.create({
   headline: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", marginTop: space.sm },
   big: { fontSize: 30, lineHeight: 36 },
-  strip: { flexDirection: "row", flexWrap: "wrap", gap: 5 },
-  dot: { width: 14, height: 14, borderRadius: 7 },
-  dotOn: { backgroundColor: colors.leaf },
-  dotOff: { backgroundColor: "#DDCDB4" },
+  // One slim pill split per meal; it never wraps, however many meals there are.
+  strip: { flexDirection: "row", gap: 2, height: 12, borderRadius: 6, overflow: "hidden" },
+  segment: { flex: 1 },
+  segOn: { backgroundColor: colors.leaf },
+  segOff: { backgroundColor: "#E6DACA" },
   stats: { flexDirection: "row", gap: space.sm },
   stat: { flex: 1, gap: 2, padding: space.md, borderRadius: radius.md, backgroundColor: colors.sunk },
   statNum: { fontSize: 24, lineHeight: 28 },
