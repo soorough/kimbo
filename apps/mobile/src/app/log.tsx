@@ -8,6 +8,7 @@ import { Kimbo } from "@/components/Kimbo";
 import { Button, Card, Screen } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useDraft } from "@/lib/draft";
+import { toUploadableJpeg } from "@/lib/image";
 import { colors, font, radius, space } from "@/lib/theme";
 
 const EXAMPLES = ["2 roti, one katori dal and aloo gobi", "poha and chai", "rice, rajma and salad"];
@@ -30,11 +31,12 @@ export default function LogMeal() {
       ? await ImagePicker.requestCameraPermissionsAsync()
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
-    const options: ImagePicker.ImagePickerOptions = { mediaTypes: ["images"], quality: 0.5, base64: true };
+    const options: ImagePicker.ImagePickerOptions = { mediaTypes: ["images"] };
     const result = fromCamera ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
     const asset = result.canceled ? null : result.assets[0];
-    if (!asset?.base64) return;
-    analyse.mutate({ body: { imageBase64: asset.base64, mimeType: asset.mimeType ?? "image/jpeg" }, source: "photo" });
+    if (!asset) return;
+    const image = await toUploadableJpeg(asset);
+    analyse.mutate({ body: { imageBase64: image.base64, mimeType: image.mimeType }, source: "photo" });
   }
 
   if (analyse.isPending) {

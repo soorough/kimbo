@@ -69,27 +69,54 @@ export function Button({
   );
 }
 
-export function Chip({ label, selected, onPress }: { label: string; selected?: boolean; onPress: () => void }) {
+export function Chip({
+  label,
+  selected,
+  disabled,
+  onPress,
+}: {
+  label: string;
+  selected?: boolean;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ selected }}
+      accessibilityState={{ selected, disabled }}
       onPress={onPress}
-      style={[styles.chip, selected && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+      disabled={disabled}
+      style={[
+        styles.chip,
+        selected && { backgroundColor: colors.primary, borderColor: colors.primary },
+        disabled && { opacity: 0.5 },
+      ]}
     >
       <Text style={[styles.chipText, selected && { color: colors.white }]}>{label}</Text>
     </Pressable>
   );
 }
 
-export function Stepper({ value, onChange, step = 0.5, min = 0.5 }: { value: number; onChange: (v: number) => void; step?: number; min?: number }) {
+export function Stepper({
+  value,
+  onChange,
+  step = 0.5,
+  min = 0.5,
+  max = 50,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  step?: number;
+  min?: number;
+  max?: number;
+}) {
   return (
     <View style={styles.stepper}>
       <Pressable accessibilityLabel="Less" onPress={() => onChange(Math.max(min, value - step))} style={styles.stepBtn}>
         <Text style={styles.stepText}>−</Text>
       </Pressable>
       <Text style={styles.stepValue}>{formatQty(value)}</Text>
-      <Pressable accessibilityLabel="More" onPress={() => onChange(Math.min(50, value + step))} style={styles.stepBtn}>
+      <Pressable accessibilityLabel="More" onPress={() => onChange(Math.min(max, value + step))} style={styles.stepBtn}>
         <Text style={styles.stepText}>+</Text>
       </Pressable>
     </View>

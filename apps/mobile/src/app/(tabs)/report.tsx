@@ -8,6 +8,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
 import { Button, Card, ErrorState, Loading, Screen } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
+import { toUploadableJpeg } from "@/lib/image";
 import { useReportDraft } from "@/lib/report-draft";
 import { colors, font, radius, space } from "@/lib/theme";
 
@@ -35,10 +36,11 @@ export default function ReportTab() {
   async function snapReport() {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) return;
-    const res = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.7, base64: true });
+    const res = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"] });
     const asset = res.canceled ? null : res.assets[0];
-    if (!asset?.base64) return;
-    extract.mutate({ body: { fileBase64: asset.base64, mimeType: asset.mimeType ?? "image/jpeg" }, source: "upload" });
+    if (!asset) return;
+    const image = await toUploadableJpeg(asset);
+    extract.mutate({ body: { fileBase64: image.base64, mimeType: image.mimeType }, source: "upload" });
   }
 
   function enterManually() {

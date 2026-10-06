@@ -34,6 +34,18 @@ interface DraftState {
   shiftTime: (minutes: number) => void;
 }
 
+/** Exact nutrition for one unit (no rounding), so re-scaling never drifts. */
+function perOne(n: Nutrition, quantity: number): Nutrition {
+  return {
+    calories: n.calories / quantity,
+    protein: n.protein / quantity,
+    carbs: n.carbs / quantity,
+    fat: n.fat / quantity,
+    fibre: n.fibre / quantity,
+    satFat: n.satFat / quantity,
+  };
+}
+
 let seq = 0;
 const nextKey = () => `line-${++seq}`;
 
@@ -61,7 +73,7 @@ export const useDraft = create<DraftState>((set) => ({
               heardAs: item.heardAs,
               quantity: item.quantity,
               unit: item.unit,
-              perUnit: scaleNutrition(item.nutrition, 1 / item.quantity),
+              perUnit: perOne(item.nutrition, item.quantity),
             },
       ),
     }),
@@ -84,7 +96,7 @@ export const useDraft = create<DraftState>((set) => ({
               heardAs: null,
               quantity: i.quantity,
               unit: i.unit,
-              perUnit: scaleNutrition(i.nutrition, 1 / i.quantity),
+              perUnit: perOne(i.nutrition, i.quantity),
             };
       }),
     }),
@@ -96,7 +108,7 @@ export const useDraft = create<DraftState>((set) => ({
         if (l.kind === "catalogue") return { ...l, quantity: patch.quantity ?? l.quantity, unit: patch.unit ?? l.unit };
         const perUnit =
           patch.perUnitCalories !== undefined && l.perUnit.calories > 0
-            ? scaleNutrition(l.perUnit, patch.perUnitCalories / l.perUnit.calories)
+            ? perOne(l.perUnit, l.perUnit.calories / patch.perUnitCalories)
             : l.perUnit;
         return { ...l, quantity: patch.quantity ?? l.quantity, perUnit };
       }),

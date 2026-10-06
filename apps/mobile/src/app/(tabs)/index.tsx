@@ -1,8 +1,8 @@
 import type { MealType, TodayMeal, TodayResponse } from "@kimbo/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { useEffect, useRef } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect } from "react";
+import { AppState, Pressable, StyleSheet, Text, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
 import { useMoments } from "@/components/Moments";
 import { Button, Card, Chip, ErrorState, Loading, ProgressBar, Screen } from "@/components/ui";
@@ -145,7 +145,11 @@ function MealsSection({ meals }: { meals: TodayMeal[] }) {
       <Text style={font.h2}>What you ate</Text>
       {!alreadyLogged ? (
         <View style={styles.rowCenter}>
-          <Chip label={`Same ${MEAL_LABEL[repeatType].toLowerCase()} as yesterday?`} onPress={() => repeat.mutate()} />
+          <Chip
+            label={`Same ${MEAL_LABEL[repeatType].toLowerCase()} as yesterday?`}
+            disabled={repeat.isPending}
+            onPress={() => repeat.mutate()}
+          />
           {repeat.error ? <Text style={[font.small, { flex: 1 }]}>{errorMessage(repeat.error)}</Text> : null}
         </View>
       ) : null}
@@ -205,15 +209,19 @@ function DemoBanner() {
   );
 }
 
-/** Once per app launch: let Kimbo greet someone returning after a break. */
-let checkedIn = false;
+/**
+ * On mount and whenever the app returns to the foreground, let Kimbo greet someone
+ * coming back after a break. The API decides; each break is greeted only once.
+ */
 function useWelcomeBack() {
   const push = useMoments((s) => s.push);
-  const ran = useRef(false);
   useEffect(() => {
-    if (checkedIn || ran.current) return;
-    ran.current = checkedIn = true;
-    api.checkin().then((r) => push(r.events)).catch(() => {});
+    const checkin = () => api.checkin().then((r) => push(r.events)).catch(() => {});
+    checkin();
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") checkin();
+    });
+    return () => sub.remove();
   }, [push]);
 }
 

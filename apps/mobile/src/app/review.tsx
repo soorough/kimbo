@@ -121,14 +121,30 @@ function ItemCard({ line, onSwap }: { line: DraftLine; onSwap: () => void }) {
       </View>
 
       <View style={styles.itemRow}>
-        <Stepper value={line.quantity} onChange={(quantity) => update(line.key, { quantity })} />
+        {line.unit === "g" ? (
+          <Stepper value={line.quantity} step={25} min={5} max={2000} onChange={(quantity) => update(line.key, { quantity })} />
+        ) : (
+          <Stepper value={line.quantity} onChange={(quantity) => update(line.key, { quantity })} />
+        )}
         <Text style={[font.body, { fontWeight: "700" }]}>{n.calories} kcal</Text>
       </View>
 
       {line.kind === "catalogue" ? (
         <View style={styles.chips}>
           {line.food.units.map((u) => (
-            <Chip key={u.unit} label={u.label} selected={line.unit === u.unit} onPress={() => update(line.key, { unit: u.unit })} />
+            <Chip
+              key={u.unit}
+              label={u.label}
+              selected={line.unit === u.unit}
+              onPress={() =>
+                // Switching between grams and household units resets to a sensible amount.
+                update(line.key, {
+                  unit: u.unit,
+                  ...(u.unit === "g" && line.unit !== "g" ? { quantity: 100 } : {}),
+                  ...(u.unit !== "g" && line.unit === "g" ? { quantity: 1 } : {}),
+                })
+              }
+            />
           ))}
         </View>
       ) : (
@@ -136,7 +152,7 @@ function ItemCard({ line, onSwap }: { line: DraftLine; onSwap: () => void }) {
           <Text style={font.small}>kcal per {line.unit}</Text>
           <TextInput
             keyboardType="numeric"
-            defaultValue={String(line.perUnit.calories)}
+            defaultValue={String(Math.round(line.perUnit.calories))}
             onEndEditing={(e) => {
               const v = Number(e.nativeEvent.text);
               if (v > 0) update(line.key, { perUnitCalories: v });

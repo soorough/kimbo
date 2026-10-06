@@ -54,7 +54,9 @@ export default function Onboarding() {
       : null;
 
   const calculate = useMutation({
-    mutationFn: (req: GoalRequest) => api.saveGoal(profileId, req),
+    // Preserve an existing custom target while recalculating; "Looks good" decides the final value.
+    mutationFn: (req: GoalRequest) =>
+      api.saveGoal(profileId, saved?.targetOverride ? { ...req, targetOverride: saved.targetOverride } : req),
     onSuccess: ({ profile }) => {
       setResult(profile.goal);
       setTarget(profile.goal!.effectiveTarget);
@@ -64,7 +66,7 @@ export default function Onboarding() {
   const confirm = useMutation({
     mutationFn: async () => {
       const req = body()!;
-      if (target !== result!.computedTarget) await api.saveGoal(profileId, { ...req, targetOverride: target });
+      await api.saveGoal(profileId, target !== result!.computedTarget ? { ...req, targetOverride: target } : req);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries();

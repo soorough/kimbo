@@ -45,7 +45,7 @@ export default function FoodSearch() {
             >
               <Text style={font.body}>{item.name}</Text>
               <Text style={font.small}>
-                {unit.perUnit.calories} kcal / {unit.label}
+                {Math.round(unit.perUnit.calories)} kcal / {unit.label}
               </Text>
             </Pressable>
           );
