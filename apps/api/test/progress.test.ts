@@ -27,7 +27,13 @@ const paneerNaan = [
   { kind: "catalogue", foodId: "naan", quantity: 1, unit: "piece" },
 ];
 const kcal = (calories: number) => [
-  { kind: "estimate", name: "Home meal", quantity: 1, unit: "serving", nutrition: { calories, protein: 0, carbs: 0, fat: 0, fibre: 0, satFat: 0 } },
+  {
+    kind: "estimate",
+    name: "Home meal",
+    quantity: 1,
+    unit: "serving",
+    nutrition: { calories, protein: 0, carbs: 0, fat: 0, fibre: 0, satFat: 0 },
+  },
 ];
 
 async function log(id: string, date: string, items: unknown[] = dalRoti) {
@@ -99,7 +105,11 @@ describe("weekly progress", () => {
   it("only compares with last week once there was a last week", async () => {
     const id = await onboarded();
     await log(id, "2026-10-08");
-    expect((await api.get("/progress", id)).json.weekOverWeek).toEqual({ daysTracked: null, goalDaysMet: null, focusPct: null });
+    expect((await api.get("/progress", id)).json.weekOverWeek).toEqual({
+      daysTracked: null,
+      goalDaysMet: null,
+      focusPct: null,
+    });
   });
 
   it("measures focus adherence across the week's meals", async () => {
@@ -122,13 +132,19 @@ describe("weekly progress", () => {
     await log(id, "2026-10-05", paneerNaan); // fibre focus: not supporting
     await setFocusAt(id, "2026-10-07T07:30:00Z", HBA1C);
     await log(id, "2026-10-08", paneerNaan); // steady carbs: protein-paired, supporting
-    expect((await api.get("/progress", id)).json.focus).toMatchObject({ key: "steady_carbs", supported: 1, total: 2, pct: 50 });
+    expect((await api.get("/progress", id)).json.focus).toMatchObject({
+      key: "steady_carbs",
+      supported: 1,
+      total: 2,
+      pct: 50,
+    });
   });
 
   it("compares the week with the one before", async () => {
     const id = await onboarded();
     await setFocusAt(id, "2026-09-20T07:30:00Z", LDL);
-    for (const d of ["2026-09-29", "2026-09-30", "2026-10-01"]) await log(id, d, d === "2026-09-29" ? dalRoti : paneerNaan); // 33%
+    for (const d of ["2026-09-29", "2026-09-30", "2026-10-01"])
+      await log(id, d, d === "2026-09-29" ? dalRoti : paneerNaan); // 33%
     for (const d of ["2026-10-05", "2026-10-06", "2026-10-07", "2026-10-08"]) await log(id, d, dalRoti); // 100%
     const res = await api.get("/progress", id);
     expect(res.json.weekOverWeek).toEqual({ daysTracked: 1, goalDaysMet: 0, focusPct: 67 });
@@ -162,7 +178,11 @@ describe("weekly progress", () => {
     await setFocusAt(id, "2026-10-01T07:30:00Z", LDL);
     for (const d of ["2026-10-05", "2026-10-06", "2026-10-07"]) {
       await api.post("/meals", { mealType: "lunch", source: "text", items: dalRoti, eatenAt: at(d) }, id);
-      await api.post("/meals", { mealType: "dinner", source: "text", items: paneerNaan, eatenAt: `${d}T15:00:00Z` }, id);
+      await api.post(
+        "/meals",
+        { mealType: "dinner", source: "text", items: paneerNaan, eatenAt: `${d}T15:00:00Z` },
+        id,
+      );
     }
     expect((await api.get("/progress", id)).json.insights).toContain("Your lunches most often support your focus.");
   });

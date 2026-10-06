@@ -3,13 +3,18 @@ import { MEAL_TYPE_HOURS } from "./config.js";
 
 /** YYYY-MM-DD of an instant in the given IANA timezone. */
 export function localDate(instant: Date, timezone: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(
-    instant,
-  );
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(instant);
 }
 
 export function localHour(instant: Date, timezone: string): number {
-  const hour = new Intl.DateTimeFormat("en-GB", { timeZone: timezone, hour: "2-digit", hourCycle: "h23" }).format(instant);
+  const hour = new Intl.DateTimeFormat("en-GB", { timeZone: timezone, hour: "2-digit", hourCycle: "h23" }).format(
+    instant,
+  );
   return Number(hour);
 }
 

@@ -63,11 +63,19 @@ export function SheetPanel({
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim, opacity: backdrop }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Close" />
       </Animated.View>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.anchor} pointerEvents="box-none">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.anchor}
+        pointerEvents="box-none"
+      >
         <Animated.View
           style={[
             styles.panel,
-            { maxHeight: SCREEN_H * maxHeight, paddingBottom: insets.bottom + space.lg, transform: [{ translateY: y }] },
+            {
+              maxHeight: SCREEN_H * maxHeight,
+              paddingBottom: insets.bottom + space.lg,
+              transform: [{ translateY: y }],
+            },
           ]}
         >
           <View {...drag.panHandlers} style={styles.handleArea}>
@@ -78,7 +86,13 @@ export function SheetPanel({
                   <T variant="title">{title}</T>
                   {subtitle ? <T variant="label">{subtitle}</T> : null}
                 </View>
-                <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={close} hitSlop={12} style={styles.close}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Close"
+                  onPress={close}
+                  hitSlop={12}
+                  style={styles.close}
+                >
                   <Icon name="x" size={20} color={colors.inkSoft} />
                 </Pressable>
               </View>
@@ -96,7 +110,13 @@ export function Sheet({
   visible,
   onClose,
   ...rest
-}: { visible: boolean; onClose: () => void; title?: string; subtitle?: string; children: ReactNode }) {
+}: {
+  visible: boolean;
+  onClose: () => void;
+  title?: string;
+  subtitle?: string;
+  children: ReactNode;
+}) {
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
       {visible ? <SheetPanel onClose={onClose} {...rest} /> : null}
@@ -113,7 +133,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.xl,
   },
   handleArea: { paddingTop: space.sm, paddingBottom: space.md },
-  handle: { alignSelf: "center", width: 40, height: 5, borderRadius: 3, backgroundColor: colors.line, marginBottom: space.md },
+  handle: {
+    alignSelf: "center",
+    width: 40,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: colors.line,
+    marginBottom: space.md,
+  },
   header: { flexDirection: "row", alignItems: "flex-start", gap: space.md },
-  close: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.sunk, alignItems: "center", justifyContent: "center" },
+  close: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.sunk,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

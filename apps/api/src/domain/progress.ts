@@ -75,7 +75,16 @@ export function weekStats(input: ProgressInput, anyDateInWeek: string): WeekStat
       }
     : null;
 
-  return { weekStart: start, weekEnd: end, daysElapsed, trackedDates, goalDaysMet, goalDaysEvaluated, focus, evaluated };
+  return {
+    weekStart: start,
+    weekEnd: end,
+    daysElapsed,
+    trackedDates,
+    goalDaysMet,
+    goalDaysEvaluated,
+    focus,
+    evaluated,
+  };
 }
 
 /**
@@ -111,10 +120,17 @@ export function longestRun(tracked: Set<string>): number {
 
 /** Comparison is only meaningful once both weeks have a few focus-evaluated meals. */
 export function focusComparable(a: WeekStats, b: WeekStats): boolean {
-  return (a.focus?.total ?? 0) >= MIN_MEALS_FOR_FOCUS_COMPARISON && (b.focus?.total ?? 0) >= MIN_MEALS_FOR_FOCUS_COMPARISON;
+  return (
+    (a.focus?.total ?? 0) >= MIN_MEALS_FOR_FOCUS_COMPARISON && (b.focus?.total ?? 0) >= MIN_MEALS_FOR_FOCUS_COMPARISON
+  );
 }
 
-const PLURAL: Record<MealType, string> = { breakfast: "breakfasts", lunch: "lunches", snack: "snacks", dinner: "dinners" };
+const PLURAL: Record<MealType, string> = {
+  breakfast: "breakfasts",
+  lunch: "lunches",
+  snack: "snacks",
+  dinner: "dinners",
+};
 
 /** Light-touch pattern insights; empty until there's enough data to say something true. */
 export function insights(week: WeekStats): string[] {
@@ -130,6 +146,7 @@ export function insights(week: WeekStats): string[] {
     .sort((a, b) => b[1].supports / b[1].total - a[1].supports / a[1].total);
   const out: string[] = [];
   if (candidates[0] && byType.size > 1) out.push(`Your ${PLURAL[candidates[0][0]]} most often support your focus.`);
-  if (week.trackedDates.length >= 5) out.push(`You've shown up ${week.trackedDates.length} days this week — that's the habit forming.`);
+  if (week.trackedDates.length >= 5)
+    out.push(`You've shown up ${week.trackedDates.length} days this week — that's the habit forming.`);
   return out;
 }

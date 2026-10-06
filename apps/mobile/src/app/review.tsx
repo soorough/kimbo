@@ -121,7 +121,11 @@ export default function Review() {
           {formatTime(draft.eatenAt)}
         </T>
         <Chip label="−30 min" onPress={() => draft.shiftTime(-30)} />
-        <Chip label="+30 min" disabled={Date.now() - draft.eatenAt.getTime() < 60_000} onPress={() => draft.shiftTime(30)} />
+        <Chip
+          label="+30 min"
+          disabled={Date.now() - draft.eatenAt.getTime() < 60_000}
+          onPress={() => draft.shiftTime(30)}
+        />
       </View>
 
       {save.error ? (
@@ -130,7 +134,13 @@ export default function Review() {
         </T>
       ) : null}
       {draft.mealId ? (
-        <Button label="Delete this meal" kind="danger" icon="trash-2" loading={remove.isPending} onPress={() => remove.mutate()} />
+        <Button
+          label="Delete this meal"
+          kind="danger"
+          icon="trash-2"
+          loading={remove.isPending}
+          onPress={() => remove.mutate()}
+        />
       ) : null}
 
       <Sheet
@@ -140,7 +150,11 @@ export default function Review() {
         subtitle={editingLine?.kind === "estimate" ? "Estimate — adjust the calories if you know them" : undefined}
       >
         {editingLine ? (
-          <PortionEditor line={editingLine} onSwap={() => openSearch(editingLine.key)} onDone={() => setEditing(null)} />
+          <PortionEditor
+            line={editingLine}
+            onSwap={() => openSearch(editingLine.key)}
+            onDone={() => setEditing(null)}
+          />
         ) : null}
       </Sheet>
     </Screen>
@@ -190,7 +204,14 @@ function PortionEditor({ line, onSwap, onDone }: { line: DraftLine; onSwap: () =
     <View style={{ gap: space.lg }}>
       <View style={styles.editorTop}>
         {grams ? (
-          <Stepper label="Grams" value={line.quantity} step={25} min={5} max={2000} onChange={(quantity) => update(line.key, { quantity })} />
+          <Stepper
+            label="Grams"
+            value={line.quantity}
+            step={25}
+            min={5}
+            max={2000}
+            onChange={(quantity) => update(line.key, { quantity })}
+          />
         ) : (
           <Stepper label="Portions" value={line.quantity} onChange={(quantity) => update(line.key, { quantity })} />
         )}
@@ -266,7 +287,9 @@ function lineName(line: DraftLine): string {
 function portionLabel(line: DraftLine): string {
   if (line.kind === "estimate") return `${formatQty(line.quantity)} ${line.unit}`;
   const option = line.food.units.find((u) => u.unit === line.unit);
-  return line.unit === "g" ? `${formatQty(line.quantity)} g` : `${formatQty(line.quantity)} × ${option?.label ?? line.unit}`;
+  return line.unit === "g"
+    ? `${formatQty(line.quantity)} g`
+    : `${formatQty(line.quantity)} × ${option?.label ?? line.unit}`;
 }
 
 function formatTime(d: Date): string {
@@ -278,7 +301,13 @@ function formatTime(d: Date): string {
 const styles = StyleSheet.create({
   note: { flexDirection: "row", alignItems: "center", gap: space.md },
   list: { backgroundColor: colors.surface, borderRadius: radius.lg, overflow: "hidden" },
-  row: { flexDirection: "row", alignItems: "center", gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.md },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
+  },
   rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line },
   addRow: {
     flexDirection: "row",

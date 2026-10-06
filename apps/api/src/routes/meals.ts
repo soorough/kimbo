@@ -1,4 +1,11 @@
-import { ConfirmMealRequest, LocalDate, ParseMealRequest, RepeatYesterdayRequest, type KimboEvent, type Unit } from "@kimbo/shared";
+import {
+  ConfirmMealRequest,
+  LocalDate,
+  ParseMealRequest,
+  RepeatYesterdayRequest,
+  type KimboEvent,
+  type Unit,
+} from "@kimbo/shared";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { Deps } from "../app.js";
 import { search } from "../domain/catalogue.js";
@@ -128,8 +135,10 @@ async function respondWithMeal(deps: Deps, profile: ProfileRow, id: string, writ
   const focus = focusForDay(await listFocusAssignments(deps.db, profile.id), meal.localDate, profile.timezone);
   const focusResult = focus ? mealSupportsFocus(meal, focus) : null;
   const events: KimboEvent[] = [];
-  if (write.wasCorrected) events.push({ type: "correction_accepted", message: "Thanks for the fix — saved just as you ate it." });
-  if (focusResult?.supports) events.push({ type: "meal_supported_focus", message: supportedMessage(focusResult.focus) });
+  if (write.wasCorrected)
+    events.push({ type: "correction_accepted", message: "Thanks for the fix — saved just as you ate it." });
+  if (focusResult?.supports)
+    events.push({ type: "meal_supported_focus", message: supportedMessage(focusResult.focus) });
   events.push(...(await unlockMilestones(deps, profile)));
   return { meal: toApiMeal(meal), focusResult, events };
 }

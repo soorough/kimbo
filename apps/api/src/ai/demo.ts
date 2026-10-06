@@ -7,11 +7,42 @@ import type { ExtractedReport, MealRecognizer, RecognizedItem, ReportExtractor }
  */
 
 const NUMBER_WORDS: Record<string, number> = {
-  a: 1, an: 1, one: 1, ek: 1, half: 0.5, two: 2, do: 2, three: 3, teen: 3, four: 4, char: 4, five: 5, six: 6,
+  a: 1,
+  an: 1,
+  one: 1,
+  ek: 1,
+  half: 0.5,
+  two: 2,
+  do: 2,
+  three: 3,
+  teen: 3,
+  four: 4,
+  char: 4,
+  five: 5,
+  six: 6,
 };
 const UNIT_WORDS = new Set([
-  "piece", "pieces", "katori", "katoris", "vati", "bowl", "bowls", "plate", "plates", "glass", "glasses",
-  "cup", "cups", "tbsp", "spoon", "spoons", "g", "gm", "grams", "slice", "slices",
+  "piece",
+  "pieces",
+  "katori",
+  "katoris",
+  "vati",
+  "bowl",
+  "bowls",
+  "plate",
+  "plates",
+  "glass",
+  "glasses",
+  "cup",
+  "cups",
+  "tbsp",
+  "spoon",
+  "spoons",
+  "g",
+  "gm",
+  "grams",
+  "slice",
+  "slices",
 ]);
 
 export function parseMealText(text: string): RecognizedItem[] {

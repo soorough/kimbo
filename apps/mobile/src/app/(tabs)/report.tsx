@@ -27,7 +27,10 @@ export default function ReportTab() {
   });
 
   async function pickFile() {
-    const res = await DocumentPicker.getDocumentAsync({ type: ["application/pdf", "image/*"], copyToCacheDirectory: true });
+    const res = await DocumentPicker.getDocumentAsync({
+      type: ["application/pdf", "image/*"],
+      copyToCacheDirectory: true,
+    });
     const asset = res.canceled ? null : res.assets[0];
     if (!asset) return;
     const mimeType = asset.mimeType ?? "application/pdf";
@@ -112,8 +115,8 @@ export default function ReportTab() {
           <View style={styles.row}>
             <Kimbo mood="idle" size={64} />
             <T variant="body" style={{ flex: 1 }}>
-              Kimbo reads <T variant="bodyStrong">LDL, HbA1c and triglycerides</T> and turns them into one simple focus for your
-              meals.
+              Kimbo reads <T variant="bodyStrong">LDL, HbA1c and triglycerides</T> and turns them into one simple focus
+              for your meals.
             </T>
           </View>
           <View style={styles.steps}>
@@ -141,8 +144,19 @@ export default function ReportTab() {
       <View style={{ gap: space.sm }}>
         <T variant="heading">{latest ? "Add a newer report" : "Add your report"}</T>
         <View style={styles.options}>
-          <Option icon="upload" title="Upload PDF or image" subtitle="From your files or lab app" primary onPress={pickFile} />
-          <Option icon="camera" title="Photograph a printed report" subtitle="Lay it flat in good light" onPress={snapReport} />
+          <Option
+            icon="upload"
+            title="Upload PDF or image"
+            subtitle="From your files or lab app"
+            primary
+            onPress={pickFile}
+          />
+          <Option
+            icon="camera"
+            title="Photograph a printed report"
+            subtitle="Lay it flat in good light"
+            onPress={snapReport}
+          />
           <Option
             icon="book-open"
             title="Try a sample report"
@@ -166,7 +180,14 @@ export default function ReportTab() {
 function ReportCard({ report }: { report: Report }) {
   return (
     <Surface>
-      <T variant="label">Report from {new Date(`${report.reportDate}T12:00:00`).toLocaleDateString([], { day: "numeric", month: "long", year: "numeric" })}</T>
+      <T variant="label">
+        Report from{" "}
+        {new Date(`${report.reportDate}T12:00:00`).toLocaleDateString([], {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })}
+      </T>
       {report.markers.map((m) => (
         <MarkerRow key={m.marker} m={m} />
       ))}
@@ -207,7 +228,12 @@ function Option({
   onPress: () => void;
 }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={title} onPress={onPress} style={({ pressed }) => [styles.option, pressed && { opacity: 0.85 }]}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      onPress={onPress}
+      style={({ pressed }) => [styles.option, pressed && { opacity: 0.85 }]}
+    >
       <View style={[styles.optionIcon, primary && { backgroundColor: colors.leaf }]}>
         <Icon name={icon} size={20} color={primary ? colors.white : colors.leafDeep} />
       </View>
@@ -225,7 +251,14 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: space.md },
   steps: { flexDirection: "row", justifyContent: "space-between", marginTop: space.sm },
   step: { alignItems: "center", gap: 4, flex: 1 },
-  stepNum: { width: 26, height: 26, borderRadius: 13, backgroundColor: colors.leafSoft, alignItems: "center", justifyContent: "center" },
+  stepNum: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.leafSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   options: { backgroundColor: colors.surface, borderRadius: radius.lg, overflow: "hidden" },
   option: {
     flexDirection: "row",
@@ -235,7 +268,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.line,
   },
-  optionIcon: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.leafSoft, alignItems: "center", justifyContent: "center" },
+  optionIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: colors.leafSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   marker: { flexDirection: "row", alignItems: "center", gap: space.sm, paddingVertical: space.sm },
   pill: { borderRadius: radius.pill, paddingHorizontal: space.sm, paddingVertical: 3 },
   pillOk: { backgroundColor: colors.leafSoft },

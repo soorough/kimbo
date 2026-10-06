@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "format": "prettier --write \"apps/*/src/**/*.{ts,tsx}\" \"apps/api/test/**/*.ts\" \"packages/*/src/**/*.ts\""
   },
   "packageManager": "pnpm@10.28.0"
 }

@@ -50,7 +50,11 @@ describe("reading a blood report", () => {
     expect(m.hba1c).toMatchObject({ value: 6.5, unit: "%", status: "high" });
     expect(m.triglycerides).toMatchObject({ value: 177, unit: "mg/dL" });
     expect(res.json.ignored).toEqual(["HDL Cholesterol", "VLDL", "Haemoglobin"]);
-    expect(res.json.supportedMarkers.map((s: { marker: string }) => s.marker)).toEqual(["ldl", "hba1c", "triglycerides"]);
+    expect(res.json.supportedMarkers.map((s: { marker: string }) => s.marker)).toEqual([
+      "ldl",
+      "hba1c",
+      "triglycerides",
+    ]);
   });
 
   it("returns an empty draft when nothing supported is found, so the user can enter values or use the sample", async () => {
@@ -105,7 +109,11 @@ describe("confirming a report into one food focus", () => {
 
   it.each([
     ["HbA1c worth watching → steady carbs", [{ marker: "hba1c", value: 6.0, unit: "%" }], "steady_carbs"],
-    ["triglycerides worth watching → less sugar", [{ marker: "triglycerides", value: 170, unit: "mg/dL" }], "less_sugar_refined"],
+    [
+      "triglycerides worth watching → less sugar",
+      [{ marker: "triglycerides", value: 170, unit: "mg/dL" }],
+      "less_sugar_refined",
+    ],
     [
       "all in range → balanced plates",
       [

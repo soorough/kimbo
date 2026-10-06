@@ -10,7 +10,11 @@ import { colors, radius, space } from "@/lib/theme";
 
 const PROMISES: { icon: IconName; title: string; body: string }[] = [
   { icon: "camera", title: "Snap or say it", body: "Roti, dal, sabzi — logged from a photo or one sentence." },
-  { icon: "file-text", title: "One focus from your report", body: "Your blood report becomes a simple daily food focus." },
+  {
+    icon: "file-text",
+    title: "One focus from your report",
+    body: "Your blood report becomes a simple daily food focus.",
+  },
   { icon: "sun", title: "Small wins, no guilt", body: "Kimbo celebrates showing up, not perfection." },
 ];
 
@@ -18,7 +22,8 @@ export default function Welcome() {
   const setProfileId = useSession((s) => s.setProfileId);
   const queryClient = useQueryClient();
   const start = useMutation({
-    mutationFn: (mode: "fresh" | "demo") => api.createProfile({ mode, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+    mutationFn: (mode: "fresh" | "demo") =>
+      api.createProfile({ mode, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
     onSuccess: async ({ profile }) => {
       queryClient.clear();
       await setProfileId(profile.id);
@@ -54,7 +59,11 @@ export default function Welcome() {
         </View>
       </View>
       <View style={styles.actions}>
-        <Button label="Start fresh" onPress={() => start.mutate("fresh")} loading={start.isPending && start.variables === "fresh"} />
+        <Button
+          label="Start fresh"
+          onPress={() => start.mutate("fresh")}
+          loading={start.isPending && start.variables === "fresh"}
+        />
         <Button
           label="Explore with sample data"
           kind="secondary"
@@ -88,6 +97,13 @@ const styles = StyleSheet.create({
   },
   body: { flex: 1, gap: space.xl, paddingTop: space.md },
   promise: { flexDirection: "row", alignItems: "center", gap: space.md },
-  promiseIcon: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.leafSoft, alignItems: "center", justifyContent: "center" },
+  promiseIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: colors.leafSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   actions: { gap: space.md, paddingBottom: space.lg },
 });

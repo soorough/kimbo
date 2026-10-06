@@ -4,7 +4,7 @@ import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
-import { Bar, Button, Icon, Screen, Segmented, Stepper, Surface, T, type IconName } from "@/components/ui";
+import { Bar, Button, Chip, Icon, Screen, Segmented, Surface, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { colors, fonts, radius, space } from "@/lib/theme";
@@ -73,7 +73,10 @@ export default function Onboarding() {
   const calculate = useMutation({
     // Preserve an existing custom target while recalculating; "Looks good" decides the final value.
     mutationFn: () =>
-      api.saveGoal(profileId, saved?.targetOverride ? { ...request(), targetOverride: saved.targetOverride } : request()),
+      api.saveGoal(
+        profileId,
+        saved?.targetOverride ? { ...request(), targetOverride: saved.targetOverride } : request(),
+      ),
     onSuccess: ({ profile }) => {
       setResult(profile.goal);
       setTarget(profile.goal!.effectiveTarget);
@@ -81,7 +84,8 @@ export default function Onboarding() {
   });
 
   const confirm = useMutation({
-    mutationFn: () => api.saveGoal(profileId, target !== result!.computedTarget ? { ...request(), targetOverride: target } : request()),
+    mutationFn: () =>
+      api.saveGoal(profileId, target !== result!.computedTarget ? { ...request(), targetOverride: target } : request()),
     onSuccess: async () => {
       await queryClient.invalidateQueries();
       if (router.canGoBack()) router.back();
@@ -91,7 +95,9 @@ export default function Onboarding() {
 
   if (result) {
     return (
-      <Screen footer={<Button label="Looks good" icon="check" loading={confirm.isPending} onPress={() => confirm.mutate()} />}>
+      <Screen
+        footer={<Button label="Looks good" icon="check" loading={confirm.isPending} onPress={() => confirm.mutate()} />}
+      >
         <View style={styles.reveal}>
           <Kimbo mood="happy" size={100} leaves={2} />
           <T variant="overline">YOUR DAILY TARGET</T>
@@ -102,9 +108,24 @@ export default function Onboarding() {
               kcal
             </T>
           </T>
-          <Stepper label="Daily target" value={target} step={50} min={1200} max={4000} onChange={setTarget} />
+          <View style={styles.adjust}>
+            <Chip
+              label="−50 kcal"
+              icon="minus"
+              disabled={target <= 1200}
+              onPress={() => setTarget(Math.max(1200, target - 50))}
+            />
+            <Chip
+              label="+50 kcal"
+              icon="plus"
+              disabled={target >= 4000}
+              onPress={() => setTarget(Math.min(4000, target + 50))}
+            />
+          </View>
           <T variant="caption" align="center">
-            {target === result.computedTarget ? "Adjust it if you or your doctor prefer a different number." : `Kimbo suggested ${result.computedTarget} kcal`}
+            {target === result.computedTarget
+              ? "Adjust it if you or your doctor prefer a different number."
+              : `Kimbo suggested ${result.computedTarget} kcal`}
           </T>
         </View>
         <Surface>
@@ -195,7 +216,13 @@ export default function Onboarding() {
               onChange={setSex}
             />
           </View>
-          <Field label="Age" unit="years" value={fields.age} error={fieldError("age")} onChange={(age) => setFields({ ...fields, age })} />
+          <Field
+            label="Age"
+            unit="years"
+            value={fields.age}
+            error={fieldError("age")}
+            onChange={(age) => setFields({ ...fields, age })}
+          />
           <Field
             label="Height"
             unit="cm"
@@ -216,7 +243,14 @@ export default function Onboarding() {
       {step === 1 ? (
         <View style={{ gap: space.sm }}>
           {ACTIVITY.map((a) => (
-            <Choice key={a.key} icon={a.icon} label={a.label} hint={a.hint} selected={activity === a.key} onPress={() => setActivity(a.key)} />
+            <Choice
+              key={a.key}
+              icon={a.icon}
+              label={a.label}
+              hint={a.hint}
+              selected={activity === a.key}
+              onPress={() => setActivity(a.key)}
+            />
           ))}
         </View>
       ) : null}
@@ -224,7 +258,14 @@ export default function Onboarding() {
       {step === 2 ? (
         <View style={{ gap: space.sm }}>
           {GOALS.map((g) => (
-            <Choice key={g.key} icon={g.icon} label={g.label} hint={g.hint} selected={goalType === g.key} onPress={() => setGoalType(g.key)} />
+            <Choice
+              key={g.key}
+              icon={g.icon}
+              label={g.label}
+              hint={g.hint}
+              selected={goalType === g.key}
+              onPress={() => setGoalType(g.key)}
+            />
           ))}
         </View>
       ) : null}
@@ -301,14 +342,23 @@ function Choice({
         <T variant="bodyStrong">{label}</T>
         <T variant="caption">{hint}</T>
       </View>
-      <View style={[styles.radio, selected && styles.radioOn]}>{selected ? <Icon name="check" size={14} color={colors.white} /> : null}</View>
+      <View style={[styles.radio, selected && styles.radioOn]}>
+        {selected ? <Icon name="check" size={14} color={colors.white} /> : null}
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   progressRow: { flexDirection: "row", alignItems: "center", gap: space.md, marginTop: space.sm },
-  back: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface },
+  back: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+  },
   titleRow: { flexDirection: "row", alignItems: "center", gap: space.md },
   field: {
     flexDirection: "row",
@@ -320,7 +370,14 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     paddingHorizontal: space.lg,
   },
-  fieldInput: { minWidth: 80, textAlign: "right", fontFamily: fonts.bold, fontSize: 20, color: colors.ink, paddingVertical: space.md },
+  fieldInput: {
+    minWidth: 80,
+    textAlign: "right",
+    fontFamily: fonts.bold,
+    fontSize: 20,
+    color: colors.ink,
+    paddingVertical: space.md,
+  },
   choice: {
     flexDirection: "row",
     alignItems: "center",
@@ -332,10 +389,26 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   choiceOn: { borderColor: colors.leaf, backgroundColor: colors.leafSoft },
-  choiceIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.leafSoft, alignItems: "center", justifyContent: "center" },
-  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.line, alignItems: "center", justifyContent: "center" },
+  choiceIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.leafSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radio: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: colors.line,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   radioOn: { backgroundColor: colors.leaf, borderColor: colors.leaf },
   reveal: { alignItems: "center", gap: space.sm, paddingVertical: space.lg },
+  adjust: { flexDirection: "row", gap: space.sm },
   explain: { flexDirection: "row", gap: space.md, alignItems: "flex-start" },
   explainNum: {
     width: 22,

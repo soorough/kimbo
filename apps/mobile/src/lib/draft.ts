@@ -14,7 +14,15 @@ import { create } from "zustand";
 
 export type DraftLine =
   | { key: string; kind: "catalogue"; food: Food; heardAs: string | null; quantity: number; unit: Unit }
-  | { key: string; kind: "estimate"; name: string; heardAs: string | null; quantity: number; unit: string; perUnit: Nutrition };
+  | {
+      key: string;
+      kind: "estimate";
+      name: string;
+      heardAs: string | null;
+      quantity: number;
+      unit: string;
+      perUnit: Nutrition;
+    };
 
 interface DraftState {
   mealId: string | null;
@@ -70,7 +78,14 @@ export const useDraft = create<DraftState>((set) => ({
       touched: false,
       lines: draft.items.map((item) =>
         item.kind === "catalogue"
-          ? { key: nextKey(), kind: "catalogue", food: item.food, heardAs: item.heardAs, quantity: item.quantity, unit: item.unit }
+          ? {
+              key: nextKey(),
+              kind: "catalogue",
+              food: item.food,
+              heardAs: item.heardAs,
+              quantity: item.quantity,
+              unit: item.unit,
+            }
           : {
               key: nextKey(),
               kind: "estimate",
@@ -82,7 +97,8 @@ export const useDraft = create<DraftState>((set) => ({
             },
       ),
     }),
-  startManual: (mealType) => set({ mealId: null, source: "manual", mealType, eatenAt: new Date(), touched: false, lines: [] }),
+  startManual: (mealType) =>
+    set({ mealId: null, source: "manual", mealType, eatenAt: new Date(), touched: false, lines: [] }),
   startEdit: (meal, foods) =>
     set({
       mealId: meal.id,
@@ -93,7 +109,14 @@ export const useDraft = create<DraftState>((set) => ({
       lines: meal.items.map((i) => {
         const food = i.foodId ? foods[i.foodId] : undefined;
         return food
-          ? { key: nextKey(), kind: "catalogue" as const, food, heardAs: null, quantity: i.quantity, unit: i.unit as Unit }
+          ? {
+              key: nextKey(),
+              kind: "catalogue" as const,
+              food,
+              heardAs: null,
+              quantity: i.quantity,
+              unit: i.unit as Unit,
+            }
           : {
               key: nextKey(),
               kind: "estimate" as const,
@@ -121,7 +144,14 @@ export const useDraft = create<DraftState>((set) => ({
   remove: (key) => set((s) => ({ touched: true, lines: s.lines.filter((l) => l.key !== key) })),
   addFood: (food, replaceKey) =>
     set((s) => {
-      const line: DraftLine = { key: nextKey(), kind: "catalogue", food, heardAs: null, quantity: 1, unit: food.defaultUnit };
+      const line: DraftLine = {
+        key: nextKey(),
+        kind: "catalogue",
+        food,
+        heardAs: null,
+        quantity: 1,
+        unit: food.defaultUnit,
+      };
       return {
         touched: true,
         lines: replaceKey ? s.lines.map((l) => (l.key === replaceKey ? line : l)) : [...s.lines, line],
@@ -170,7 +200,9 @@ export function toConfirmItems(lines: DraftLine[]): ConfirmItem[] {
 }
 
 /** Where the food-search screen should put the chosen food. */
-export const useFoodPicker = create<{ replaceKey: string | null; setReplaceKey: (k: string | null) => void }>((set) => ({
-  replaceKey: null,
-  setReplaceKey: (replaceKey) => set({ replaceKey }),
-}));
+export const useFoodPicker = create<{ replaceKey: string | null; setReplaceKey: (k: string | null) => void }>(
+  (set) => ({
+    replaceKey: null,
+    setReplaceKey: (replaceKey) => set({ replaceKey }),
+  }),
+);

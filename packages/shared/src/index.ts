@@ -31,14 +31,7 @@ export type Nutrition = z.infer<typeof Nutrition>;
 export const Unit = z.enum(["piece", "katori", "bowl", "plate", "glass", "cup", "tbsp", "g"]);
 export type Unit = z.infer<typeof Unit>;
 
-export const FoodTag = z.enum([
-  "fibre_rich",
-  "high_sat_fat",
-  "refined_carb",
-  "fried",
-  "high_sugar",
-  "lean_protein",
-]);
+export const FoodTag = z.enum(["fibre_rich", "high_sat_fat", "refined_carb", "fried", "high_sugar", "lean_protein"]);
 export type FoodTag = z.infer<typeof FoodTag>;
 
 // ---------- Achievements / events ----------

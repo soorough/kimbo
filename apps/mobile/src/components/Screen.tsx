@@ -32,7 +32,13 @@ export function Screen({
       {back || title ? (
         <View style={styles.header}>
           {back ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={() => router.back()} hitSlop={12} style={styles.back}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+              onPress={() => router.back()}
+              hitSlop={12}
+              style={styles.back}
+            >
               <Icon name="arrow-left" size={22} />
             </Pressable>
           ) : null}
@@ -40,7 +46,11 @@ export function Screen({
         </View>
       ) : null}
       {scroll ? (
-        <ScrollView contentContainerStyle={body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={body}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           {children}
         </ScrollView>
       ) : (
@@ -54,8 +64,21 @@ export function Screen({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.paper },
   padded: { paddingHorizontal: space.xl, paddingTop: space.sm, gap: space.lg },
-  header: { flexDirection: "row", alignItems: "center", gap: space.md, paddingHorizontal: space.xl, paddingVertical: space.md },
-  back: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    paddingHorizontal: space.xl,
+    paddingVertical: space.md,
+  },
+  back: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+  },
   footer: {
     paddingHorizontal: space.xl,
     paddingTop: space.md,

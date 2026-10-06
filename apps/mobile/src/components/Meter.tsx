@@ -32,16 +32,19 @@ export function Ring({
     <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
       <Svg width={size} height={size} style={{ position: "absolute", transform: [{ rotate: "-90deg" }] }}>
         <Circle cx={size / 2} cy={size / 2} r={r} stroke={track} strokeWidth={stroke} fill="none" />
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          stroke={color}
-          strokeWidth={stroke}
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={`${c * main} ${c}`}
-        />
+        {/* A zero-length arc with round caps would still draw a dot. */}
+        {main > 0 ? (
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            stroke={color}
+            strokeWidth={stroke}
+            fill="none"
+            strokeLinecap="round"
+            strokeDasharray={`${c * main} ${c}`}
+          />
+        ) : null}
         {over > 0 ? (
           <Circle
             cx={size / 2}
@@ -60,7 +63,17 @@ export function Ring({
   );
 }
 
-export function Bar({ value, max, color = colors.leaf, height = 8 }: { value: number; max: number; color?: string; height?: number }) {
+export function Bar({
+  value,
+  max,
+  color = colors.leaf,
+  height = 8,
+}: {
+  value: number;
+  max: number;
+  color?: string;
+  height?: number;
+}) {
   const pct = max > 0 ? Math.min(1, value / max) : 0;
   return (
     <View style={{ height, borderRadius: radius.pill, backgroundColor: colors.sunk, overflow: "hidden" }}>

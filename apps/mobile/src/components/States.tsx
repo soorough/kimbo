@@ -44,5 +44,13 @@ export function Notice({
 }
 
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
-  return <Notice mood="thinking" title="That didn't work" message={message} action={onRetry ? "Try again" : undefined} onAction={onRetry} />;
+  return (
+    <Notice
+      mood="thinking"
+      title="That didn't work"
+      message={message}
+      action={onRetry ? "Try again" : undefined}
+      onAction={onRetry}
+    />
+  );
 }

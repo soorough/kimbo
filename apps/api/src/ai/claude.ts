@@ -126,7 +126,10 @@ export class ClaudeAdapters implements MealRecognizer, ReportExtractor {
       file.mimeType === "application/pdf"
         ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: file.base64 } }
         : { type: "image", source: { type: "base64", media_type: imageType(file.mimeType), data: file.base64 } };
-    const input = await this.callJson(REPORT_SYSTEM, REPORT_SCHEMA, [source, { type: "text", text: "Record the results." }]);
+    const input = await this.callJson(REPORT_SYSTEM, REPORT_SCHEMA, [
+      source,
+      { type: "text", text: "Record the results." },
+    ]);
     return checked(() => ExtractedMarkers.parse(input));
   }
 

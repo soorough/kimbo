@@ -26,7 +26,9 @@ export function computeTarget(input: Omit<GoalRequest, "targetOverride">): { tar
   if (adjustment < 0) explanation.push(`To lose weight gently, Kimbo subtracts ${-adjustment} kcal.`);
   if (adjustment > 0) explanation.push(`To gain weight steadily, Kimbo adds ${adjustment} kcal.`);
   if (target !== rounded) {
-    explanation.push(`Kimbo keeps targets between ${TARGET_BOUNDS_KCAL.min} and ${TARGET_BOUNDS_KCAL.max} kcal, so yours is set to ${target}.`);
+    explanation.push(
+      `Kimbo keeps targets between ${TARGET_BOUNDS_KCAL.min} and ${TARGET_BOUNDS_KCAL.max} kcal, so yours is set to ${target}.`,
+    );
   }
   explanation.push("This is an estimate — you can adjust it anytime.");
   return { target, explanation };

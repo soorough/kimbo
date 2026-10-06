@@ -17,7 +17,11 @@ describe("gram portions", () => {
     expect(draft.json.items[0].nutrition).toMatchObject({ calories: 260, protein: 5.4, carbs: 56 });
     const saved = await api.post(
       "/meals",
-      { mealType: "lunch", source: "text", items: [{ kind: "catalogue", foodId: "white_rice", quantity: 200, unit: "g" }] },
+      {
+        mealType: "lunch",
+        source: "text",
+        items: [{ kind: "catalogue", foodId: "white_rice", quantity: 200, unit: "g" }],
+      },
       id,
     );
     expect(saved.status).toBe(201);
@@ -28,7 +32,11 @@ describe("gram portions", () => {
     const id = await profile();
     const res = await api.post(
       "/meals",
-      { mealType: "lunch", source: "text", items: [{ kind: "catalogue", foodId: "roti", quantity: 200, unit: "piece" }] },
+      {
+        mealType: "lunch",
+        source: "text",
+        items: [{ kind: "catalogue", foodId: "roti", quantity: 200, unit: "piece" }],
+      },
       id,
     );
     expect(res.status).toBe(400);
@@ -69,7 +77,10 @@ describe("report units", () => {
 
   it("never guesses a unit it can't convert", async () => {
     const id = await profile();
-    api.ctx.extractor.next = { reportDate: null, markers: [{ markerName: "LDL Cholesterol", value: 1.4, unit: "g/L" }] };
+    api.ctx.extractor.next = {
+      reportDate: null,
+      markers: [{ markerName: "LDL Cholesterol", value: 1.4, unit: "g/L" }],
+    };
     const res = await api.post("/reports/extract", { fileBase64: "aW1n", mimeType: "image/jpeg" }, id);
     expect(res.json.markers).toEqual([]);
     expect(res.json.ignored).toEqual(["LDL Cholesterol (unit g/L not recognised)"]);

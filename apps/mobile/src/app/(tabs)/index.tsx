@@ -21,7 +21,12 @@ export default function Today() {
   const profile = useQuery({ queryKey: ["profile", profileId], queryFn: () => api.getProfile(profileId!) });
   useWelcomeBack();
 
-  if (today.isLoading) return <Screen><Loading /></Screen>;
+  if (today.isLoading)
+    return (
+      <Screen>
+        <Loading />
+      </Screen>
+    );
   if (today.error || !today.data) {
     return (
       <Screen>
@@ -37,7 +42,9 @@ export default function Today() {
       <View style={styles.header}>
         <View style={{ flex: 1, gap: 2 }}>
           <T variant="overline" tone="faint">
-            {new Date(`${data.date}T12:00:00`).toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" }).toUpperCase()}
+            {new Date(`${data.date}T12:00:00`)
+              .toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" })
+              .toUpperCase()}
           </T>
           <T variant="display">{greeting()}</T>
         </View>
@@ -122,7 +129,11 @@ function FocusCard({ data }: { data: TodayResponse }) {
   }
   const s = data.focusSummary!;
   return (
-    <Surface tint="leaf" onPress={() => router.push("/(tabs)/progress")} accessibilityLabel={`Focus: ${data.focus.title}`}>
+    <Surface
+      tint="leaf"
+      onPress={() => router.push("/(tabs)/progress")}
+      accessibilityLabel={`Focus: ${data.focus.title}`}
+    >
       <View style={styles.rowCenter}>
         <Kimbo mood={s.supported ? "proud" : "focus"} size={64} leaves={1 + s.supported} />
         <View style={{ flex: 1, gap: 4 }}>
@@ -149,9 +160,19 @@ function FocusCard({ data }: { data: TodayResponse }) {
 
 function MealSlot({ type, meals, repeatable }: { type: MealType; meals: TodayMeal[]; repeatable: boolean }) {
   const afterWrite = useAfterWrite();
-  const repeat = useMutation({ mutationFn: () => api.repeatYesterday(type), onSuccess: (res) => afterWrite(res.events) });
+  const repeat = useMutation({
+    mutationFn: () => api.repeatYesterday(type),
+    onSuccess: (res) => afterWrite(res.events),
+  });
 
-  if (meals.length) return <>{meals.map((m) => <MealCard key={m.id} meal={m} />)}</>;
+  if (meals.length)
+    return (
+      <>
+        {meals.map((m) => (
+          <MealCard key={m.id} meal={m} />
+        ))}
+      </>
+    );
   return (
     <View style={styles.emptySlot}>
       <Pressable
@@ -258,7 +279,11 @@ function DemoBanner() {
 function useWelcomeBack() {
   const push = useMoments((s) => s.push);
   useEffect(() => {
-    const checkin = () => api.checkin().then((r) => push(r.events)).catch(() => {});
+    const checkin = () =>
+      api
+        .checkin()
+        .then((r) => push(r.events))
+        .catch(() => {});
     checkin();
     const sub = AppState.addEventListener("change", (state) => {
       if (state === "active") checkin();
@@ -277,11 +302,32 @@ const styles = StyleSheet.create({
   dot: { width: 10, height: 10, borderRadius: 5 },
   dotOn: { backgroundColor: colors.leaf },
   dotOff: { borderWidth: 1.5, borderColor: colors.leaf, opacity: 0.5 },
-  mealIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.leafSoft, alignItems: "center", justifyContent: "center" },
-  mealIconMuted: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.sunk, alignItems: "center", justifyContent: "center" },
+  mealIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.leafSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mealIconMuted: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.sunk,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   emptySlot: { borderRadius: radius.lg, borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.line },
   emptyMain: { flexDirection: "row", alignItems: "center", gap: space.md, padding: space.md },
-  repeat: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: space.md, paddingBottom: space.md, marginLeft: 50 },
+  repeat: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: space.md,
+    paddingBottom: space.md,
+    marginLeft: 50,
+  },
   helped: {
     flexDirection: "row",
     alignItems: "center",

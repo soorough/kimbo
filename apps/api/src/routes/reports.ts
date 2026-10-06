@@ -1,7 +1,14 @@
 import { ConfirmReportRequest, ExtractReportRequest, type ReportDraft } from "@kimbo/shared";
 import type { FastifyInstance } from "fastify";
 import type { Deps } from "../app.js";
-import { confirmedReading, DISCLAIMER, SAMPLE_REPORT, selectFocus, SUPPORTED_MARKERS, toDraftMarkers } from "../domain/health.js";
+import {
+  confirmedReading,
+  DISCLAIMER,
+  SAMPLE_REPORT,
+  selectFocus,
+  SUPPORTED_MARKERS,
+  toDraftMarkers,
+} from "../domain/health.js";
 import { badRequest } from "../errors.js";
 import { parse, requireProfile } from "../http.js";
 import { assertImageSize } from "./meals.js";
@@ -13,9 +20,12 @@ export function reportRoutes(app: FastifyInstance, deps: Deps) {
     const body = parse(ExtractReportRequest, req.body);
     if ("fileBase64" in body && body.mimeType !== "application/pdf") assertImageSize(body.fileBase64);
     const extracted =
-      "sample" in body ? SAMPLE_REPORT : await deps.extractor.extract({ base64: body.fileBase64, mimeType: body.mimeType });
+      "sample" in body
+        ? SAMPLE_REPORT
+        : await deps.extractor.extract({ base64: body.fileBase64, mimeType: body.mimeType });
     const { markers, ignored } = toDraftMarkers(extracted);
-    const reportDate = extracted.reportDate && /^\d{4}-\d{2}-\d{2}$/.test(extracted.reportDate) ? extracted.reportDate : null;
+    const reportDate =
+      extracted.reportDate && /^\d{4}-\d{2}-\d{2}$/.test(extracted.reportDate) ? extracted.reportDate : null;
     return { markers, reportDate, ignored, supportedMarkers: SUPPORTED_MARKERS, disclaimer: DISCLAIMER };
   });
 

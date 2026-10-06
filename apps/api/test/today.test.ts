@@ -105,7 +105,10 @@ describe("connecting meals to the report focus", () => {
     await setFocus(id, ldlWatch);
     const res = await api.post("/meals", dalRoti, id);
     expect(res.json.focusResult).toMatchObject({ focus: "fibre_focus", supports: true });
-    expect(res.json.events).toContainEqual({ type: "meal_supported_focus", message: "That helped today's fibre focus ↑" });
+    expect(res.json.events).toContainEqual({
+      type: "meal_supported_focus",
+      message: "That helped today's fibre focus ↑",
+    });
   });
 
   it("stays quiet when a meal doesn't help the focus", async () => {
@@ -133,12 +136,42 @@ describe("connecting meals to the report focus", () => {
   });
 
   it.each([
-    ["steady_carbs", [{ marker: "hba1c", value: 6.1, unit: "%" }], meal("lunch", [item("white_rice", 1, "katori"), item("dal_tadka", 1, "katori")]), true],
-    ["steady_carbs", [{ marker: "hba1c", value: 6.1, unit: "%" }], meal("snack", [item("masala_chai", 1, "cup"), item("biscuits", 4, "piece")]), false],
-    ["less_sugar_refined", [{ marker: "triglycerides", value: 170, unit: "mg/dL" }], meal("dinner", [item("khichdi", 1, "katori"), item("curd", 1, "katori")]), true],
-    ["less_sugar_refined", [{ marker: "triglycerides", value: 170, unit: "mg/dL" }], meal("snack", [item("samosa", 1, "piece")]), false],
-    ["balanced_plate", [{ marker: "ldl", value: 80, unit: "mg/dL" }], meal("lunch", [item("white_rice", 1, "katori"), item("rajma", 1, "katori")]), true],
-    ["balanced_plate", [{ marker: "ldl", value: 80, unit: "mg/dL" }], meal("breakfast", [item("white_bread", 2, "piece")]), false],
+    [
+      "steady_carbs",
+      [{ marker: "hba1c", value: 6.1, unit: "%" }],
+      meal("lunch", [item("white_rice", 1, "katori"), item("dal_tadka", 1, "katori")]),
+      true,
+    ],
+    [
+      "steady_carbs",
+      [{ marker: "hba1c", value: 6.1, unit: "%" }],
+      meal("snack", [item("masala_chai", 1, "cup"), item("biscuits", 4, "piece")]),
+      false,
+    ],
+    [
+      "less_sugar_refined",
+      [{ marker: "triglycerides", value: 170, unit: "mg/dL" }],
+      meal("dinner", [item("khichdi", 1, "katori"), item("curd", 1, "katori")]),
+      true,
+    ],
+    [
+      "less_sugar_refined",
+      [{ marker: "triglycerides", value: 170, unit: "mg/dL" }],
+      meal("snack", [item("samosa", 1, "piece")]),
+      false,
+    ],
+    [
+      "balanced_plate",
+      [{ marker: "ldl", value: 80, unit: "mg/dL" }],
+      meal("lunch", [item("white_rice", 1, "katori"), item("rajma", 1, "katori")]),
+      true,
+    ],
+    [
+      "balanced_plate",
+      [{ marker: "ldl", value: 80, unit: "mg/dL" }],
+      meal("breakfast", [item("white_bread", 2, "piece")]),
+      false,
+    ],
     ["fibre_focus", ldlWatch, meal("lunch", [item("dal_makhani", 1, "katori"), item("white_rice", 1, "katori")]), true],
   ])("%s: %#", async (focus, markers, m, supports) => {
     const id = await onboarded();

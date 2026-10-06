@@ -24,7 +24,12 @@ const queryClient = new QueryClient({
 });
 
 /** Sheets render their own animated panel over a transparent route. */
-const sheet = { presentation: "transparentModal", animation: "none", headerShown: false, contentStyle: { backgroundColor: "transparent" } } as const;
+const sheet = {
+  presentation: "transparentModal",
+  animation: "none",
+  headerShown: false,
+  contentStyle: { backgroundColor: "transparent" },
+} as const;
 
 export default function RootLayout() {
   const load = useSession((s) => s.load);

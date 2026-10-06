@@ -93,7 +93,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.lg,
   },
   input: { flex: 1, fontFamily: fonts.medium, fontSize: 15, color: colors.ink, paddingVertical: space.md },
-  row: { flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.md, paddingHorizontal: space.xs, borderRadius: radius.sm },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    paddingVertical: space.md,
+    paddingHorizontal: space.xs,
+    borderRadius: radius.sm,
+  },
   sep: { height: StyleSheet.hairlineWidth, backgroundColor: colors.line },
   custom: {
     flexDirection: "row",

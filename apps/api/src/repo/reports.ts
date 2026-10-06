@@ -15,13 +15,10 @@ export async function insertReportWithFocus(
 ): Promise<string> {
   const id = randomUUID();
   await withTransaction(db, async (client) => {
-    await client.query("INSERT INTO reports (id, profile_id, report_date, source, created_at) VALUES ($1,$2,$3,$4,$5)", [
-      id,
-      profileId,
-      input.reportDate,
-      input.source,
-      input.now,
-    ]);
+    await client.query(
+      "INSERT INTO reports (id, profile_id, report_date, source, created_at) VALUES ($1,$2,$3,$4,$5)",
+      [id, profileId, input.reportDate, input.source, input.now],
+    );
     for (const m of input.markers) {
       await client.query(
         `INSERT INTO report_markers (report_id, marker, value, unit, original_value, original_unit, status)

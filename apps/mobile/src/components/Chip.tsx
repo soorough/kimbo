@@ -82,5 +82,11 @@ const styles = StyleSheet.create({
   selected: { backgroundColor: colors.leaf, borderColor: colors.leaf },
   segmentRow: { flexDirection: "row", backgroundColor: colors.sunk, borderRadius: radius.pill, padding: 4 },
   segment: { flex: 1, alignItems: "center", paddingVertical: space.sm, borderRadius: radius.pill },
-  segmentOn: { backgroundColor: colors.surface, shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 4, elevation: 1 },
+  segmentOn: {
+    backgroundColor: colors.surface,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
+  },
 });

@@ -21,7 +21,7 @@ const MARKERS: Record<MarkerKey, MarkerDef> = {
     canonicalUnit: "mg/dL",
     decimals: 0,
     conversions: { "mg/dl": (v) => v, "mmol/l": (v) => v * 38.67 },
-    matches: (n) => (/\bldl\b|ldl c|low density/.test(n) && !/\bvldl\b|ratio/.test(n)),
+    matches: (n) => /\bldl\b|ldl c|low density/.test(n) && !/\bvldl\b|ratio/.test(n),
   },
   hba1c: {
     label: "HbA1c",
@@ -82,7 +82,10 @@ function displayUnit(marker: MarkerKey, normalised: string): string {
 }
 
 function identify(markerName: string): MarkerKey | null {
-  const n = markerName.toLowerCase().replace(/[^a-z0-9%]+/g, " ").trim();
+  const n = markerName
+    .toLowerCase()
+    .replace(/[^a-z0-9%]+/g, " ")
+    .trim();
   return (Object.keys(MARKERS) as MarkerKey[]).find((k) => MARKERS[k].matches(n)) ?? null;
 }
 
@@ -154,7 +157,8 @@ export const FOCI: Record<FocusKey, FocusInfo> = {
   less_sugar_refined: {
     key: "less_sugar_refined",
     title: "Less sugar & refined carbs",
-    description: "Favour dals, vegetables and whole grains; keep sweets, sugary chai, maida and fried snacks occasional.",
+    description:
+      "Favour dals, vegetables and whole grains; keep sweets, sugary chai, maida and fried snacks occasional.",
   },
   balanced_plate: {
     key: "balanced_plate",
@@ -179,7 +183,10 @@ export function selectFocus(readings: MarkerReading[]): FocusInfo & { reason: st
     );
   const top = flagged[0];
   if (!top) {
-    return { ...FOCI.balanced_plate, reason: "Your confirmed markers look in range, so Kimbo will help you keep plates balanced." };
+    return {
+      ...FOCI.balanced_plate,
+      reason: "Your confirmed markers look in range, so Kimbo will help you keep plates balanced.",
+    };
   }
   return {
     ...FOCI[MARKER_FOCUS[top.marker]],

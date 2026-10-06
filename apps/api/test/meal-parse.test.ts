@@ -23,7 +23,14 @@ describe("parsing a meal into a reviewable draft", () => {
     expect(res.status).toBe(200);
     expect(api.ctx.recognizer.lastInput).toEqual({ text: "2 roti, one katori dal and aloo gobi" });
     const items = res.json.items;
-    expect(items.map((i: { kind: string; food: { id: string }; quantity: number; unit: string }) => [i.kind, i.food.id, i.quantity, i.unit])).toEqual([
+    expect(
+      items.map((i: { kind: string; food: { id: string }; quantity: number; unit: string }) => [
+        i.kind,
+        i.food.id,
+        i.quantity,
+        i.unit,
+      ]),
+    ).toEqual([
       ["catalogue", "roti", 2, "piece"],
       ["catalogue", "dal_tadka", 1, "katori"],
       ["catalogue", "aloo_gobi", 1, "katori"],
@@ -51,7 +58,13 @@ describe("parsing a meal into a reviewable draft", () => {
       { name: "chana masala", quantity: 1, unit: "vati", confidence: 0.9 },
     ];
     const res = await api.post("/meals/parse", { text: "chawal daal dahi 3 rotis chana masala" }, id);
-    expect(res.json.items.map((i: { food: { id: string }; unit: string; quantity: number }) => [i.food.id, i.unit, i.quantity])).toEqual([
+    expect(
+      res.json.items.map((i: { food: { id: string }; unit: string; quantity: number }) => [
+        i.food.id,
+        i.unit,
+        i.quantity,
+      ]),
+    ).toEqual([
       ["white_rice", "katori", 1],
       ["dal_tadka", "katori", 1],
       ["curd", "bowl", 1],
@@ -169,7 +182,9 @@ describe("searching the food list", () => {
     const id = await profile();
     const res = await api.get("/foods/search?q=dal", id);
     expect(res.json.foods[0].id).toBe("dal_tadka");
-    expect(res.json.foods.map((f: { id: string }) => f.id)).toEqual(expect.arrayContaining(["dal_makhani", "moong_dal"]));
+    expect(res.json.foods.map((f: { id: string }) => f.id)).toEqual(
+      expect.arrayContaining(["dal_makhani", "moong_dal"]),
+    );
   });
 
   it("lists the whole catalogue for browsing when the query is empty", async () => {

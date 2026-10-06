@@ -58,7 +58,20 @@ export function Stepper({
 }
 
 const styles = StyleSheet.create({
-  wrap: { flexDirection: "row", alignItems: "center", backgroundColor: colors.sunk, borderRadius: radius.pill, padding: 4 },
-  btn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface },
+  wrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.sunk,
+    borderRadius: radius.pill,
+    padding: 4,
+  },
+  btn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+  },
   value: { minWidth: 44, textAlign: "center" },
 });

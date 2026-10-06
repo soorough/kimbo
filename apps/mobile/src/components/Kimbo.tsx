@@ -82,7 +82,13 @@ export function Kimbo({ mood = "idle", size = 96, leaves = 1 }: { mood?: KimboMo
     <Animated.View style={{ width: size, height: size, transform }} accessibilityLabel={`Kimbo, feeling ${mood}`}>
       <Svg width={size} height={size} viewBox="0 0 100 100">
         {/* sprout */}
-        <Path d={`M50 30 Q51 ${(30 + stemTop) / 2} 50 ${stemTop}`} stroke={colors.leaf} strokeWidth={3} strokeLinecap="round" fill="none" />
+        <Path
+          d={`M50 30 Q51 ${(30 + stemTop) / 2} 50 ${stemTop}`}
+          stroke={colors.leaf}
+          strokeWidth={3}
+          strokeLinecap="round"
+          fill="none"
+        />
         {LEAF_SPOTS.slice(0, leafCount).map((l, i) => (
           <Path
             key={i}
@@ -130,8 +136,14 @@ export function Kimbo({ mood = "idle", size = 96, leaves = 1 }: { mood?: KimboMo
 }
 
 function EyeShape({ x, kind }: { x: number; kind: Eyes }) {
-  if (kind === "happy") return <Path d={`M${x - 5} 61 Q${x} 54 ${x + 5} 61`} stroke={INK} strokeWidth={3} strokeLinecap="round" fill="none" />;
-  if (kind === "closed") return <Path d={`M${x - 5} 59 Q${x} 63 ${x + 5} 59`} stroke={INK} strokeWidth={3} strokeLinecap="round" fill="none" />;
+  if (kind === "happy")
+    return (
+      <Path d={`M${x - 5} 61 Q${x} 54 ${x + 5} 61`} stroke={INK} strokeWidth={3} strokeLinecap="round" fill="none" />
+    );
+  if (kind === "closed")
+    return (
+      <Path d={`M${x - 5} 59 Q${x} 63 ${x + 5} 59`} stroke={INK} strokeWidth={3} strokeLinecap="round" fill="none" />
+    );
   const r = kind === "wide" ? 5.4 : 4.6;
   return (
     <G>

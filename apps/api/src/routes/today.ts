@@ -19,8 +19,14 @@ export function todayRoutes(app: FastifyInstance, deps: Deps) {
     const tz = profile.timezone;
     const date = req.query.date ? parse(LocalDate, req.query.date) : localDate(deps.clock(), tz);
     const [meals, yesterdayMeals, history] = await Promise.all([
-      listMeals(deps.db, profile.id, tz, { from: startOfLocalDay(date, tz), to: startOfLocalDay(addDays(date, 1), tz) }),
-      listMeals(deps.db, profile.id, tz, { from: startOfLocalDay(addDays(date, -1), tz), to: startOfLocalDay(date, tz) }),
+      listMeals(deps.db, profile.id, tz, {
+        from: startOfLocalDay(date, tz),
+        to: startOfLocalDay(addDays(date, 1), tz),
+      }),
+      listMeals(deps.db, profile.id, tz, {
+        from: startOfLocalDay(addDays(date, -1), tz),
+        to: startOfLocalDay(date, tz),
+      }),
       listFocusAssignments(deps.db, profile.id),
     ]);
     const focus = focusForDay(history, date, tz);

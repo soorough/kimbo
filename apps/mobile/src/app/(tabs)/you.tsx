@@ -29,7 +29,12 @@ export default function You() {
     router.replace("/welcome");
   };
 
-  if (profile.isLoading) return <Screen><Loading /></Screen>;
+  if (profile.isLoading)
+    return (
+      <Screen>
+        <Loading />
+      </Screen>
+    );
   if (!profile.data) {
     return (
       <Screen>
@@ -61,12 +66,15 @@ export default function You() {
           <T variant="label">
             {GOAL_LABEL[goal.goal]} · {ACTIVITY_LABEL[goal.activity]} · {goal.weightKg} kg
           </T>
-          {goal.targetOverride ? <T variant="caption">Adjusted by you (Kimbo suggested {goal.computedTarget} kcal)</T> : null}
+          {goal.targetOverride ? (
+            <T variant="caption">Adjusted by you (Kimbo suggested {goal.computedTarget} kcal)</T>
+          ) : null}
         </Surface>
       ) : null}
 
       <View style={styles.list}>
         <Row icon="file-text" label="Health reports" onPress={() => router.push("/(tabs)/report")} />
+        <View style={styles.divider} />
         <Row
           icon={isDemo ? "user-plus" : "refresh-ccw"}
           label={isDemo ? "Start fresh with my own data" : "Try the sample data"}
@@ -77,9 +85,9 @@ export default function You() {
       <Surface tint="sunk">
         <T variant="heading">About Kimbo</T>
         <T variant="label">
-          Kimbo estimates nutrition from a curated Indian food list and turns supported blood markers into one food focus.
-          It's a habit companion, not a medical service — it doesn't diagnose or give treatment advice. Please discuss your
-          results with a doctor.
+          Kimbo estimates nutrition from a curated Indian food list and turns supported blood markers into one food
+          focus. It's a habit companion, not a medical service — it doesn't diagnose or give treatment advice. Please
+          discuss your results with a doctor.
         </T>
       </Surface>
     </Screen>
@@ -88,7 +96,11 @@ export default function You() {
 
 function Row({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.sunk }]}>
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.sunk }]}
+    >
       <Icon name={icon} size={20} color={colors.leaf} />
       <T variant="bodyStrong" style={{ flex: 1 }}>
         {label}
@@ -103,4 +115,5 @@ const styles = StyleSheet.create({
   rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   list: { backgroundColor: colors.surface, borderRadius: 22, overflow: "hidden" },
   row: { flexDirection: "row", alignItems: "center", gap: space.md, padding: space.lg },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.line, marginLeft: 52 },
 });

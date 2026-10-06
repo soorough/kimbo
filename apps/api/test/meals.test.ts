@@ -29,7 +29,9 @@ describe("confirming a meal", () => {
       eatenAt: "2026-10-06T07:30:00.000Z",
       wasCorrected: false,
     });
-    expect(res.json.meal.items.map((i: { name: string; nutrition: { calories: number } }) => [i.name, i.nutrition.calories])).toEqual([
+    expect(
+      res.json.meal.items.map((i: { name: string; nutrition: { calories: number } }) => [i.name, i.nutrition.calories]),
+    ).toEqual([
       ["Roti", 238],
       ["Dal (toor/arhar)", 158],
     ]);
@@ -92,10 +94,18 @@ describe("confirming a meal", () => {
 
   it("rejects unknown foods and portions a food doesn't come in", async () => {
     const id = await profile();
-    const unknown = await api.post("/meals", { ...lunch, items: [{ kind: "catalogue", foodId: "pizza", quantity: 1, unit: "piece" }] }, id);
+    const unknown = await api.post(
+      "/meals",
+      { ...lunch, items: [{ kind: "catalogue", foodId: "pizza", quantity: 1, unit: "piece" }] },
+      id,
+    );
     expect(unknown.status).toBe(400);
     expect(unknown.json.code).toBe("UNKNOWN_FOOD");
-    const badUnit = await api.post("/meals", { ...lunch, items: [{ kind: "catalogue", foodId: "roti", quantity: 1, unit: "glass" }] }, id);
+    const badUnit = await api.post(
+      "/meals",
+      { ...lunch, items: [{ kind: "catalogue", foodId: "roti", quantity: 1, unit: "glass" }] },
+      id,
+    );
     expect(badUnit.status).toBe(400);
     expect(badUnit.json.code).toBe("UNSUPPORTED_UNIT");
   });

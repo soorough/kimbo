@@ -37,7 +37,8 @@ export default function ReportReview() {
     return init;
   });
   const [result, setResult] = useState<ConfirmReportResponse | null>(null);
-  const dateValid = /^\d{4}-\d{2}-\d{2}$/.test(reportDate) && !Number.isNaN(Date.parse(reportDate)) && reportDate <= todayIso();
+  const dateValid =
+    /^\d{4}-\d{2}-\d{2}$/.test(reportDate) && !Number.isNaN(Date.parse(reportDate)) && reportDate <= todayIso();
 
   const confirm = useMutation({
     mutationFn: () =>
@@ -58,7 +59,11 @@ export default function ReportReview() {
 
   if (result) {
     return (
-      <Screen footer={<Button label="See how today's meals fit" icon="arrow-right" onPress={() => router.dismissTo("/(tabs)")} />}>
+      <Screen
+        footer={
+          <Button label="See how today's meals fit" icon="arrow-right" onPress={() => router.dismissTo("/(tabs)")} />
+        }
+      >
         <View style={styles.reveal}>
           <View style={styles.revealGlow} />
           <Kimbo mood="focus" size={130} leaves={3} />
@@ -100,7 +105,13 @@ export default function ReportReview() {
               {errorMessage(confirm.error)}
             </T>
           ) : null}
-          <Button label="Confirm values" icon="check" disabled={!anyValue || !dateValid} loading={confirm.isPending} onPress={() => confirm.mutate()} />
+          <Button
+            label="Confirm values"
+            icon="check"
+            disabled={!anyValue || !dateValid}
+            loading={confirm.isPending}
+            onPress={() => confirm.mutate()}
+          />
         </View>
       }
     >
@@ -199,6 +210,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
   },
   reveal: { alignItems: "center", gap: space.sm, paddingTop: space.xxl, paddingBottom: space.lg },
-  revealGlow: { position: "absolute", top: space.lg, width: 200, height: 170, borderRadius: 100, backgroundColor: colors.leafSoft },
+  revealGlow: {
+    position: "absolute",
+    top: space.lg,
+    width: 200,
+    height: 170,
+    borderRadius: 100,
+    backgroundColor: colors.leafSoft,
+  },
   disclaimer: { flexDirection: "row", gap: space.sm, alignItems: "flex-start" },
 });

@@ -19,7 +19,12 @@ const BADGES: { type: KimboEventType; icon: IconName; title: string; how: string
 
 export default function Progress() {
   const progress = useQuery({ queryKey: ["progress"], queryFn: api.progress });
-  if (progress.isLoading) return <Screen><Loading /></Screen>;
+  if (progress.isLoading)
+    return (
+      <Screen>
+        <Loading />
+      </Screen>
+    );
   if (progress.error || !progress.data) {
     return (
       <Screen>
@@ -43,7 +48,11 @@ export default function Progress() {
 
       <View style={styles.stats}>
         {p.goal && p.goal.daysTracked > 0 ? (
-          <Stat icon="target" value={`${p.goal.daysMet}/${p.goal.daysTracked}`} label={`days within ±${p.goal.bandPct}% of your goal`} />
+          <Stat
+            icon="target"
+            value={`${p.goal.daysMet}/${p.goal.daysTracked}`}
+            label={`days within ±${p.goal.bandPct}% of your goal`}
+          />
         ) : null}
         <Stat icon="check-circle" value={`${p.daysTracked}/${p.daysElapsed}`} label="days tracked so far" />
       </View>
@@ -89,11 +98,22 @@ function WeekCard({ p }: { p: ProgressResponse }) {
           const isToday = i === p.daysElapsed - 1;
           const future = i >= p.daysElapsed;
           return (
-            <View key={iso} style={styles.dayCol} accessibilityLabel={`${iso}: ${done ? "tracked" : future ? "upcoming" : "not tracked"}`}>
+            <View
+              key={iso}
+              style={styles.dayCol}
+              accessibilityLabel={`${iso}: ${done ? "tracked" : future ? "upcoming" : "not tracked"}`}
+            >
               <T variant="caption" tone={isToday ? "leaf" : "faint"}>
                 {letter}
               </T>
-              <View style={[styles.day, done && styles.dayDone, isToday && !done && styles.dayToday, future && styles.dayFuture]}>
+              <View
+                style={[
+                  styles.day,
+                  done && styles.dayDone,
+                  isToday && !done && styles.dayToday,
+                  future && styles.dayFuture,
+                ]}
+              >
                 {done ? <Icon name="check" size={16} color={colors.white} /> : null}
               </View>
             </View>
@@ -127,7 +147,9 @@ function FocusCard({ focus }: { focus: NonNullable<ProgressResponse["focus"]> })
           <T variant="heading">{focus.title}</T>
           <Bar value={focus.supported} max={Math.max(1, focus.total)} height={8} />
           <T variant="label">
-            {focus.total ? `${focus.supported} of ${focus.total} meals helped · ${focus.pct}%` : "No meals logged yet this week"}
+            {focus.total
+              ? `${focus.supported} of ${focus.total} meals helped · ${focus.pct}%`
+              : "No meals logged yet this week"}
           </T>
         </View>
       </View>
@@ -151,8 +173,10 @@ function Stat({ icon, value, label }: { icon: IconName; value: string; label: st
 function WeekOverWeek({ p }: { p: ProgressResponse }) {
   const w = p.weekOverWeek;
   const lines: string[] = [];
-  if (w.daysTracked && w.daysTracked > 0) lines.push(`${w.daysTracked} more day${w.daysTracked === 1 ? "" : "s"} tracked than last week`);
-  if (w.goalDaysMet && w.goalDaysMet > 0) lines.push(`${w.goalDaysMet} more goal day${w.goalDaysMet === 1 ? "" : "s"} than last week`);
+  if (w.daysTracked && w.daysTracked > 0)
+    lines.push(`${w.daysTracked} more day${w.daysTracked === 1 ? "" : "s"} tracked than last week`);
+  if (w.goalDaysMet && w.goalDaysMet > 0)
+    lines.push(`${w.goalDaysMet} more goal day${w.goalDaysMet === 1 ? "" : "s"} than last week`);
   if (w.focusPct && w.focusPct > 0) lines.push(`Focus up ${w.focusPct} points from last week`);
   if (!lines.length) return null;
   return (
@@ -179,7 +203,11 @@ function Badges({ achievements }: { achievements: Achievement[] }) {
           const got = earned(b.type);
           const on = got.length > 0;
           return (
-            <View key={b.type} style={[styles.badge, !on && styles.badgeLocked]} accessibilityLabel={`${b.title}: ${on ? "earned" : b.how}`}>
+            <View
+              key={b.type}
+              style={[styles.badge, !on && styles.badgeLocked]}
+              accessibilityLabel={`${b.title}: ${on ? "earned" : b.how}`}
+            >
               <View style={[styles.badgeIcon, on ? styles.badgeIconOn : styles.badgeIconOff]}>
                 <Icon name={on ? b.icon : "lock"} size={20} color={on ? colors.white : colors.inkFaint} />
                 {got.length > 1 ? (
@@ -212,7 +240,14 @@ function rangeLabel(p: ProgressResponse): string {
 const styles = StyleSheet.create({
   week: { flexDirection: "row", justifyContent: "space-between" },
   dayCol: { alignItems: "center", gap: 6 },
-  day: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.sunk, alignItems: "center", justifyContent: "center" },
+  day: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.sunk,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   dayDone: { backgroundColor: colors.leaf },
   dayToday: { backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.leaf },
   dayFuture: { backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.line, borderStyle: "dashed" },
@@ -229,9 +264,9 @@ const styles = StyleSheet.create({
   stats: { flexDirection: "row", gap: space.md },
   insight: { flexDirection: "row", alignItems: "center", gap: space.sm },
   badges: { flexDirection: "row", flexWrap: "wrap", gap: space.md },
+  // Fixed thirds so a partial last row keeps the same badge size.
   badge: {
-    width: "30%",
-    flexGrow: 1,
+    width: "31%",
     alignItems: "center",
     gap: 4,
     padding: space.md,
@@ -239,7 +274,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   badgeLocked: { backgroundColor: colors.sunk },
-  badgeIcon: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center", marginBottom: 4 },
+  badgeIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
   badgeIconOn: { backgroundColor: colors.turmeric },
   badgeIconOff: { backgroundColor: colors.paper },
   badgeCount: {

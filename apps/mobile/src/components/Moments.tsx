@@ -21,7 +21,12 @@ const MOOD: Record<KimboEvent["type"], KimboMood> = {
 };
 
 /** Milestones earn a moment of their own; everything else is a light, passing toast. */
-const MILESTONES = new Set<KimboEvent["type"]>(["first_3_days", "first_full_week", "consistency_improved", "focus_improved"]);
+const MILESTONES = new Set<KimboEvent["type"]>([
+  "first_3_days",
+  "first_full_week",
+  "consistency_improved",
+  "focus_improved",
+]);
 
 const MILESTONE_TITLES: Partial<Record<KimboEvent["type"], string>> = {
   first_3_days: "Three days in!",
@@ -52,7 +57,9 @@ export const useMoments = create<MomentsState>((set) => ({
 }));
 
 export function MomentToast() {
-  const current = useMoments((s) => s.toasts[0]);
+  // Wait while a milestone celebration is open, so each moment gets its turn.
+  const celebrating = useMoments((s) => s.milestones.length > 0);
+  const current = useMoments((s) => (celebrating ? undefined : s.toasts[0]));
   const shift = useMoments((s) => s.shiftToast);
   const insets = useSafeAreaInsets();
   const y = useRef(new Animated.Value(-140)).current;
@@ -70,7 +77,10 @@ export function MomentToast() {
 
   if (!current) return null;
   return (
-    <Animated.View pointerEvents="box-none" style={[styles.toastWrap, { top: insets.top + space.sm, transform: [{ translateY: y }] }]}>
+    <Animated.View
+      pointerEvents="box-none"
+      style={[styles.toastWrap, { top: insets.top + space.sm, transform: [{ translateY: y }] }]}
+    >
       <Pressable onPress={shift} style={styles.toast} accessibilityRole="alert" accessibilityLabel={current.message}>
         <Kimbo mood={MOOD[current.type]} size={44} leaves={current.type === "meal_supported_focus" ? 3 : 1} />
         <T variant="bodyStrong" style={{ flex: 1 }}>
@@ -141,7 +151,13 @@ function Confetti() {
   useEffect(() => {
     Animated.parallel(
       pieces.map((p) =>
-        Animated.timing(p.progress, { toValue: 1, duration: 2200, delay: p.delay, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(p.progress, {
+          toValue: 1,
+          duration: 2200,
+          delay: p.delay,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
       ),
     ).start();
   }, [pieces]);
@@ -186,7 +202,13 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     ...shadow.raised,
   },
-  celebrationRoot: { flex: 1, backgroundColor: colors.scrim, alignItems: "center", justifyContent: "center", padding: space.xxl },
+  celebrationRoot: {
+    flex: 1,
+    backgroundColor: colors.scrim,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: space.xxl,
+  },
   celebrationCard: {
     alignSelf: "stretch",
     alignItems: "center",

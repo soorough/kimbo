@@ -27,7 +27,8 @@ export default function LogMeal() {
   const startManual = useDraft((s) => s.startManual);
 
   const analyse = useMutation({
-    mutationFn: async ({ load }: { load: () => Promise<ParseMealRequest>; source: MealSource }) => api.parseMeal(await load()),
+    mutationFn: async ({ load }: { load: () => Promise<ParseMealRequest>; source: MealSource }) =>
+      api.parseMeal(await load()),
     onSuccess: (draft, { source }) => {
       startFromAi(draft, source, presetType);
       router.replace("/review");
@@ -40,7 +41,9 @@ export default function LogMeal() {
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
     const options: ImagePicker.ImagePickerOptions = { mediaTypes: ["images"] };
-    const result = fromCamera ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
+    const result = fromCamera
+      ? await ImagePicker.launchCameraAsync(options)
+      : await ImagePicker.launchImageLibraryAsync(options);
     const asset = result.canceled ? null : result.assets[0];
     if (!asset) return;
     analyse.mutate({
@@ -60,7 +63,11 @@ export default function LogMeal() {
   const title = presetType ? `Log ${MEAL_LABEL[presetType].toLowerCase()}` : "What did you eat?";
 
   return (
-    <SheetPanel title={analyse.isPending ? undefined : title} subtitle={analyse.isPending ? undefined : "You'll check everything before it's saved."} onClose={() => router.back()}>
+    <SheetPanel
+      title={analyse.isPending ? undefined : title}
+      subtitle={analyse.isPending ? undefined : "You'll check everything before it's saved."}
+      onClose={() => router.back()}
+    >
       {analyse.isPending ? (
         <Analysing />
       ) : (
@@ -133,9 +140,24 @@ export default function LogMeal() {
   );
 }
 
-function Tile({ icon, title, subtitle, onPress }: { icon: IconName; title: string; subtitle: string; onPress: () => void }) {
+function Tile({
+  icon,
+  title,
+  subtitle,
+  onPress,
+}: {
+  icon: IconName;
+  title: string;
+  subtitle: string;
+  onPress: () => void;
+}) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={title} onPress={onPress} style={({ pressed }) => [styles.tile, pressed && { opacity: 0.85 }]}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      onPress={onPress}
+      style={({ pressed }) => [styles.tile, pressed && { opacity: 0.85 }]}
+    >
       <View style={styles.tileIcon}>
         <Icon name={icon} size={22} color={colors.white} />
       </View>
@@ -191,10 +213,30 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   input: { flex: 1, fontFamily: fonts.medium, fontSize: 15, color: colors.ink, paddingVertical: space.sm },
-  send: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.leaf, alignItems: "center", justifyContent: "center" },
+  send: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.leaf,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   examples: { flexDirection: "row", flexWrap: "wrap", gap: space.sm, marginTop: -space.sm },
   example: { paddingHorizontal: space.md, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: colors.sunk },
-  error: { flexDirection: "row", alignItems: "center", gap: space.md, padding: space.md, borderRadius: radius.md, backgroundColor: colors.plumSoft },
-  manual: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space.sm, paddingVertical: space.md },
+  error: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    padding: space.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.plumSoft,
+  },
+  manual: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: space.sm,
+    paddingVertical: space.md,
+  },
   analysing: { alignItems: "center", gap: space.md, paddingVertical: space.xxxl },
 });

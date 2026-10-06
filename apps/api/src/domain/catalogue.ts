@@ -17,15 +17,48 @@ const UNIT_LABELS: Record<Unit, string> = {
 
 /** Free-form unit words (from AI or users) → Kimbo units. */
 const UNIT_ALIASES: Record<string, Unit> = {
-  piece: "piece", pieces: "piece", pc: "piece", pcs: "piece", no: "piece", nos: "piece", whole: "piece",
-  slice: "piece", slices: "piece", serving: "piece", servings: "piece",
-  katori: "katori", katoris: "katori", vati: "katori", vatis: "katori", "small bowl": "katori", "small bowls": "katori",
-  bowl: "bowl", bowls: "bowl", "large bowl": "bowl", "big bowl": "bowl",
-  plate: "plate", plates: "plate", thali: "plate",
-  glass: "glass", glasses: "glass",
-  cup: "cup", cups: "cup", mug: "cup", mugs: "cup",
-  tbsp: "tbsp", tablespoon: "tbsp", tablespoons: "tbsp", spoon: "tbsp", spoons: "tbsp", chamach: "tbsp",
-  g: "g", gm: "g", gms: "g", gram: "g", grams: "g", ml: "g",
+  piece: "piece",
+  pieces: "piece",
+  pc: "piece",
+  pcs: "piece",
+  no: "piece",
+  nos: "piece",
+  whole: "piece",
+  slice: "piece",
+  slices: "piece",
+  serving: "piece",
+  servings: "piece",
+  katori: "katori",
+  katoris: "katori",
+  vati: "katori",
+  vatis: "katori",
+  "small bowl": "katori",
+  "small bowls": "katori",
+  bowl: "bowl",
+  bowls: "bowl",
+  "large bowl": "bowl",
+  "big bowl": "bowl",
+  plate: "plate",
+  plates: "plate",
+  thali: "plate",
+  glass: "glass",
+  glasses: "glass",
+  cup: "cup",
+  cups: "cup",
+  mug: "cup",
+  mugs: "cup",
+  tbsp: "tbsp",
+  tablespoon: "tbsp",
+  tablespoons: "tbsp",
+  spoon: "tbsp",
+  spoons: "tbsp",
+  chamach: "tbsp",
+  g: "g",
+  gm: "g",
+  gms: "g",
+  gram: "g",
+  grams: "g",
+  ml: "g",
 };
 
 const byId = new Map(CATALOGUE.map((e) => [e.id, e]));
@@ -51,8 +84,31 @@ for (const entry of CATALOGUE) {
 
 /** Words that describe a dish without changing what it is. */
 const MODIFIERS = new Set([
-  "homemade", "home", "made", "style", "fresh", "hot", "warm", "plain", "simple", "small", "big", "large",
-  "some", "little", "extra", "spicy", "mild", "leftover", "my", "of", "a", "the", "sabzi", "sabji", "curry",
+  "homemade",
+  "home",
+  "made",
+  "style",
+  "fresh",
+  "hot",
+  "warm",
+  "plain",
+  "simple",
+  "small",
+  "big",
+  "large",
+  "some",
+  "little",
+  "extra",
+  "spicy",
+  "mild",
+  "leftover",
+  "my",
+  "of",
+  "a",
+  "the",
+  "sabzi",
+  "sabji",
+  "curry",
 ]);
 
 function containsPhrase(haystack: string[], needle: string[]): boolean {
@@ -120,7 +176,12 @@ export function perUnit(entry: CatalogueEntry, unit: Unit): Nutrition {
   const grams = gramsPerUnit(entry, unit);
   if (grams === null) throw new Error(`${entry.id} has no ${unit} portion`);
   const [calories, protein, carbs, fat, fibre, satFat] = entry.per100.map((v) => (v * grams) / 100) as [
-    number, number, number, number, number, number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
   ];
   return { calories, protein, carbs, fat, fibre, satFat };
 }

@@ -13,7 +13,13 @@ const model = process.env.KIMBO_AI_MODEL ?? "claude-opus-5-5";
 const db = createDb(databaseUrl);
 await migrate(db);
 
-const ai = apiKey ? new ClaudeAdapters(apiKey, model, CATALOGUE.map((f) => f.name)) : new DemoAdapters();
+const ai = apiKey
+  ? new ClaudeAdapters(
+      apiKey,
+      model,
+      CATALOGUE.map((f) => f.name),
+    )
+  : new DemoAdapters();
 const app = await createApp({ db, clock: systemClock, recognizer: ai, extractor: ai }, { logger: true });
 if (!apiKey) app.log.warn("ANTHROPIC_API_KEY not set — using offline demo AI adapters");
 
