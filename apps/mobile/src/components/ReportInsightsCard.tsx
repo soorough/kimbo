@@ -81,6 +81,27 @@ export function ReportInsightsCard({ insights: i }: { insights: ReportInsights }
               </T>
             </View>
           ) : null}
+
+          {i.cutBackOn.length ? (
+            <View style={styles.cut}>
+              <T variant="caption" tone="soft">
+                WORTH HAVING LESS OFTEN{markerName ? ` FOR YOUR ${markerName.toUpperCase()}` : ""}
+              </T>
+              {i.cutBackOn.map((c) => (
+                <View key={c.name} style={styles.cutRow}>
+                  <T variant="bodyStrong" style={{ flex: 1 }} numberOfLines={1}>
+                    {c.name}
+                  </T>
+                  <T variant="caption">
+                    {c.times} {c.times === 1 ? "time" : "times"} · {c.reason}
+                  </T>
+                </View>
+              ))}
+              {i.helpers.length ? (
+                <T variant="caption">Swap in {i.helpers[0]!.toLowerCase()} on some of those days.</T>
+              ) : null}
+            </View>
+          ) : null}
         </>
       ) : (
         <T variant="body">Log your meals and Kimbo will show how many help your focus.</T>
@@ -141,6 +162,8 @@ const styles = StyleSheet.create({
   bar: { borderRadius: 4 },
   barEmpty: { backgroundColor: colors.sunk },
   helpers: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  cut: { gap: 6, padding: space.md, borderRadius: radius.md, backgroundColor: colors.plumSoft },
+  cutRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
   retest: {
     flexDirection: "row",
     gap: space.sm,
