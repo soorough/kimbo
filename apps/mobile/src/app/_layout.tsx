@@ -39,6 +39,10 @@ export default function RootLayout() {
               <Stack.Screen name="welcome" options={{ headerShown: false }} />
               <Stack.Screen name="onboarding" options={{ title: "Your daily goal" }} />
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="log" options={{ title: "Log a meal", presentation: "modal" }} />
+              <Stack.Screen name="review" options={{ title: "Check your meal" }} />
+              <Stack.Screen name="food-search" options={{ title: "Food list", presentation: "modal" }} />
+              <Stack.Screen name="report-review" options={{ title: "Check your report" }} />
             </Stack>
             <MomentToast />
           </View>
