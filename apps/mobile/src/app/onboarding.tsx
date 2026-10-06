@@ -14,6 +14,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
 import { KimboScene } from "@/components/KimboScene";
+import { PacePlanner } from "@/components/PacePlanner";
 import { RulerPicker } from "@/components/RulerPicker";
 import { Button, Chip, Icon, Screen, Segmented, SegmentRing, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
@@ -350,6 +351,16 @@ export default function Onboarding() {
               />
             );
           })}
+          <PacePlanner
+            goal={goalType}
+            body={{ ...body, activity }}
+            targetWeightKg={goalWeightValue}
+            onUsePace={(pace) => {
+              setWeeklyKg(pace);
+              calculate.mutate(request({ weeklyKg: pace, targetWeightKg: goalWeightValue }));
+            }}
+            onUseGoalWeight={(kg) => setGoalWeight(kg)}
+          />
         </Options>
       ) : null}
     </Screen>

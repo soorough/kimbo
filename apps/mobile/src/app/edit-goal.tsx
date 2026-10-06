@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
+import { PacePlanner } from "@/components/PacePlanner";
 import { Button, Chip, Screen, Segmented, Stepper, Surface, T } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
@@ -154,6 +155,15 @@ export default function EditGoal() {
               <Chip key={p} label={`${formatPace(p, weightUnit)} / week`} selected={weeklyKg === p} onPress={() => edit(setPace)(p)} />
             ))}
           </View>
+          {goal !== "maintain" && gw !== null ? (
+            <PacePlanner
+              goal={goal}
+              body={{ age, sex, heightCm: height, weightKg: weight, activity }}
+              targetWeightKg={gw}
+              onUsePace={edit(setPace)}
+              onUseGoalWeight={edit((kg: number) => setGoalWeight(kg))}
+            />
+          ) : null}
         </Section>
       ) : null}
 

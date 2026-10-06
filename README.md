@@ -21,7 +21,10 @@ accent. "See a sample week" opens a demo profile with a week of meals and a repo
 question and reacts to the answer: a signpost for the goal, a cake for age, a ruler that tracks height, a
 scale that reads the weight, a jog that speeds up with activity, a bullseye with the goal weight and a
 stopwatch for pace. Weights go to 0.1 kg; a "build muscle" goal is always at least 2 kg above today's
-weight. The reveal explains the calorie target and allows a custom number. The blood report is an optional
+weight. The pace step explains what speed costs (fast loss takes muscle; muscle can only be built at
+about ¼ to ½ kg a week, so a faster gain is mostly fat) and has **Have a date in mind?**: pick a date
+and Kimbo says whether it is realistic, doable with effort, hard or not realistic, and offers the
+earliest realistic date or a goal weight that fits. The same check is on Edit goal. The reveal explains the calorie target and allows a custom number. The blood report is an optional
 last step.
 
 **Today.**
@@ -152,7 +155,7 @@ cd apps/api && pnpm test   # needs Postgres; uses kimbo_test (TEST_DATABASE_URL 
 ```
 
 Tests drive the HTTP API against a real database with fake AI adapters and a settable clock
-(171 tests: meals, recent and saved meals, progress, journey calendar, reports and report insights).
+(179 tests: meals, recent and saved meals, progress, journey calendar, reports, report insights and the goal-date check).
 
 Mobile checks: `cd apps/mobile && npx tsc --noEmit`.
 
@@ -181,7 +184,8 @@ EXPO_PUBLIC_API_URL=https://api-production-9b58.up.railway.app NODE_ENV=producti
 ## Tuning
 
 All product constants (marker thresholds, focus-match criteria, goal band, streak rules) live in
-`apps/api/src/domain/config.ts`. The calorie formula, paces, macro split and the saturated-fat limit
-(under 10% of energy) live in `packages/shared/src/goal.ts`. Recent-meal limits (60 days, six meals)
+`apps/api/src/domain/config.ts`. The calorie formula, paces, macro split, the saturated-fat limit
+(under 10% of energy) and the goal-date check (`assessTimeline`: loss comfortable up to 0.5% of body
+weight a week, realistic up to 1%) live in `packages/shared/src/goal.ts`. Recent-meal limits (60 days, six meals)
 are in `apps/api/src/domain/recent-meals.ts`. Food values live in
 `apps/api/src/domain/catalogue-data.ts`; bump `CATALOGUE_VERSION` when changing them.

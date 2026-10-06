@@ -122,3 +122,55 @@ export function macroTargetsFor(calories: number, goal: GoalKey, weightKg: numbe
     satFat,
   };
 }
+
+/**
+ * Honest read on a goal date. Losing up to ~0.5% of body weight a week is comfortable and
+ * up to ~1% is doable; beyond that, more of the loss is muscle and hunger makes it hard to
+ * keep up. Muscle can only be built at about 0.25–0.5 kg a week, so a faster gain is mostly fat.
+ */
+export const LOSS_COMFORTABLE_PCT = 0.5;
+export const LOSS_REALISTIC_PCT = 1;
+
+export type TimelineVerdict = "comfortable" | "effort" | "hard" | "unrealistic";
+
+export interface TimelineAssessment {
+  requiredKgPerWeek: number;
+  verdict: TimelineVerdict;
+  /** slowest offered pace that reaches the goal by the date; null if none does */
+  pace: number | null;
+  /** weeks the goal takes at the fastest realistic pace */
+  realisticWeeks: number | null;
+  /** where the fastest realistic pace gets you by the date */
+  realisticGoalWeightKg: number | null;
+}
+
+export function assessTimeline(
+  i: Omit<GoalInput, "goal" | "weeklyKg" | "targetWeightKg"> & {
+    goal: Exclude<GoalKey, "maintain">;
+    targetWeightKg: number;
+  },
+  weeks: number,
+): TimelineAssessment {
+  const kgToGo = Math.abs(i.targetWeightKg - i.weightKg);
+  const requiredKgPerWeek = Math.round((kgToGo / Math.max(1, weeks)) * 100) / 100;
+  // Paces whose calorie target stays at or above the safe minimum for this person.
+  const feasible = PACES[i.goal].filter((p) => computeGoal({ ...i, weeklyKg: p }).raw >= TARGET_BOUNDS_KCAL.min);
+  const pctOf = (p: number) => (p / i.weightKg) * 100;
+  const realistic = feasible.filter((p) => (i.goal === "lose" ? pctOf(p) <= LOSS_REALISTIC_PCT : true));
+  const fastest = realistic.at(-1) ?? null;
+
+  const pace = feasible.find((p) => p >= requiredKgPerWeek - 1e-9) ?? null;
+  let verdict: TimelineVerdict;
+  if (pace === null) verdict = "unrealistic";
+  else if (i.goal === "build_muscle") verdict = pace <= 0.25 ? "comfortable" : "effort";
+  else verdict = pctOf(pace) <= LOSS_COMFORTABLE_PCT ? "comfortable" : pctOf(pace) <= LOSS_REALISTIC_PCT ? "effort" : "hard";
+
+  const sign = i.goal === "lose" ? -1 : 1;
+  return {
+    requiredKgPerWeek,
+    verdict,
+    pace,
+    realisticWeeks: fastest ? Math.ceil(kgToGo / fastest) : null,
+    realisticGoalWeightKg: fastest ? Math.round((i.weightKg + sign * fastest * weeks) * 2) / 2 : null,
+  };
+}
