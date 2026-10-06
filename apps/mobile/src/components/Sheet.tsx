@@ -5,7 +5,6 @@ import {
   KeyboardAvoidingView,
   Modal,
   PanResponder,
-  Platform,
   Pressable,
   StyleSheet,
   View,
@@ -64,7 +63,7 @@ export function SheetPanel({
         <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Close" />
       </Animated.View>
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior="padding"
         style={styles.anchor}
         pointerEvents="box-none"
       >
