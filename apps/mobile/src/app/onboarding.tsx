@@ -180,8 +180,11 @@ export default function Onboarding() {
 
   const current = steps[Math.min(step, steps.length - 1)]!;
   const body = { age, sex: sex ?? "other", heightCm: height, weightKg: weight };
+  // A remembered goal is kept only while it still points the right way from today's weight.
   const goalWeightValue =
-    goalWeight ?? (goalType === "build_muscle" ? Math.round((weight + 3) * 10) / 10 : Math.max(35, Math.round(weight - 5)));
+    goalType === "build_muscle"
+      ? Math.max(goalWeight ?? round1(weight + 3), gainFloor(weight))
+      : Math.min(goalWeight ?? Math.max(35, Math.round(weight - 5)), loseCeiling(weight));
 
   const footer =
     current === "age" || current === "height" || current === "weight" ? (
@@ -373,6 +376,12 @@ function Kcal({ value }: { value: number }) {
   );
 }
 
+const round1 = (kg: number) => Math.round(kg * 10) / 10;
+/** Gaining means at least 2 kg up; smaller changes are within normal day-to-day swings. */
+const MIN_GAIN_KG = 2;
+const gainFloor = (currentKg: number) => round1(currentKg + MIN_GAIN_KG);
+const loseCeiling = (currentKg: number) => Math.floor(currentKg - 0.5);
+
 /** Goal weight on the same ruler and units as current weight, limited to the right direction. */
 function GoalWeightStep({
   goal,
@@ -387,8 +396,8 @@ function GoalWeightStep({
 }) {
   const unit = useUnits((u) => u.weight);
   const diff = Math.abs(kg - currentKg);
-  const min = goal === "lose" ? 30 : Math.ceil(currentKg + 0.5);
-  const max = goal === "lose" ? Math.floor(currentKg - 0.5) : Math.ceil(currentKg + 30);
+  const min = goal === "lose" ? 30 : gainFloor(currentKg);
+  const max = goal === "lose" ? loseCeiling(currentKg) : Math.ceil(currentKg + 30);
   return (
     <View style={{ gap: space.lg }}>
       {unit === "kg" ? (
