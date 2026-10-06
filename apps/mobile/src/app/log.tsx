@@ -1,9 +1,9 @@
-import type { MealSource, ParseMealRequest } from "@kimbo/shared";
-import { useMutation } from "@tanstack/react-query";
+import type { MealSource, ParseMealRequest, RecentMeal } from "@kimbo/shared";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
 import { Icon, SheetPanel, T, type IconName } from "@/components/ui";
 import { errorMessage, api } from "@/lib/api";
@@ -68,6 +68,12 @@ export default function LogMeal() {
         <Analysing />
       ) : (
         <View style={{ gap: space.lg }}>
+          <RecentMeals
+            onPick={(meal) => {
+              startFromAi(meal.draft, "repeat", presetType);
+              router.replace("/review");
+            }}
+          />
           <View style={styles.tiles}>
             <Tile icon="camera" title="Camera" subtitle="Best for a full thali" onPress={() => photo(true)} />
             <Tile icon="image" title="Gallery" subtitle="A photo you took earlier" onPress={() => photo(false)} />
@@ -136,6 +142,63 @@ export default function LogMeal() {
   );
 }
 
+/** Past meals as one-tap chips: tap opens review to tweak and save, × drops it from the list. */
+function RecentMeals({ onPick }: { onPick: (meal: RecentMeal) => void }) {
+  const queryClient = useQueryClient();
+  const recent = useQuery({ queryKey: ["recentMeals"], queryFn: api.recentMeals });
+  const hide = useMutation({
+    mutationFn: (key: string) => api.hideRecentMeal(key),
+    onMutate: (key) =>
+      queryClient.setQueryData<{ meals: RecentMeal[] }>(["recentMeals"], (d) =>
+        d ? { meals: d.meals.filter((m) => m.key !== key) } : d,
+      ),
+    onError: () => queryClient.invalidateQueries({ queryKey: ["recentMeals"] }),
+  });
+  const meals = recent.data?.meals ?? [];
+  if (!meals.length) return null;
+
+  return (
+    <View style={{ gap: space.sm }}>
+      <T variant="overline" tone="soft">
+        RECENT
+      </T>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.recentRow}
+        style={styles.recentScroll}
+      >
+        {meals.map((m) => (
+          <View key={m.key} style={styles.recent}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${m.label}, ${m.calories} kilocalories. Add again`}
+              onPress={() => onPick(m)}
+              style={({ pressed }) => [styles.recentBody, pressed && { opacity: 0.7 }]}
+            >
+              <T variant="bodyStrong" numberOfLines={1}>
+                {m.label}
+              </T>
+              <T variant="caption">
+                {m.calories} kcal{m.timesLogged > 1 ? ` · ${m.timesLogged}×` : ""}
+              </T>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${m.label} from recent`}
+              hitSlop={10}
+              onPress={() => hide.mutate(m.key)}
+              style={styles.recentRemove}
+            >
+              <Icon name="x" size={14} color={colors.inkSoft} />
+            </Pressable>
+          </View>
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
 function Tile({
   icon,
   title,
@@ -180,6 +243,20 @@ function Analysing() {
 
 const styles = StyleSheet.create({
   tiles: { flexDirection: "row", gap: space.md },
+  // Bleed to the sheet edges so chips scroll off-screen instead of being clipped by padding.
+  recentScroll: { marginHorizontal: -space.xl },
+  recentRow: { gap: space.sm, paddingHorizontal: space.xl },
+  recent: {
+    flexDirection: "row",
+    alignItems: "center",
+    maxWidth: 240,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  recentBody: { flexShrink: 1, paddingLeft: space.md, paddingRight: space.xs, paddingVertical: space.sm, gap: 2 },
+  recentRemove: { paddingHorizontal: space.sm, alignSelf: "stretch", justifyContent: "center" },
   tile: {
     flex: 1,
     gap: 4,

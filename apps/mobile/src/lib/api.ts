@@ -10,6 +10,7 @@ import {
   MealsResponse,
   Profile,
   ProgressResponse,
+  RecentMealsResponse,
   ReportDraft,
   ReportsResponse,
   TodayResponse,
@@ -83,6 +84,8 @@ export const api = {
   updateMeal: (id: string, body: ConfirmMealRequest) => request(ConfirmMealResponse, "PATCH", `/meals/${id}`, body),
   deleteMeal: (id: string) => request(Empty, "DELETE", `/meals/${id}`),
   meals: (date: string) => request(MealsResponse, "GET", `/meals?date=${date}`),
+  recentMeals: () => request(RecentMealsResponse, "GET", "/meals/recent"),
+  hideRecentMeal: (key: string) => request(Empty, "DELETE", `/meals/recent/${encodeURIComponent(key)}`),
   repeatYesterday: (mealType: string) => request(ConfirmMealResponse, "POST", "/meals/repeat-yesterday", { mealType }),
   searchFoods: (q: string) => request(FoodSearchResponse, "GET", `/foods/search?q=${encodeURIComponent(q)}`),
 
