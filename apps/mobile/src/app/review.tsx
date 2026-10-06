@@ -24,7 +24,7 @@ export default function Review() {
   const [editing, setEditing] = useState<string | null>(null);
   const totals = draftTotals(draft.lines);
   const editingLine = draft.lines.find((l) => l.key === editing) ?? null;
-  const isAiDraft = !draft.mealId && (draft.source === "photo" || draft.source === "text");
+  const isAiDraft = !draft.mealId && (draft.source === "photo" || draft.source === "text" || draft.source === "voice");
   const [keep, setKeep] = useState(false);
   const [keepName, setKeepName] = useState("");
   // Saved once per screen, so retrying a failed meal save doesn't duplicate it in My meals.

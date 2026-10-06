@@ -1,8 +1,9 @@
-import type { MealDraft, MealSource, ParseMealRequest, RecentMeal } from "@kimbo/shared";
+import type { MealDraft, MealSource, MealType, ParseMealRequest, RecentMeal } from "@kimbo/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from "expo-speech-recognition";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
 import { Icon, SheetPanel, T, type IconName } from "@/components/ui";
@@ -12,7 +13,38 @@ import { MEAL_LABEL, isMealType, mealTypeForNow } from "@/lib/format";
 import { toUploadableJpeg } from "@/lib/image";
 import { colors, fonts, radius, space } from "@/lib/theme";
 
-const EXAMPLES = ["2 roti, 1 katori dal, aloo gobi", "poha and chai", "rajma chawal with salad"];
+/** Examples follow the meal of the moment, so the hint looks like what people are about to type. */
+const EXAMPLES: Record<MealType, string[]> = {
+  breakfast: ["poha and chai", "2 idli with sambar", "aloo paratha with curd"],
+  lunch: ["2 roti, 1 katori dal, aloo gobi", "rajma chawal with salad"],
+  snack: ["samosa and chai", "a bowl of fruit"],
+  dinner: ["dal khichdi with raita", "2 roti with paneer sabzi"],
+};
+/** Kitchen words the recogniser should expect, so "katori" isn't heard as "category". */
+const VOICE_HINTS = [
+  "roti",
+  "chapati",
+  "paratha",
+  "katori",
+  "dal",
+  "sabzi",
+  "rajma",
+  "chawal",
+  "chole",
+  "poha",
+  "upma",
+  "idli",
+  "dosa",
+  "sambar",
+  "paneer",
+  "bhindi",
+  "aloo gobi",
+  "raita",
+  "chai",
+  "thali",
+  "khichdi",
+  "biryani",
+];
 const HINTS = ["Reading your plate…", "Counting roti and katoris…", "Matching dishes…"];
 
 /**
@@ -23,6 +55,9 @@ export default function LogMeal() {
   const params = useLocalSearchParams<{ mealType?: string }>();
   const presetType = isMealType(params.mealType) ? params.mealType : undefined;
   const [text, setText] = useState("");
+  const [listening, setListening] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const heard = useRef("");
   const startFromAi = useDraft((s) => s.startFromAi);
   const startManual = useDraft((s) => s.startManual);
 
@@ -55,9 +90,51 @@ export default function LogMeal() {
     });
   }
 
-  function describe(value = text) {
+  function describe(value = text, source: MealSource = "text") {
     const body = { text: value.trim() };
-    if (body.text) analyse.mutate({ load: async () => body, source: "text" });
+    if (body.text) analyse.mutate({ load: async () => body, source });
+  }
+
+  // Speech becomes text on the phone, then goes through the same parser as typing.
+  useSpeechRecognitionEvent("result", (e) => {
+    const said = e.results[0]?.transcript ?? "";
+    setText(said);
+    if (e.isFinal) heard.current = said;
+  });
+  useSpeechRecognitionEvent("end", () => {
+    setListening(false);
+    const said = heard.current;
+    heard.current = "";
+    if (said.trim()) describe(said, "voice");
+  });
+  useSpeechRecognitionEvent("error", (e) => {
+    setListening(false);
+    if (e.error === "aborted") return;
+    setVoiceError(
+      e.error === "no-speech" || e.error === "speech-timeout"
+        ? "Didn't catch that. Try again, or type it."
+        : e.error === "not-allowed"
+          ? "Turn on the microphone for Kimbo in Settings to speak your meal."
+          : "Voice isn't available right now. Type it instead.",
+    );
+  });
+
+  async function toggleVoice() {
+    if (listening) return ExpoSpeechRecognitionModule.stop();
+    setVoiceError(null);
+    const permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!permission.granted) {
+      setVoiceError("Turn on the microphone for Kimbo in Settings to speak your meal.");
+      return;
+    }
+    heard.current = "";
+    setText("");
+    setListening(true);
+    ExpoSpeechRecognitionModule.start({
+      lang: "en-IN",
+      interimResults: true,
+      contextualStrings: VOICE_HINTS,
+    });
   }
 
   function quickAdd(draft: MealDraft) {
@@ -65,7 +142,10 @@ export default function LogMeal() {
     router.replace("/review");
   }
 
-  const title = presetType ? `Log ${MEAL_LABEL[presetType].toLowerCase()}` : "What did you eat?";
+  const mealNow = presetType ?? mealTypeForNow();
+  const title = presetType
+    ? `Log ${MEAL_LABEL[presetType].toLowerCase()}`
+    : `What did you have for ${mealNow === "snack" ? "a snack" : MEAL_LABEL[mealNow].toLowerCase()}?`;
 
   return (
     <SheetPanel title={analyse.isPending ? undefined : title} subtitle={undefined} onClose={() => router.back()}>
@@ -75,16 +155,13 @@ export default function LogMeal() {
         <View style={{ gap: space.lg }}>
           <SavedMeals onPick={(draft) => quickAdd(draft)} />
           <RecentMeals onPick={(meal) => quickAdd(meal.draft)} />
-          <View style={styles.tiles}>
-            <Tile icon="camera" title="Camera" subtitle="Best for a full thali" onPress={() => photo(true)} />
-            <Tile icon="image" title="Gallery" subtitle="A photo you took earlier" onPress={() => photo(false)} />
-          </View>
 
-          <View style={styles.inputRow}>
+          <View style={[styles.inputRow, listening && styles.inputListening]}>
             <TextInput
               value={text}
               onChangeText={setText}
-              placeholder="Type what you ate"
+              editable={!listening}
+              placeholder={listening ? "Listening…" : "Type or say what you ate"}
               placeholderTextColor={colors.inkFaint}
               style={styles.input}
               returnKeyType="send"
@@ -93,22 +170,48 @@ export default function LogMeal() {
             />
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel={listening ? "Stop listening" : "Say what you ate"}
+              onPress={toggleVoice}
+              style={[styles.mic, listening && styles.micOn]}
+            >
+              <Icon name={listening ? "square" : "mic"} size={18} color={listening ? colors.white : colors.leaf} />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
               accessibilityLabel="Analyse"
-              disabled={!text.trim()}
+              disabled={!text.trim() || listening}
               onPress={() => describe()}
-              style={[styles.send, !text.trim() && { opacity: 0.4 }]}
+              style={[styles.send, (!text.trim() || listening) && { opacity: 0.4 }]}
             >
               <Icon name="arrow-up" size={20} color={colors.white} />
             </Pressable>
           </View>
           <View style={styles.examples}>
-            {EXAMPLES.map((e) => (
+            {EXAMPLES[mealNow].map((e) => (
               <Pressable key={e} onPress={() => setText(e)} style={styles.example}>
                 <T variant="caption" tone="soft">
                   {e}
                 </T>
               </Pressable>
             ))}
+          </View>
+          {voiceError ? (
+            <T variant="caption" tone="plum">
+              {voiceError}
+            </T>
+          ) : null}
+
+          <View style={styles.tiles}>
+            <Tile icon="camera" title="Camera" onPress={() => photo(true)} />
+            <Tile icon="image" title="Gallery" onPress={() => photo(false)} />
+            <Tile
+              icon="list"
+              title="Food list"
+              onPress={() => {
+                startManual(presetType ?? mealTypeForNow());
+                router.replace("/review");
+              }}
+            />
           </View>
 
           {analyse.error ? (
@@ -123,20 +226,6 @@ export default function LogMeal() {
               </T>
             </View>
           ) : null}
-
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => {
-              startManual(presetType ?? mealTypeForNow());
-              router.replace("/review");
-            }}
-            style={styles.manual}
-          >
-            <Icon name="list" size={18} color={colors.leaf} />
-            <T variant="bodyStrong" tone="leaf">
-              Pick from the food list
-            </T>
-          </Pressable>
         </View>
       )}
     </SheetPanel>
@@ -154,7 +243,12 @@ function SavedMeals({ onPick }: { onPick: (draft: MealDraft) => void }) {
         <T variant="overline" tone="soft">
           MY MEALS
         </T>
-        <Pressable accessibilityRole="button" accessibilityLabel="Edit my meals" hitSlop={10} onPress={() => router.push("/my-meals")}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Edit my meals"
+          hitSlop={10}
+          onPress={() => router.push("/my-meals")}
+        >
           <T variant="label" tone="leaf">
             Edit
           </T>
@@ -247,17 +341,8 @@ function RecentMeals({ onPick }: { onPick: (meal: RecentMeal) => void }) {
   );
 }
 
-function Tile({
-  icon,
-  title,
-  subtitle,
-  onPress,
-}: {
-  icon: IconName;
-  title: string;
-  subtitle: string;
-  onPress: () => void;
-}) {
+/** A compact source button: icon over a short label, three to a row. */
+function Tile({ icon, title, onPress }: { icon: IconName; title: string; onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -266,10 +351,11 @@ function Tile({
       style={({ pressed }) => [styles.tile, pressed && { opacity: 0.85 }]}
     >
       <View style={styles.tileIcon}>
-        <Icon name={icon} size={22} color={colors.white} />
+        <Icon name={icon} size={18} color={colors.white} />
       </View>
-      <T variant="heading">{title}</T>
-      <T variant="caption">{subtitle}</T>
+      <T variant="label" style={{ color: colors.ink }}>
+        {title}
+      </T>
     </Pressable>
   );
 }
@@ -309,20 +395,30 @@ const styles = StyleSheet.create({
   recentRemove: { paddingHorizontal: space.sm, alignSelf: "stretch", justifyContent: "center" },
   tile: {
     flex: 1,
-    gap: 4,
-    padding: space.lg,
-    borderRadius: radius.lg,
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: space.md,
+    borderRadius: radius.md,
     backgroundColor: colors.leafSoft,
   },
   tileIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: colors.leaf,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: space.sm,
   },
+  inputListening: { borderColor: colors.leaf, borderWidth: 2 },
+  mic: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.leafSoft,
+  },
+  micOn: { backgroundColor: colors.leaf },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -353,13 +449,6 @@ const styles = StyleSheet.create({
     padding: space.md,
     borderRadius: radius.md,
     backgroundColor: colors.plumSoft,
-  },
-  manual: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: space.sm,
-    paddingVertical: space.md,
   },
   analysing: { alignItems: "center", gap: space.md, paddingVertical: space.xxxl },
 });

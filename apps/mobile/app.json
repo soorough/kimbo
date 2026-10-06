@@ -55,6 +55,16 @@
             "usesCleartextTraffic": false
           }
         }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Kimbo uses the microphone so you can say what you ate.",
+          "speechRecognitionPermission": "Kimbo turns what you say into a meal to check.",
+          "androidSpeechServiceProviders": [
+            "com.google.android.googlequicksearchbox"
+          ]
+        }
       ]
     ],
     "scheme": "kimbo",
