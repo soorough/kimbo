@@ -73,13 +73,27 @@ cd apps/api && pnpm test   # needs Postgres; uses kimbo_test (TEST_DATABASE_URL 
 
 Tests drive the HTTP API against a real database with fake AI adapters and a settable clock.
 
+## Deploy
+
+The API runs on Railway at https://api-production-9b58.up.railway.app, built from the root
+`Dockerfile` (see `railway.json`). Deploy from the repo root with `railway up`; set
+`DATABASE_URL` and `ANTHROPIC_API_KEY` on the Railway service.
+
 ## APK
+
+Cloud build (uses `EXPO_PUBLIC_API_URL` from `eas.json`):
 
 ```sh
 cd apps/mobile && npx eas-cli@latest build -p android --profile preview
 ```
 
-Set `EXPO_PUBLIC_API_URL` in `eas.json` to the deployed API first (an HTTPS URL).
+Local release build (about 33 MB):
+
+```sh
+cd apps/mobile/android
+EXPO_PUBLIC_API_URL=https://api-production-9b58.up.railway.app NODE_ENV=production ./gradlew assembleRelease
+# → app/build/outputs/apk/release/app-release.apk
+```
 
 ## Tuning
 

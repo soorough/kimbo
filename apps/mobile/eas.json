@@ -4,7 +4,7 @@
     "preview": {
       "distribution": "internal",
       "android": { "buildType": "apk" },
-      "env": { "EXPO_PUBLIC_API_URL": "https://REPLACE-with-deployed-api" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://api-production-9b58.up.railway.app" }
     }
   }
 }
