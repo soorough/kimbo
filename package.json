@@ -1,0 +1,9 @@
+{
+  "name": "kimbo",
+  "private": true,
+  "scripts": {
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test"
+  },
+  "packageManager": "pnpm@10.28.0"
+}
