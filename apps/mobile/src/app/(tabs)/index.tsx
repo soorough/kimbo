@@ -2,22 +2,18 @@ import type { MealType, TodayMeal, TodayResponse } from "@kimbo/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useEffect } from "react";
-import { AppState, Pressable, StyleSheet, Text, View } from "react-native";
+import { AppState, Pressable, StyleSheet, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
 import { useMoments } from "@/components/Moments";
-import { Button, Card, Chip, ErrorState, Loading, ProgressBar, Screen } from "@/components/ui";
+import { Bar, ErrorState, Icon, Loading, Ring, Screen, Surface, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useDraft } from "@/lib/draft";
+import { MEAL_LABEL, MEAL_ORDER, greeting } from "@/lib/format";
 import { useAfterWrite } from "@/lib/mutations";
 import { useSession } from "@/lib/session";
-import { colors, font, radius, space } from "@/lib/theme";
+import { colors, radius, space } from "@/lib/theme";
 
-const MEAL_LABEL: Record<MealType, string> = { breakfast: "Breakfast", lunch: "Lunch", snack: "Snack", dinner: "Dinner" };
-
-function currentMealType(): MealType {
-  const h = new Date().getHours();
-  return h < 11 ? "breakfast" : h < 16 ? "lunch" : h < 19 ? "snack" : "dinner";
-}
+const MEAL_ICON: Record<MealType, IconName> = { breakfast: "sunrise", lunch: "sun", snack: "coffee", dinner: "moon" };
 
 export default function Today() {
   const profileId = useSession((s) => s.profileId);
@@ -34,65 +30,77 @@ export default function Today() {
     );
   }
   const data = today.data;
+  const supported = data.focusSummary?.supported ?? 0;
 
   return (
-    <View style={{ flex: 1 }}>
-      <Screen>
-        <View style={styles.header}>
-          <View style={{ flex: 1 }}>
-            <Text style={font.title}>Today</Text>
-            <Text style={font.small}>{new Date(`${data.date}T12:00:00`).toDateString()}</Text>
-          </View>
-          <Text style={styles.link} onPress={() => router.push("/onboarding")}>
-            Edit goal
-          </Text>
+    <Screen>
+      <View style={styles.header}>
+        <View style={{ flex: 1, gap: 2 }}>
+          <T variant="overline" tone="faint">
+            {new Date(`${data.date}T12:00:00`).toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" }).toUpperCase()}
+          </T>
+          <T variant="display">{greeting()}</T>
         </View>
+        <Kimbo mood={data.meals.length ? "happy" : "idle"} size={56} leaves={1 + supported} />
+      </View>
 
-        {profile.data?.profile.isDemo ? <DemoBanner /> : null}
+      {profile.data?.profile.isDemo ? <DemoBanner /> : null}
 
-        <CaloriesCard data={data} />
-        <FocusCard data={data} />
-        <MealsSection meals={data.meals} repeatable={data.repeatableMealTypes} />
-      </Screen>
-      <Pressable accessibilityRole="button" style={styles.fab} onPress={() => router.push("/log")}>
-        <Text style={styles.fabText}>+ Log a meal</Text>
-      </Pressable>
-    </View>
+      <EnergyCard data={data} />
+      <FocusCard data={data} />
+
+      <View style={{ gap: space.md }}>
+        <T variant="heading">Your plate today</T>
+        {MEAL_ORDER.map((type) => (
+          <MealSlot
+            key={type}
+            type={type}
+            meals={data.meals.filter((m) => m.mealType === type)}
+            repeatable={data.repeatableMealTypes.includes(type)}
+          />
+        ))}
+      </View>
+    </Screen>
   );
 }
 
-function CaloriesCard({ data }: { data: TodayResponse }) {
+function EnergyCard({ data }: { data: TodayResponse }) {
   const t = data.targets;
   if (!t) return null;
-  const left = t.calories - data.totals.calories;
+  const eaten = data.totals.calories;
+  const left = t.calories - eaten;
   return (
-    <Card>
-      <View style={styles.rowBetween}>
-        <Text style={font.h2}>
-          {data.totals.calories} <Text style={font.small}>/ {t.calories} kcal</Text>
-        </Text>
-        {/* Over target is stated plainly, never as an alarm. */}
-        <Text style={font.small}>{left >= 0 ? `${left} kcal left` : `${-left} kcal over today's estimate`}</Text>
-      </View>
-      <ProgressBar value={data.totals.calories} max={t.calories} color={left >= 0 ? colors.primary : colors.calm} />
+    <Surface style={styles.energy}>
+      <Ring value={eaten} max={t.calories} size={132} stroke={12}>
+        {/* Over target is stated plainly, in a calm colour — never an alarm. */}
+        <T variant="number">{Math.abs(left)}</T>
+        <T variant="caption">{left >= 0 ? "kcal left" : "kcal over"}</T>
+      </Ring>
       <View style={styles.macros}>
-        <Macro label="Protein" value={data.totals.protein} target={t.protein} />
-        <Macro label="Carbs" value={data.totals.carbs} target={t.carbs} />
-        <Macro label="Fat" value={data.totals.fat} target={t.fat} />
-        <Macro label="Fibre" value={data.totals.fibre} target={t.fibre} />
+        <T variant="label">
+          {eaten} of {t.calories} kcal
+        </T>
+        <Macro label="Protein" value={data.totals.protein} target={t.protein} color={colors.terracotta} />
+        <Macro label="Carbs" value={data.totals.carbs} target={t.carbs} color={colors.turmeric} />
+        <Macro label="Fat" value={data.totals.fat} target={t.fat} color={colors.plum} />
+        <Macro label="Fibre" value={data.totals.fibre} target={t.fibre} color={colors.leaf} />
       </View>
-    </Card>
+    </Surface>
   );
 }
 
-function Macro({ label, value, target }: { label: string; value: number; target: number }) {
+function Macro({ label, value, target, color }: { label: string; value: number; target: number; color: string }) {
   return (
-    <View style={{ flex: 1, gap: 4 }}>
-      <Text style={font.small}>{label}</Text>
-      <ProgressBar value={value} max={target} color={colors.accent} />
-      <Text style={styles.macroValue}>
-        {Math.round(value)}/{target} g
-      </Text>
+    <View style={{ gap: 4 }}>
+      <View style={styles.rowBetween}>
+        <T variant="caption" tone="soft">
+          {label}
+        </T>
+        <T variant="caption" tone="soft">
+          {Math.round(value)}/{target} g
+        </T>
+      </View>
+      <Bar value={value} max={target} color={color} height={6} />
     </View>
   );
 }
@@ -100,74 +108,89 @@ function Macro({ label, value, target }: { label: string; value: number; target:
 function FocusCard({ data }: { data: TodayResponse }) {
   if (!data.focus) {
     return (
-      <Card style={styles.focusCard}>
+      <Surface tint="leaf" onPress={() => router.push("/(tabs)/report")} accessibilityLabel="Add a blood report">
         <View style={styles.rowCenter}>
-          <Kimbo mood="idle" size={56} />
           <View style={{ flex: 1, gap: 4 }}>
-            <Text style={font.h2}>Get a daily food focus</Text>
-            <Text style={font.small}>Add a blood report (or try a sample) and Kimbo will connect it to your meals.</Text>
+            <T variant="overline">DAILY FOOD FOCUS</T>
+            <T variant="heading">Turn your blood report into one simple focus</T>
+            <T variant="label">Upload a report — or try a sample — and Kimbo connects it to your meals.</T>
           </View>
+          <Icon name="chevron-right" color={colors.leaf} />
         </View>
-        <Button label="Add a report" kind="secondary" onPress={() => router.push("/(tabs)/report")} />
-      </Card>
+      </Surface>
     );
   }
   const s = data.focusSummary!;
   return (
-    <Card style={styles.focusCard}>
+    <Surface tint="leaf" onPress={() => router.push("/(tabs)/progress")} accessibilityLabel={`Focus: ${data.focus.title}`}>
       <View style={styles.rowCenter}>
-        <Kimbo mood={s.supported > 0 ? "proud" : "focus"} size={56} />
+        <Kimbo mood={s.supported ? "proud" : "focus"} size={64} leaves={1 + s.supported} />
         <View style={{ flex: 1, gap: 4 }}>
-          <Text style={styles.focusLabel}>FOCUS</Text>
-          <Text style={font.h2}>{data.focus.title}</Text>
-          <Text style={font.body}>
+          <T variant="overline">TODAY'S FOCUS</T>
+          <T variant="heading">{data.focus.title}</T>
+          <View style={styles.dots}>
+            {data.meals.map((m) => (
+              <View key={m.id} style={[styles.dot, m.supportsFocus ? styles.dotOn : styles.dotOff]} />
+            ))}
+          </View>
+          <T variant="label">
             {s.total === 0
               ? "Log a meal to see how it fits."
-              : `${s.supported} of your ${s.total} meal${s.total === 1 ? "" : "s"} today supported this focus.`}
-          </Text>
+              : `${s.supported} of ${s.total} meal${s.total === 1 ? "" : "s"} helped today`}
+          </T>
         </View>
       </View>
-    </Card>
+      <T variant="caption" tone="leaf">
+        Kimbo grows a leaf for every meal that helps.
+      </T>
+    </Surface>
   );
 }
 
-function MealsSection({ meals, repeatable }: { meals: TodayMeal[]; repeatable: MealType[] }) {
-  const repeatType = currentMealType();
+function MealSlot({ type, meals, repeatable }: { type: MealType; meals: TodayMeal[]; repeatable: boolean }) {
   const afterWrite = useAfterWrite();
-  const repeat = useMutation({
-    mutationFn: () => api.repeatYesterday(repeatType),
-    onSuccess: (res) => afterWrite(res.events),
-  });
-  // Offer a repeat only when yesterday had this meal and today doesn't yet.
-  const canRepeat = repeatable.includes(repeatType) && !meals.some((m) => m.mealType === repeatType);
+  const repeat = useMutation({ mutationFn: () => api.repeatYesterday(type), onSuccess: (res) => afterWrite(res.events) });
 
+  if (meals.length) return <>{meals.map((m) => <MealCard key={m.id} meal={m} />)}</>;
   return (
-    <View style={{ gap: space.md }}>
-      <Text style={font.h2}>What you ate</Text>
-      {canRepeat ? (
-        <View style={styles.rowCenter}>
-          <Chip
-            label={`Same ${MEAL_LABEL[repeatType].toLowerCase()} as yesterday?`}
-            disabled={repeat.isPending}
-            onPress={() => repeat.mutate()}
-          />
-          {repeat.error ? <Text style={[font.small, { flex: 1 }]}>{errorMessage(repeat.error)}</Text> : null}
+    <View style={styles.emptySlot}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Add ${MEAL_LABEL[type]}`}
+        onPress={() => router.push({ pathname: "/log", params: { mealType: type } })}
+        style={styles.emptyMain}
+      >
+        <View style={styles.mealIconMuted}>
+          <Icon name={MEAL_ICON[type]} size={18} color={colors.inkFaint} />
         </View>
+        <T variant="bodyStrong" tone="soft" style={{ flex: 1 }}>
+          Add {MEAL_LABEL[type].toLowerCase()}
+        </T>
+        <Icon name="plus" size={18} color={colors.leaf} />
+      </Pressable>
+      {repeatable ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => repeat.mutate()}
+          disabled={repeat.isPending}
+          style={[styles.repeat, repeat.isPending && { opacity: 0.5 }]}
+        >
+          <Icon name="rotate-ccw" size={14} color={colors.leaf} />
+          <T variant="label" tone="leaf">
+            {repeat.isPending ? "Adding…" : "Same as yesterday"}
+          </T>
+        </Pressable>
       ) : null}
-      {meals.length === 0 ? (
-        <Card style={{ alignItems: "center" }}>
-          <Kimbo mood="sleepy" size={72} />
-          <Text style={font.body}>Nothing logged yet today.</Text>
-          <Text style={font.small}>Tap "Log a meal" — a photo or a few words is enough.</Text>
-        </Card>
-      ) : (
-        meals.map((m) => <MealRow key={m.id} meal={m} />)
-      )}
+      {repeat.error ? (
+        <T variant="caption" style={{ paddingHorizontal: space.md, paddingBottom: space.sm }}>
+          {errorMessage(repeat.error)}
+        </T>
+      ) : null}
     </View>
   );
 }
 
-function MealRow({ meal }: { meal: TodayMeal }) {
+function MealCard({ meal }: { meal: TodayMeal }) {
   const startEdit = useDraft((s) => s.startEdit);
   const open = async () => {
     const { foods } = await api.searchFoods("");
@@ -175,20 +198,34 @@ function MealRow({ meal }: { meal: TodayMeal }) {
     router.push("/review");
   };
   return (
-    <Pressable onPress={open}>
-      <Card>
-        <View style={styles.rowBetween}>
-          <Text style={font.h2}>{MEAL_LABEL[meal.mealType]}</Text>
-          <Text style={[font.body, { fontWeight: "700" }]}>{meal.totals.calories} kcal</Text>
+    <Surface onPress={open} accessibilityLabel={`${MEAL_LABEL[meal.mealType]}, ${meal.totals.calories} kilocalories`}>
+      <View style={styles.rowCenter}>
+        <View style={styles.mealIcon}>
+          <Icon name={MEAL_ICON[meal.mealType]} size={18} color={colors.leafDeep} />
         </View>
-        <Text style={font.body}>{meal.items.map((i) => i.name).join(", ")}</Text>
-        {meal.supportsFocus ? (
-          <Text style={styles.supports}>✓ Supported your focus · {meal.focusReason}</Text>
-        ) : meal.focusReason ? (
-          <Text style={font.small}>{meal.focusReason}</Text>
-        ) : null}
-      </Card>
-    </Pressable>
+        <View style={{ flex: 1 }}>
+          <T variant="heading">{MEAL_LABEL[meal.mealType]}</T>
+          <T variant="label" numberOfLines={1}>
+            {new Date(meal.eatenAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+          </T>
+        </View>
+        <T variant="heading">{meal.totals.calories}</T>
+        <T variant="caption">kcal</T>
+      </View>
+      <T variant="body" numberOfLines={2}>
+        {meal.items.map((i) => i.name).join(" · ")}
+      </T>
+      {meal.supportsFocus ? (
+        <View style={styles.helped}>
+          <Icon name="check" size={14} color={colors.leafDeep} />
+          <T variant="caption" tone="leaf" numberOfLines={2} style={{ flex: 1 }}>
+            Helped your focus · {meal.focusReason}
+          </T>
+        </View>
+      ) : meal.focusReason ? (
+        <T variant="caption">{meal.focusReason}</T>
+      ) : null}
+    </Surface>
   );
 }
 
@@ -196,16 +233,20 @@ function DemoBanner() {
   const clear = useSession((s) => s.clear);
   return (
     <View style={styles.demo}>
-      <Text style={[font.small, { flex: 1, color: colors.text }]}>You're exploring sample data.</Text>
-      <Text
-        style={styles.link}
+      <Icon name="eye" size={16} color={colors.terracotta} />
+      <T variant="label" style={{ flex: 1, color: colors.ink }}>
+        You're exploring sample data
+      </T>
+      <T
+        variant="label"
+        tone="leaf"
         onPress={async () => {
           await clear();
           router.replace("/welcome");
         }}
       >
         Start fresh
-      </Text>
+      </T>
     </View>
   );
 }
@@ -227,31 +268,36 @@ function useWelcomeBack() {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "flex-end" },
-  link: { color: colors.primary, fontWeight: "700" },
-  rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" },
+  header: { flexDirection: "row", alignItems: "flex-end", gap: space.md, marginTop: space.sm },
+  rowBetween: { flexDirection: "row", justifyContent: "space-between" },
   rowCenter: { flexDirection: "row", alignItems: "center", gap: space.md },
-  macros: { flexDirection: "row", gap: space.md, marginTop: space.sm },
-  macroValue: { fontSize: 12, color: colors.text },
-  focusCard: { backgroundColor: colors.primarySoft, borderColor: colors.primarySoft },
-  focusLabel: { fontSize: 11, fontWeight: "800", letterSpacing: 1, color: colors.primary },
-  supports: { color: colors.primary, fontWeight: "600", fontSize: 13 },
+  energy: { flexDirection: "row", alignItems: "center", gap: space.xl },
+  macros: { flex: 1, gap: space.sm },
+  dots: { flexDirection: "row", gap: 6, marginVertical: 2 },
+  dot: { width: 10, height: 10, borderRadius: 5 },
+  dotOn: { backgroundColor: colors.leaf },
+  dotOff: { borderWidth: 1.5, borderColor: colors.leaf, opacity: 0.5 },
+  mealIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.leafSoft, alignItems: "center", justifyContent: "center" },
+  mealIconMuted: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.sunk, alignItems: "center", justifyContent: "center" },
+  emptySlot: { borderRadius: radius.lg, borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.line },
+  emptyMain: { flexDirection: "row", alignItems: "center", gap: space.md, padding: space.md },
+  repeat: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: space.md, paddingBottom: space.md, marginLeft: 50 },
+  helped: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: colors.leafSoft,
+    borderRadius: radius.sm,
+    paddingHorizontal: space.sm,
+    paddingVertical: 6,
+  },
   demo: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.accentSoft,
+    gap: space.sm,
+    backgroundColor: colors.terracottaSoft,
     borderRadius: radius.md,
-    padding: space.md,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
   },
-  fab: {
-    position: "absolute",
-    right: space.lg,
-    bottom: space.lg,
-    backgroundColor: colors.primary,
-    borderRadius: radius.pill,
-    paddingHorizontal: space.xl,
-    paddingVertical: space.md,
-    elevation: 4,
-  },
-  fabText: { color: colors.white, fontWeight: "800", fontSize: 16 },
 });

@@ -2,19 +2,20 @@ import type { ConfirmReportResponse, MarkerKey } from "@kimbo/shared";
 import { useMutation } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, TextInput, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
-import { Button, Card, Chip, Screen } from "@/components/ui";
+import { Button, Icon, Screen, Segmented, Surface, T } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
+import { DISCLAIMER } from "@/lib/copy";
 import { useAfterWrite } from "@/lib/mutations";
 import { useReportDraft } from "@/lib/report-draft";
-import { colors, font, radius, space } from "@/lib/theme";
+import { colors, fonts, radius, space } from "@/lib/theme";
 
 /** Kept in sync with the API's supported markers; used when entering values manually. */
-const MARKERS: { marker: MarkerKey; label: string; units: string[] }[] = [
-  { marker: "ldl", label: "LDL cholesterol", units: ["mg/dL", "mmol/L"] },
-  { marker: "hba1c", label: "HbA1c", units: ["%", "mmol/mol"] },
-  { marker: "triglycerides", label: "Triglycerides", units: ["mg/dL", "mmol/L"] },
+const MARKERS: { marker: MarkerKey; label: string; hint: string; units: string[] }[] = [
+  { marker: "ldl", label: "LDL cholesterol", hint: "Often under Lipid profile", units: ["mg/dL", "mmol/L"] },
+  { marker: "hba1c", label: "HbA1c", hint: "Glycated haemoglobin", units: ["%", "mmol/mol"] },
+  { marker: "triglycerides", label: "Triglycerides", hint: "Often under Lipid profile", units: ["mg/dL", "mmol/L"] },
 ];
 
 const todayIso = () => {
@@ -22,6 +23,7 @@ const todayIso = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
+/** Every extracted value is shown for confirmation; nothing reaches the focus rules unchecked. */
 export default function ReportReview() {
   const { draft, source } = useReportDraft();
   const afterWrite = useAfterWrite();
@@ -35,6 +37,7 @@ export default function ReportReview() {
     return init;
   });
   const [result, setResult] = useState<ConfirmReportResponse | null>(null);
+  const dateValid = /^\d{4}-\d{2}-\d{2}$/.test(reportDate) && !Number.isNaN(Date.parse(reportDate)) && reportDate <= todayIso();
 
   const confirm = useMutation({
     mutationFn: () =>
@@ -55,19 +58,30 @@ export default function ReportReview() {
 
   if (result) {
     return (
-      <Screen>
-        <View style={{ alignItems: "center", gap: space.md, marginTop: space.xl }}>
-          <Kimbo mood="focus" size={120} />
-          <Text style={styles.focusLabel}>YOUR DAILY FOOD FOCUS</Text>
-          <Text style={[font.title, { textAlign: "center" }]}>{result.focus.title}</Text>
-          <Text style={[font.body, { textAlign: "center" }]}>{result.focus.reason}</Text>
+      <Screen footer={<Button label="See how today's meals fit" icon="arrow-right" onPress={() => router.dismissTo("/(tabs)")} />}>
+        <View style={styles.reveal}>
+          <View style={styles.revealGlow} />
+          <Kimbo mood="focus" size={130} leaves={3} />
+          <T variant="overline">YOUR DAILY FOOD FOCUS</T>
+          <T variant="display" align="center">
+            {result.focus.title}
+          </T>
+          <T variant="body" tone="soft" align="center">
+            {result.focus.reason}
+          </T>
         </View>
-        <Card>
-          <Text style={font.body}>{result.focus.description}</Text>
-          <Text style={font.small}>Kimbo will show how each meal connects to this focus on your Today screen.</Text>
-        </Card>
-        <Text style={styles.disclaimer}>{result.disclaimer}</Text>
-        <Button label="See today" onPress={() => router.dismissTo("/(tabs)")} />
+        <Surface tint="leaf">
+          <T variant="body">{result.focus.description}</T>
+          <T variant="caption" tone="leaf">
+            From now on, each meal you log shows whether it helped this focus.
+          </T>
+        </Surface>
+        <View style={styles.disclaimer}>
+          <Icon name="info" size={16} color={colors.inkFaint} />
+          <T variant="caption" style={{ flex: 1 }}>
+            {result.disclaimer}
+          </T>
+        </View>
       </Screen>
     );
   }
@@ -76,81 +90,115 @@ export default function ReportReview() {
   const nothingFound = source === "upload" && draft && draft.markers.length === 0;
 
   return (
-    <Screen>
-      <View style={styles.row}>
-        <Kimbo mood="thinking" size={52} />
-        <Text style={[font.body, { flex: 1 }]}>
+    <Screen
+      back
+      title="Check the values"
+      footer={
+        <View style={{ gap: space.sm }}>
+          {confirm.error ? (
+            <T variant="label" tone="plum" align="center">
+              {errorMessage(confirm.error)}
+            </T>
+          ) : null}
+          <Button label="Confirm values" icon="check" disabled={!anyValue || !dateValid} loading={confirm.isPending} onPress={() => confirm.mutate()} />
+        </View>
+      }
+    >
+      <View style={styles.note}>
+        <Kimbo mood={nothingFound ? "thinking" : "idle"} size={48} />
+        <T variant="label" style={{ flex: 1 }}>
           {nothingFound
-            ? "I couldn't find LDL, HbA1c or triglycerides in that file. Enter them below, or go back and try the sample."
-            : "Check each value against your report. Kimbo only uses what you confirm."}
-        </Text>
+            ? "I couldn't find LDL, HbA1c or triglycerides in that file. Type them below, or go back and try the sample."
+            : source === "manual"
+              ? "Enter any of these from your report. One is enough."
+              : "Compare each value with your report. Kimbo only uses what you confirm."}
+        </T>
       </View>
 
       {MARKERS.map((m) => {
         const v = values[m.marker];
         const extracted = draft?.markers.find((r) => r.marker === m.marker);
         return (
-          <Card key={m.marker}>
-            <View style={styles.row}>
-              <Text style={[font.h2, { flex: 1 }]}>{m.label}</Text>
+          <Surface key={m.marker}>
+            <View style={styles.markerTop}>
+              <View style={{ flex: 1 }}>
+                <T variant="heading">{m.label}</T>
+                <T variant="caption">{m.hint}</T>
+              </View>
               <TextInput
                 value={v.value}
                 onChangeText={(t) => setValues({ ...values, [m.marker]: { ...v, value: t.replace(/[^0-9.]/g, "") } })}
                 keyboardType="numeric"
                 placeholder="—"
-                placeholderTextColor={colors.muted}
+                placeholderTextColor={colors.inkFaint}
                 style={styles.input}
+                accessibilityLabel={`${m.label} value`}
+                maxLength={6}
               />
             </View>
-            <View style={styles.chips}>
-              {m.units.map((u) => (
-                <Chip key={u} label={u} selected={v.unit === u} onPress={() => setValues({ ...values, [m.marker]: { ...v, unit: u } })} />
-              ))}
-            </View>
+            <Segmented
+              options={m.units.map((u) => ({ value: u, label: u }))}
+              value={v.unit}
+              onChange={(unit) => setValues({ ...values, [m.marker]: { ...v, unit } })}
+            />
             {extracted && extracted.originalUnit !== extracted.unit ? (
-              <Text style={font.small}>
-                Report said {extracted.originalValue} {extracted.originalUnit}; converted to {extracted.unit}.
-              </Text>
+              <T variant="caption">
+                Report said {extracted.originalValue} {extracted.originalUnit} — converted for you.
+              </T>
             ) : null}
-            {!extracted && source !== "manual" ? <Text style={font.small}>Not found — leave blank or add it yourself.</Text> : null}
-          </Card>
+            {!extracted && source === "upload" ? <T variant="caption">Not found — leave blank or type it in.</T> : null}
+          </Surface>
         );
       })}
 
-      <Card>
-        <View style={styles.row}>
-          <Text style={[font.body, { flex: 1 }]}>Report date</Text>
-          <TextInput value={reportDate} onChangeText={setReportDate} placeholder="YYYY-MM-DD" style={styles.input} />
+      <Surface>
+        <View style={styles.markerTop}>
+          <View style={{ flex: 1 }}>
+            <T variant="heading">Report date</T>
+            <T variant="caption">{dateValid ? "When the sample was taken" : "Use YYYY-MM-DD, not in the future"}</T>
+          </View>
+          <TextInput
+            value={reportDate}
+            onChangeText={setReportDate}
+            placeholder="YYYY-MM-DD"
+            placeholderTextColor={colors.inkFaint}
+            style={[styles.input, { minWidth: 130 }, !dateValid && { borderColor: colors.plum }]}
+            accessibilityLabel="Report date"
+            maxLength={10}
+          />
         </View>
-      </Card>
+      </Surface>
 
       {draft?.ignored.length ? (
-        <Text style={font.small}>Also on your report (not used by Kimbo yet): {draft.ignored.join(", ")}.</Text>
+        <T variant="caption">Also on your report, not used by Kimbo yet: {draft.ignored.join(", ")}.</T>
       ) : null}
-
-      {confirm.error ? <Text style={styles.error}>{errorMessage(confirm.error)}</Text> : null}
-      <Button label="Confirm values" disabled={!anyValue} loading={confirm.isPending} onPress={() => confirm.mutate()} />
-      <Text style={styles.disclaimer}>
-        Kimbo is not a medical service. It doesn't diagnose conditions or give treatment advice.
-      </Text>
+      <View style={styles.disclaimer}>
+        <Icon name="info" size={16} color={colors.inkFaint} />
+        <T variant="caption" style={{ flex: 1 }}>
+          {DISCLAIMER}
+        </T>
+      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", gap: space.md },
-  chips: { flexDirection: "row", gap: space.sm },
+  note: { flexDirection: "row", alignItems: "center", gap: space.md },
+  markerTop: { flexDirection: "row", alignItems: "center", gap: space.md },
   input: {
-    minWidth: 110,
+    minWidth: 100,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.line,
     borderRadius: radius.sm,
-    padding: space.sm,
-    fontSize: 16,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    fontFamily: fonts.bold,
+    fontSize: 18,
     textAlign: "right",
-    color: colors.text,
+    color: colors.ink,
+    backgroundColor: colors.paper,
   },
-  focusLabel: { fontSize: 12, fontWeight: "800", letterSpacing: 1, color: colors.primary },
-  disclaimer: { fontSize: 12, color: colors.muted, textAlign: "center", lineHeight: 18 },
-  error: { color: colors.calm, textAlign: "center" },
+  reveal: { alignItems: "center", gap: space.sm, paddingTop: space.xxl, paddingBottom: space.lg },
+  revealGlow: { position: "absolute", top: space.lg, width: 200, height: 170, borderRadius: 100, backgroundColor: colors.leafSoft },
+  disclaimer: { flexDirection: "row", gap: space.sm, alignItems: "flex-start" },
 });

@@ -32,7 +32,9 @@
           "cameraPermission": "Kimbo uses the camera so you can photograph your meals.",
           "photosPermission": "Kimbo reads the meal photos you choose."
         }
-      ]
+      ],
+      "expo-font",
+      "expo-splash-screen"
     ],
     "scheme": "kimbo",
     "experiments": {

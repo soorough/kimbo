@@ -2,7 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Redirect } from "expo-router";
 import { useEffect } from "react";
 import { View } from "react-native";
-import { ErrorState, Loading } from "@/components/ui";
+import { Kimbo } from "@/components/Kimbo";
+import { ErrorState } from "@/components/ui";
 import { api, ApiRequestError, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { colors, space } from "@/lib/theme";
@@ -30,7 +31,7 @@ export default function Index() {
   }
   if (profile.error) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: "center", padding: space.lg }}>
+      <View style={{ flex: 1, backgroundColor: colors.paper, justifyContent: "center", padding: space.lg }}>
         <ErrorState message={errorMessage(profile.error)} onRetry={() => profile.refetch()} />
       </View>
     );
@@ -40,8 +41,8 @@ export default function Index() {
 
 function Splash() {
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: "center" }}>
-      <Loading />
+    <View style={{ flex: 1, backgroundColor: colors.paper, alignItems: "center", justifyContent: "center" }}>
+      <Kimbo mood="idle" size={96} />
     </View>
   );
 }

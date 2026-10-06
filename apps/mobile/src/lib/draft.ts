@@ -24,12 +24,14 @@ interface DraftState {
   lines: DraftLine[];
   /** true once the user changes anything Kimbo suggested */
   touched: boolean;
-  startFromAi: (draft: MealDraft, source: MealSource) => void;
+  startFromAi: (draft: MealDraft, source: MealSource, mealType?: MealType) => void;
   startManual: (mealType: MealType) => void;
   startEdit: (meal: Meal, foods: Record<string, Food>) => void;
   update: (key: string, patch: Partial<{ quantity: number; unit: Unit; perUnitCalories: number }>) => void;
   remove: (key: string) => void;
   addFood: (food: Food, replaceKey?: string) => void;
+  /** A dish Kimbo doesn't know yet: an editable estimate the user prices themselves. */
+  addEstimate: (name: string, replaceKey?: string) => void;
   setMealType: (t: MealType) => void;
   shiftTime: (minutes: number) => void;
 }
@@ -46,6 +48,9 @@ function perOne(n: Nutrition, quantity: number): Nutrition {
   };
 }
 
+/** Starting point for a user-added dish; mirrors the API's unknown-dish placeholder. */
+const ESTIMATE_PER_SERVING: Nutrition = { calories: 250, protein: 8, carbs: 30, fat: 10, fibre: 3, satFat: 3 };
+
 let seq = 0;
 const nextKey = () => `line-${++seq}`;
 
@@ -56,11 +61,11 @@ export const useDraft = create<DraftState>((set) => ({
   eatenAt: new Date(),
   lines: [],
   touched: false,
-  startFromAi: (draft, source) =>
+  startFromAi: (draft, source, mealType) =>
     set({
       mealId: null,
       source,
-      mealType: draft.suggestedMealType,
+      mealType: mealType ?? draft.suggestedMealType,
       eatenAt: new Date(),
       touched: false,
       lines: draft.items.map((item) =>
@@ -117,6 +122,22 @@ export const useDraft = create<DraftState>((set) => ({
   addFood: (food, replaceKey) =>
     set((s) => {
       const line: DraftLine = { key: nextKey(), kind: "catalogue", food, heardAs: null, quantity: 1, unit: food.defaultUnit };
+      return {
+        touched: true,
+        lines: replaceKey ? s.lines.map((l) => (l.key === replaceKey ? line : l)) : [...s.lines, line],
+      };
+    }),
+  addEstimate: (name, replaceKey) =>
+    set((s) => {
+      const line: DraftLine = {
+        key: nextKey(),
+        kind: "estimate",
+        name,
+        heardAs: null,
+        quantity: 1,
+        unit: "serving",
+        perUnit: { ...ESTIMATE_PER_SERVING },
+      };
       return {
         touched: true,
         lines: replaceKey ? s.lines.map((l) => (l.key === replaceKey ? line : l)) : [...s.lines, line],
