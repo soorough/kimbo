@@ -13,6 +13,7 @@ import { router } from "expo-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
+import { KimboScene } from "@/components/KimboScene";
 import { RulerPicker } from "@/components/RulerPicker";
 import { Button, Chip, Icon, Screen, Segmented, SegmentRing, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
@@ -224,6 +225,18 @@ export default function Onboarding() {
         </View>
       </View>
 
+      <KimboScene
+        step={current}
+        heightCm={height}
+        weightLabel={formatWeight(weight, weightUnit)}
+        goalWeightLabel={formatWeight(goalWeightValue, weightUnit)}
+        activity={activity}
+        pace={
+          goalType && goalType !== "maintain" && weeklyKg !== null && PACES[goalType].length > 1
+            ? PACES[goalType].indexOf(weeklyKg) / (PACES[goalType].length - 1)
+            : null
+        }
+      />
       <View style={{ gap: space.xs }}>
         <T variant="title" style={styles.question}>
           {QUESTIONS[current]}
@@ -683,7 +696,7 @@ const styles = StyleSheet.create({
   segments: { flex: 1, flexDirection: "row", gap: 6 },
   segment: { flex: 1, height: 5, borderRadius: 3, backgroundColor: colors.sunk },
   segmentOn: { backgroundColor: colors.leaf },
-  question: { fontSize: 28, lineHeight: 34, marginTop: space.lg, marginBottom: space.md },
+  question: { fontSize: 28, lineHeight: 34, marginTop: space.xs, marginBottom: space.md },
   card: {
     flexDirection: "row",
     alignItems: "center",
