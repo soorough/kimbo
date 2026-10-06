@@ -54,8 +54,9 @@ export default function You() {
         mode,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
-      queryClient.clear();
       await setProfileId(next.id);
+      // Reset, not clear: tabs stay mounted, and clear() leaves them showing the old profile.
+      await queryClient.resetQueries();
       router.replace(next.goal ? "/(tabs)" : "/onboarding");
     } catch {
       // Offline or server down: fall back to the welcome screen, which handles errors.
