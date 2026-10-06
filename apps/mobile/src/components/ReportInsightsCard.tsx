@@ -1,5 +1,6 @@
-import type { ReportInsights } from "@kimbo/shared";
+import { FIBRE_TARGET_G, type ReportInsights } from "@kimbo/shared";
 import { StyleSheet, View } from "react-native";
+import { MEAL_LABEL } from "@/lib/format";
 import { colors, radius, space } from "@/lib/theme";
 import { Icon } from "./Icon";
 import { Surface } from "./Surface";
@@ -7,7 +8,6 @@ import { T } from "./Text";
 
 /** About six weeks: long enough for eating changes to show up in a lipid or HbA1c test. */
 const RETEST_AFTER_DAYS = 42;
-const BAR_H = 56;
 
 const shortDate = (iso: string) =>
   new Date(`${iso}T12:00:00`).toLocaleDateString([], { day: "numeric", month: "short" });
@@ -47,29 +47,53 @@ export function ReportInsightsCard({ insights: i }: { insights: ReportInsights }
             </T>
           </View>
 
-          {i.weeks.length > 1 ? (
-            <View style={{ gap: 4 }}>
-              <View style={styles.bars}>
-                {i.weeks.map((w, n) => (
-                  <View key={w.weekStart} style={styles.barSlot}>
-                    <View
-                      style={[
-                        styles.bar,
-                        {
-                          height: Math.max(4, (pctOf(w) / 100) * BAR_H),
-                          backgroundColor: n === i.weeks.length - 1 ? colors.leaf : "rgba(46,107,79,0.35)",
-                        },
-                        w.total === 0 && styles.barEmpty,
-                      ]}
-                    />
+          {/* One dot per meal since the report: filled when it helped the focus. */}
+          <View style={{ gap: 6 }}>
+            <View style={styles.strip} accessibilityLabel={`${i.supported} of ${i.total} meals helped`}>
+              {i.timeline.map((t, n) => (
+                <View key={n} style={[styles.dot, t.supports ? styles.dotOn : styles.dotOff]} />
+              ))}
+            </View>
+            <T variant="caption">
+              Each dot is a meal{first && last && i.weeks.length > 1 ? ` · week of ${shortDate(first.weekStart)}: ${pctOf(first)}% → this week: ${pctOf(last)}%` : ""}
+            </T>
+          </View>
+
+          <View style={styles.stats}>
+            <View style={styles.stat}>
+              <T variant="number" style={styles.statNum}>
+                {i.days.helped}
+                <T variant="label"> of {i.days.logged}</T>
+              </T>
+              <T variant="caption">days had a meal that helped</T>
+            </View>
+            <View style={styles.stat}>
+              <T variant="number" style={styles.statNum}>
+                {Math.round(i.avgFibreG)}
+                <T variant="label"> g</T>
+              </T>
+              <T variant="caption">fibre a day, aim {FIBRE_TARGET_G} g</T>
+            </View>
+          </View>
+
+          {i.byMealType.length > 1 ? (
+            <View style={{ gap: 8 }}>
+              <T variant="caption" tone="soft">
+                BY MEAL
+              </T>
+              {i.byMealType.map((b) => (
+                <View key={b.mealType} style={styles.mealRow}>
+                  <T variant="label" style={styles.mealLabel}>
+                    {MEAL_LABEL[b.mealType]}
+                  </T>
+                  <View style={styles.track}>
+                    <View style={[styles.fill, { width: `${(b.supported / b.total) * 100}%` }]} />
                   </View>
-                ))}
-              </View>
-              {first && last ? (
-                <T variant="caption">
-                  Week of {shortDate(first.weekStart)}: {pctOf(first)}% → this week: {pctOf(last)}%
-                </T>
-              ) : null}
+                  <T variant="caption" style={styles.mealCount}>
+                    {b.supported}/{b.total}
+                  </T>
+                </View>
+              ))}
             </View>
           ) : null}
 
@@ -160,10 +184,18 @@ function Compare({ c }: { c: NonNullable<ReportInsights["compare"]> }) {
 const styles = StyleSheet.create({
   headline: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", marginTop: space.sm },
   big: { fontSize: 30, lineHeight: 36 },
-  bars: { flexDirection: "row", alignItems: "flex-end", height: BAR_H, gap: 6 },
-  barSlot: { flex: 1, justifyContent: "flex-end" },
-  bar: { borderRadius: 4 },
-  barEmpty: { backgroundColor: colors.sunk },
+  strip: { flexDirection: "row", flexWrap: "wrap", gap: 5 },
+  dot: { width: 14, height: 14, borderRadius: 7 },
+  dotOn: { backgroundColor: colors.leaf },
+  dotOff: { backgroundColor: "#DDCDB4" },
+  stats: { flexDirection: "row", gap: space.sm },
+  stat: { flex: 1, gap: 2, padding: space.md, borderRadius: radius.md, backgroundColor: colors.sunk },
+  statNum: { fontSize: 24, lineHeight: 28 },
+  mealRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  mealLabel: { width: 76 },
+  track: { flex: 1, height: 8, borderRadius: 4, backgroundColor: colors.sunk, overflow: "hidden" },
+  fill: { height: 8, borderRadius: 4, backgroundColor: colors.leaf },
+  mealCount: { width: 32, textAlign: "right" },
   helpers: { flexDirection: "row", alignItems: "center", gap: space.sm },
   cut: { gap: 6, padding: space.md, borderRadius: radius.md, backgroundColor: colors.plumSoft },
   cutRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
