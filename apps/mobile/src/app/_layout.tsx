@@ -54,7 +54,10 @@ export default function RootLayout() {
   }, [load, loadUnits]);
 
   useEffect(() => {
-    if (fontsLoaded || fontError) SplashScreen.hideAsync().catch(() => {});
+    // The intro hides the native splash on its first frame. Safety nets: font failure, or 4 s.
+    if (fontError) SplashScreen.hideAsync().catch(() => {});
+    const timer = setTimeout(() => SplashScreen.hideAsync().catch(() => {}), 4000);
+    return () => clearTimeout(timer);
   }, [fontsLoaded, fontError]);
 
   // Keep the native splash up until fonts are ready, so no text is measured with a fallback font.
