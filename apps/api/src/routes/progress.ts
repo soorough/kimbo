@@ -17,7 +17,7 @@ export function progressRoutes(app: FastifyInstance, deps: Deps) {
     const weekOf = req.query.weekOf ? parse(LocalDate, req.query.weekOf) : input.today;
     const week = weekStats(input, weekOf);
     const previous = weekStats(input, addDays(week.weekStart, -1));
-    const earliest = localDate(profile.created_at, profile.timezone);
+    const earliest = input.meals[0]?.localDate ?? input.today;
 
     return {
       weekStart: week.weekStart,

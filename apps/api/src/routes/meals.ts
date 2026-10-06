@@ -1,4 +1,4 @@
-import { ConfirmMealRequest, LocalDate, ParseMealRequest, type KimboEvent } from "@kimbo/shared";
+import { ConfirmMealRequest, LocalDate, ParseMealRequest, RepeatYesterdayRequest, type KimboEvent, type Unit } from "@kimbo/shared";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { Deps } from "../app.js";
 import { search } from "../domain/catalogue.js";
@@ -7,7 +7,7 @@ import { focusForDay } from "../domain/focus-history.js";
 import { mealSupportsFocus, supportedMessage } from "../domain/focus-match.js";
 import { buildDraft } from "../domain/meal-draft.js";
 import { addDays, localDate, startOfLocalDay, suggestMealType } from "../domain/time.js";
-import { badRequest, notFound } from "../errors.js";
+import { badRequest, HttpError, notFound } from "../errors.js";
 import { parse, requireProfile } from "../http.js";
 import { unlockMilestones } from "../progress-input.js";
 import { deleteMeal, getMeal, insertMeal, listMeals, replaceMeal, toApiMeal, type MealWrite } from "../repo/meals.js";
@@ -54,6 +54,36 @@ export function mealRoutes(app: FastifyInstance, deps: Deps) {
     const profile = await requireProfile(deps, req);
     if (!(await deleteMeal(deps.db, profile.id, req.params.id))) throw notFound("Meal");
     reply.code(204);
+  });
+
+  app.post("/meals/repeat-yesterday", async (req, reply) => {
+    const profile = await requireProfile(deps, req);
+    const { mealType } = parse(RepeatYesterdayRequest, req.body);
+    const now = deps.clock();
+    const yesterday = addDays(localDate(now, profile.timezone), -1);
+    const meals = await listMeals(deps.db, profile.id, profile.timezone, {
+      from: startOfLocalDay(yesterday, profile.timezone),
+      to: startOfLocalDay(addDays(yesterday, 1), profile.timezone),
+    });
+    const source = meals.filter((m) => m.mealType === mealType).at(-1);
+    if (!source) throw new HttpError(404, "NOTHING_TO_REPEAT", `No ${mealType} logged yesterday to repeat`);
+    const write: MealWrite = {
+      mealType,
+      eatenAt: now,
+      source: "repeat",
+      wasCorrected: false,
+      // Re-resolve catalogue items so today's copy uses current catalogue values.
+      items: resolveConfirmedItems(
+        source.items.map((i) =>
+          i.foodId
+            ? { kind: "catalogue" as const, foodId: i.foodId, quantity: i.quantity, unit: i.unit as Unit }
+            : { kind: "estimate" as const, name: i.name, quantity: i.quantity, unit: i.unit, nutrition: i.nutrition },
+        ),
+      ),
+    };
+    const id = await insertMeal(deps.db, profile.id, write, now);
+    reply.code(201);
+    return respondWithMeal(deps, profile, id, write);
   });
 
   app.get<{ Querystring: { date?: string } }>("/meals", async (req) => {
