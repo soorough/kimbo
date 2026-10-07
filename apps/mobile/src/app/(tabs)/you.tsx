@@ -32,6 +32,8 @@ export default function You() {
     queryFn: () => api.getProfile(profileId!),
     enabled: !!profileId,
   });
+  // Latest weigh-in; the goal keeps the starting weight the journey is measured from.
+  const journey = useQuery({ queryKey: ["journey"], queryFn: api.journey, retry: false });
 
   const [confirming, setConfirming] = useState(false);
   const [editingName, setEditingName] = useState<string | null>(null);
@@ -107,7 +109,7 @@ export default function You() {
             {ACTIVITY_LABEL[goal.activity]}
           </T>
           <T variant="caption">
-            Now {formatWeight(goal.weightKg, weightUnit)}
+            Now {formatWeight(journey.data?.currentKg ?? goal.weightKg, weightUnit)}
             {goal.targetWeightKg ? ` · goal ${formatWeight(goal.targetWeightKg, weightUnit)}` : ""}
           </T>
           {goal.targetOverride ? (
