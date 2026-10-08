@@ -53,23 +53,16 @@ export default function ReportReview() {
         })),
       }),
     onSuccess: async (res) => {
-      setResult(res);
       await afterWrite(res.events);
+      // During setup the focus is folded into the plan that's built next, so skip its own screen.
+      if (fromSetup) return router.dismissTo("/onboarding");
+      setResult(res);
     },
   });
 
   if (result) {
     return (
-      <Screen
-        footer={
-          fromSetup ? (
-            // During setup the report feeds the plan, so hand back to it rather than leaving for Today.
-            <Button label="Build my plan" onPress={() => router.dismissTo("/onboarding")} />
-          ) : (
-            <Button label="Go to today" onPress={() => router.dismissTo("/(tabs)")} />
-          )
-        }
-      >
+      <Screen footer={<Button label="Go to today" onPress={() => router.dismissTo("/(tabs)")} />}>
         <View style={styles.reveal}>
           <View style={styles.revealGlow} />
           <Kimbo mood="focus" size={130} leaves={3} />
