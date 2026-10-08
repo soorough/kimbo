@@ -322,7 +322,7 @@ function MealNudge({
     <View style={styles.kimboLine}>
       <View style={styles.kimboRow}>
         <Kimbo mood={typed ? mood : "thinking"} size={40} />
-        <View style={{ flex: 1, gap: 2 }}>
+        <View style={{ flex: 1, gap: space.sm }}>
           <T variant="overline" tone="leaf">
             {`${label} time ${MEAL_EMOJI[mealType]}`.toUpperCase()}
           </T>
@@ -358,7 +358,8 @@ function MealNudge({
         </Pressable>
         <Animated.View style={{ transform: [{ scale: breathe }] }}>
           <Button
-            label={`Log ${label.toLowerCase()}`}
+            label="I'll have it"
+            accessibilityHint={`Opens this ${label.toLowerCase()}, ready to log`}
             compact
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
