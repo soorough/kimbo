@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Pressable, StyleSheet, View } from "react-native";
 import { api } from "@/lib/api";
+import { useScrolling } from "@/lib/scrolling";
 import { useReduceMotion } from "@/lib/motion";
 import { colors, fonts, radius, shadow, space } from "@/lib/theme";
 import { Kimbo } from "./Kimbo";
@@ -25,6 +26,35 @@ export function AskKimboPill() {
   const breathe = useRef(new Animated.Value(0)).current;
   const bubble = useRef(new Animated.Value(0)).current;
   const [speaking, setSpeaking] = useState(false);
+  const scrolling = useScrolling((st) => st.scrolling);
+  const [labelW, setLabelW] = useState(84);
+  const open = useRef(new Animated.Value(1)).current;
+  const spin = useRef(new Animated.Value(0)).current;
+  const H = 38;
+  const W = H + labelW;
+  // How far each cap travels to meet in the middle when collapsed.
+  const shift = open.interpolate({ inputRange: [0, 1], outputRange: [(W - H) / 2, 0] });
+
+  // Tuck into Kimbo's face while scrolling; glide open (with a little spin) once it settles.
+  // Transforms and opacity only, on the native driver, so nothing re-lays-out mid-scroll.
+  useEffect(() => {
+    if (still) {
+      open.setValue(scrolling ? 0 : 1);
+      return;
+    }
+    Animated.spring(open, {
+      toValue: scrolling ? 0 : 1,
+      damping: 26,
+      stiffness: scrolling ? 320 : 220,
+      mass: 0.9,
+      overshootClamping: true,
+      useNativeDriver: true,
+    }).start();
+    if (!scrolling) {
+      spin.setValue(0);
+      Animated.timing(spin, { toValue: 1, duration: 420, delay: 120, useNativeDriver: true }).start();
+    }
+  }, [scrolling, still, open, spin]);
 
   useEffect(() => {
     if (still) return;
@@ -90,12 +120,46 @@ export function AskKimboPill() {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
             setSpeaking(true);
           }}
-          style={({ pressed }) => [styles.pill, pressed && { transform: [{ scale: 0.96 }] }]}
+          style={({ pressed }) => [{ width: W, height: H }, pressed && { transform: [{ scale: 0.96 }] }]}
         >
-          <View style={styles.face}>
-            <Kimbo mood={speaking ? "thanks" : mood} size={34} leaves={1 + helped} />
+          {/* Left cap, right cap and the middle: the caps slide together and the middle shrinks. */}
+          <Animated.View style={[styles.cap, { left: 0, transform: [{ translateX: shift }] }]} />
+          <Animated.View
+            style={[styles.cap, { left: W - H, transform: [{ translateX: Animated.multiply(shift, -1) }] }]}
+          />
+          <Animated.View style={[styles.middle, { left: H / 2, width: W - H, transform: [{ scaleX: open }] }]} />
+          <Animated.View
+            style={[
+              styles.label,
+              {
+                left: H - 2,
+                opacity: open.interpolate({ inputRange: [0, 0.6, 1], outputRange: [0, 0, 1] }),
+                transform: [{ translateX: open.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] }) }],
+              },
+            ]}
+          >
+            <T style={styles.labelText} numberOfLines={1}>
+              Ask Kimbo
+            </T>
+          </Animated.View>
+          <Animated.View
+            style={[
+              styles.face,
+              {
+                transform: [
+                  { translateX: shift },
+                  { rotate: spin.interpolate({ inputRange: [0, 0.5, 1], outputRange: ["0deg", "-14deg", "0deg"] }) },
+                  { scale: spin.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.12, 1] }) },
+                ],
+              },
+            ]}
+          >
+            <Kimbo mood={speaking ? "thanks" : mood} size={24} leaves={1 + helped} />
+          </Animated.View>
+          {/* Measured once off-screen, so the open width fits the text exactly. */}
+          <View style={styles.measure} onLayout={(e) => setLabelW(e.nativeEvent.layout.width)}>
+            <T style={styles.labelText}>Ask Kimbo</T>
           </View>
-          <T style={styles.label}>Ask Kimbo</T>
         </Pressable>
       </Animated.View>
     </View>
@@ -103,27 +167,49 @@ export function AskKimboPill() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: "absolute", left: 0, right: 0, bottom: "100%", marginBottom: space.md, alignItems: "center" },
-  pill: {
-    flexDirection: "row",
+  // Clear of the tab bar, and above the page's cards (on Android, elevation also sets draw order).
+  wrap: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: "100%",
+    marginBottom: space.xxxl,
     alignItems: "center",
-    gap: space.sm,
-    paddingLeft: 6,
-    paddingRight: space.lg,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
+    zIndex: 20,
+    elevation: 12,
+  },
+  cap: {
+    position: "absolute",
+    top: 0,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: colors.ink,
     ...shadow.raised,
   },
+  middle: { position: "absolute", top: 0, height: 38, backgroundColor: colors.ink, ...shadow.raised },
+  // Sized like SuperKalam's pill: 38 tall, 14-point label.
   face: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    position: "absolute",
+    left: 4,
+    top: 4,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.turmericSoft,
   },
-  label: { color: colors.white, fontFamily: fonts.semibold, fontSize: 16 },
+  label: { position: "absolute", top: 0, height: 38, justifyContent: "center" },
+  labelText: {
+    color: colors.white,
+    fontFamily: fonts.semibold,
+    fontSize: 14,
+    lineHeight: 18,
+    paddingLeft: 4,
+    paddingRight: 14,
+  },
+  measure: { position: "absolute", opacity: 0, left: -1000 },
   bubble: {
     marginBottom: space.sm,
     paddingHorizontal: space.md,

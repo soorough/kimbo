@@ -61,6 +61,8 @@ const styles = StyleSheet.create({
   // Floats over the content (Cal AI-style): no band behind it, just the pill and the + button.
   bar: {
     position: "absolute",
+    zIndex: 20,
+    elevation: 12,
     left: 0,
     right: 0,
     bottom: 0,

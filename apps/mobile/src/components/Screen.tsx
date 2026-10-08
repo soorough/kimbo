@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import type { ReactNode } from "react";
 import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { scrollHandlers } from "@/lib/scrolling";
 import { colors, space } from "@/lib/theme";
 import { Icon } from "./Icon";
 import { T } from "./Text";
@@ -52,6 +53,7 @@ export function Screen({
             contentContainerStyle={body}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            {...scrollHandlers}
           >
             {children}
           </ScrollView>
