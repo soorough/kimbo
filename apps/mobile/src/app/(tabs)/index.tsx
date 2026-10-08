@@ -105,8 +105,9 @@ function StreakPill({ days }: { days: number }) {
   );
 }
 
-/** How far back the strip can swipe. */
-const WEEKS_BACK = 8;
+/** Five weeks, like Cal AI: three before this one, this one, and the next. */
+const WEEKS_BACK = 3;
+const WEEKS_AHEAD = 1;
 
 function addDaysIso(iso: string, days: number): string {
   const d = new Date(`${iso}T12:00:00Z`);
@@ -130,7 +131,9 @@ function WeekStrip({
   const { width } = useWindowDimensions();
   const pageW = width;
   const todayIso = [...week.days].reverse().find((d) => d.calories !== null)?.date ?? selected;
-  const starts = Array.from({ length: WEEKS_BACK + 1 }, (_, i) => addDaysIso(week.weekStart, (i - WEEKS_BACK) * 7));
+  const starts = Array.from({ length: WEEKS_BACK + 1 + WEEKS_AHEAD }, (_, i) =>
+    addDaysIso(week.weekStart, (i - WEEKS_BACK) * 7),
+  );
   const [page, setPage] = useState(WEEKS_BACK);
   const scroll = useRef<ScrollView>(null);
   return (
@@ -155,7 +158,7 @@ function WeekStrip({
           {i === WEEKS_BACK ? (
             <WeekRow week={week} selected={selected} todayIso={todayIso} onPick={onPick} />
           ) : (
-            // Earlier weeks load as they come into view.
+            // Other weeks load as they come into view.
             <PastWeek
               start={start}
               near={Math.abs(i - page) <= 1}
@@ -186,7 +189,8 @@ function PastWeek({
   const q = useQuery({ queryKey: ["progress", start], queryFn: () => api.progressFor(start), enabled: near });
   const placeholder: ProgressResponse["days"] = Array.from({ length: 7 }, (_, i) => ({
     date: addDaysIso(start, i),
-    calories: 0,
+    // Days ahead have nothing yet and can't be picked.
+    calories: addDaysIso(start, i) > todayIso ? null : 0,
   }));
   return q.data ? (
     <WeekRow week={q.data} selected={selected} todayIso={todayIso} onPick={onPick} />
