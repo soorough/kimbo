@@ -294,6 +294,7 @@ export default function Onboarding() {
         confirming={confirm.isPending}
         error={confirm.error ? errorMessage(confirm.error) : null}
         onBack={() => setResult(null)}
+        name={name.trim() || null}
       />
     );
   }
@@ -655,6 +656,7 @@ function Reveal({
   confirming,
   error,
   onBack,
+  name,
 }: {
   goal: Goal;
   target: number;
@@ -662,6 +664,7 @@ function Reveal({
   confirming: boolean;
   error: string | null;
   onBack: () => void;
+  name: string | null;
 }) {
   const shown = useCountUp(target);
   const b = goal.breakdown;
@@ -715,49 +718,53 @@ function Reveal({
           <Icon name="arrow-left" size={20} />
         </Pressable>
       </View>
-      {showPath ? (
-        <View style={{ gap: space.md }}>
-          <T variant="title" style={styles.question}>
-            {formatWeight(goal.targetWeightKg!, weightUnit)} by {dateInWeeks(b.weeksToGoal!)}
+      <T variant="title" style={styles.question}>
+        {name ? `Here's your plan, ${name}.` : "Here's your plan."}
+      </T>
+
+      {/* One number on the ring; the colours show the split, the grams wait in the breakdown. */}
+      <View style={styles.revealTop}>
+        <SegmentRing
+          segments={macros.map((m) => ({ value: m.grams * m.kcalPerGram, color: m.color }))}
+          size={200}
+          stroke={14}
+        >
+          {showPath ? null : <Kimbo mood="happy" size={48} leaves={2} />}
+          <T variant="display" style={styles.bigNumber}>
+            {shown.toLocaleString("en-IN")}
           </T>
-          <GoalPath
-            startLabel={formatWeight(goal.weightKg, weightUnit)}
-            goalLabel={formatWeight(goal.targetWeightKg!, weightUnit)}
-            dateLabel={dateInWeeks(b.weeksToGoal!)}
-            losing={goal.goal === "lose"}
-          />
+          <T variant="label">kcal a day</T>
+        </SegmentRing>
+        <View style={styles.legend}>
+          {macros.map((m) => (
+            <View key={m.label} style={styles.legendItem}>
+              <View style={[styles.macroDot, { backgroundColor: m.color, marginBottom: 0 }]} />
+              <T variant="caption">{m.label}</T>
+            </View>
+          ))}
         </View>
+      </View>
+
+      {showPath ? (
+        // The date lives here, once: at the end of the user's own line.
+        <GoalPath
+          startLabel={formatWeight(goal.weightKg, weightUnit)}
+          goalLabel={formatWeight(goal.targetWeightKg!, weightUnit)}
+          dateLabel={dateInWeeks(b.weeksToGoal!)}
+          losing={goal.goal === "lose"}
+        />
       ) : (
-        <View style={styles.revealTop}>
-          <SegmentRing
-            segments={macros.map((m) => ({ value: m.grams * m.kcalPerGram, color: m.color }))}
-            size={220}
-            stroke={16}
-          >
-            <Kimbo mood="happy" size={56} leaves={2} />
-            <T variant="display" style={styles.bigNumber}>
-              {shown}
-            </T>
-            <T variant="label">kcal a day</T>
-          </SegmentRing>
-          <View style={styles.pace}>
-            <Icon name={paceIcon} size={16} color={colors.leafDeep} />
-            <T variant="label" tone="leaf">
-              {pace}
-            </T>
-          </View>
+        <View style={[styles.pace, { alignSelf: "center" }]}>
+          <Icon name={paceIcon} size={16} color={colors.leafDeep} />
+          <T variant="label" tone="leaf">
+            {pace}
+          </T>
         </View>
       )}
 
-      {/* The one sentence this screen exists for; everything else is a tap away. */}
-      <View style={{ gap: space.xs }}>
-        <T variant="heading" align="center">
-          {showPath ? `${target.toLocaleString("en-IN")} kcal a day gets you there.` : "Your daily target"}
-        </T>
-        <T variant="caption" align="center">
-          Set from your age, height, weight and activity. You can change it any time in Edit goal.
-        </T>
-      </View>
+      <T variant="caption" align="center">
+        Set from your age, height, weight and activity. Change it any time in Edit goal.
+      </T>
 
       <View style={styles.disclosures}>
         <Disclosure title="See the breakdown">
@@ -990,6 +997,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   revealTop: { alignItems: "center", gap: space.md, marginTop: space.xl },
+  legend: { flexDirection: "row", justifyContent: "center", gap: space.lg },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
   reportDone: {
     flexDirection: "row",
     alignItems: "center",
