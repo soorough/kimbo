@@ -1,4 +1,4 @@
-import type { KimboMood, MealDraft, MealType, ProgressResponse, TodayMeal, TodayResponse } from "@kimbo/shared";
+import type { Diet, KimboMood, MealDraft, MealType, ProgressResponse, TodayMeal, TodayResponse } from "@kimbo/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
@@ -6,7 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, AppState, Easing, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { Button } from "@/components/Button";
 import { ExerciseEntryCard, WaterEntryCard } from "@/components/ActivityCards";
-import { DayNumbers } from "@/components/DayNumbers";
+import { DayNumbers, PROTEIN_ICON } from "@/components/DayNumbers";
+import { mealTitle } from "@/lib/meal-title";
 import { Kimbo } from "@/components/Kimbo";
 import { TypeOut } from "@/components/TypeOut";
 import { useMoments } from "@/components/Moments";
@@ -94,7 +95,7 @@ export default function Today() {
         {/* Meals, water and workouts together, newest first (Cal AI's "Recently uploaded"). */}
         {recent(data).map((r) =>
           r.kind === "meal" ? (
-            <MealCard key={r.item.id} meal={r.item} />
+            <MealCard key={r.item.id} meal={r.item} diet={diet} />
           ) : r.kind === "water" ? (
             <WaterEntryCard key={r.item.id} entry={r.item} />
           ) : (
@@ -106,6 +107,8 @@ export default function Today() {
     </Screen>
   );
 }
+
+type TodayDiet = Diet | null;
 
 type Recent =
   | { kind: "meal"; at: string; item: TodayResponse["meals"][number] }
@@ -434,41 +437,47 @@ function EmptyMeals({ canRepeat }: { canRepeat: TodayMeal["mealType"][] }) {
   );
 }
 
-function MealCard({ meal }: { meal: TodayMeal }) {
-  const startEdit = useDraft((s) => s.startEdit);
-  const open = async () => {
-    const { foods } = await api.searchFoods("");
-    startEdit(meal, Object.fromEntries(foods.map((f) => [f.id, f])));
-    router.push("/review");
-  };
+/** A meal in Recently logged, Cal AI-style: what it was, calories consumed, the macros. Opens the meal. */
+function MealCard({ meal, diet }: { meal: TodayMeal; diet: TodayDiet }) {
   return (
-    <Surface onPress={open} accessibilityLabel={`${MEAL_LABEL[meal.mealType]}, ${meal.totals.calories} kilocalories`}>
+    <Surface
+      onPress={() => router.push({ pathname: "/meal", params: { id: meal.id } })}
+      accessibilityLabel={`${mealTitle(meal)}, ${Math.round(meal.totals.calories)} calories`}
+    >
       <View style={styles.rowCenter}>
-        <View style={styles.mealIcon}>
-          <Icon name={MEAL_ICON[meal.mealType]} size={18} color={colors.leafDeep} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <T variant="heading">{MEAL_LABEL[meal.mealType]}</T>
-          <T variant="label" numberOfLines={1}>
-            {new Date(meal.eatenAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-          </T>
-        </View>
-        <T variant="heading">{meal.totals.calories}</T>
-        <T variant="caption">kcal</T>
+        <T variant="heading" style={{ flex: 1 }} numberOfLines={1}>
+          {mealTitle(meal)}
+        </T>
+        <T variant="caption">
+          {MEAL_LABEL[meal.mealType]} · {new Date(meal.eatenAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+        </T>
       </View>
-      <T variant="body" numberOfLines={2}>
-        {meal.items.map((i) => i.name).join(" · ")}
+      <T variant="body">
+        <T variant="heading">{Math.round(meal.totals.calories)} Calories</T>
+        <T variant="label"> consumed</T>
       </T>
-      {meal.supportsFocus ? (
-        <View style={styles.helped}>
-          <Icon name="check" size={14} color={colors.leafDeep} />
-          <T variant="caption" tone="leaf" numberOfLines={2} style={{ flex: 1 }}>
-            {meal.focusReason}
-          </T>
-        </View>
-      ) : meal.focusReason ? (
-        <T variant="caption">{meal.focusReason}</T>
-      ) : null}
+      <View style={styles.macroRow}>
+        {(
+          [
+            [PROTEIN_ICON[diet ?? "vegetarian"], meal.totals.protein],
+            ["🌾", meal.totals.carbs],
+            ["🥜", meal.totals.fat],
+          ] as const
+        ).map(([icon, g]) => (
+          <View key={icon} style={styles.macroItem}>
+            <T style={{ fontSize: 13 }}>{icon}</T>
+            <T variant="label">{Math.round(g)}g</T>
+          </View>
+        ))}
+        {meal.supportsFocus ? (
+          <View style={styles.macroItem}>
+            <Icon name="check" size={13} color={colors.leafDeep} />
+            <T variant="caption" tone="leaf">
+              Helped your focus
+            </T>
+          </View>
+        ) : null}
+      </View>
     </Surface>
   );
 }
@@ -600,6 +609,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  macroRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: space.md },
+  macroItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   helped: {
     flexDirection: "row",
     alignItems: "center",
