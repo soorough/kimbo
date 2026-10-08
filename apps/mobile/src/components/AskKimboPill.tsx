@@ -173,10 +173,16 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: "100%",
-    marginBottom: space.xxxl,
+    marginBottom: space.xxl,
     alignItems: "center",
+    // Drawn above the page's cards without looking lifted off it: order by zIndex,
+    // and only a soft shadow (elevation also casts a heavy shadow on Android).
     zIndex: 20,
-    elevation: 12,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
   },
   cap: {
     position: "absolute",
@@ -185,9 +191,8 @@ const styles = StyleSheet.create({
     height: 38,
     borderRadius: 19,
     backgroundColor: colors.ink,
-    ...shadow.raised,
   },
-  middle: { position: "absolute", top: 0, height: 38, backgroundColor: colors.ink, ...shadow.raised },
+  middle: { position: "absolute", top: 0, height: 38, backgroundColor: colors.ink },
   // Sized like SuperKalam's pill: 38 tall, 14-point label.
   face: {
     position: "absolute",
