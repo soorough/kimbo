@@ -126,6 +126,7 @@ export const api = {
   today: () => request(TodayResponse, "GET", "/today"),
   todayFor: (date: string) => request(TodayResponse, "GET", `/today?date=${date}`),
   progress: () => request(ProgressResponse, "GET", "/progress"),
+  progressFor: (weekOf: string) => request(ProgressResponse, "GET", `/progress?weekOf=${weekOf}`),
   checkin: () => request(CheckinResponse, "POST", "/checkins", {}),
 
   journey: () => request(JourneyResponse, "GET", "/journey"),

@@ -1,7 +1,8 @@
 import type { ProgressResponse, TodayMeal, TodayResponse } from "@kimbo/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppState, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
 import { KimboBuddy } from "@/components/KimboBuddy";
@@ -30,7 +31,12 @@ const WEEKDAY = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 export default function Today() {
   const profileId = useSession((s) => s.profileId);
   const [date, setDate] = useState<string | null>(null);
-  const today = useQuery({ queryKey: ["today", date], queryFn: () => (date ? api.todayFor(date) : api.today()) });
+  const today = useQuery({
+    queryKey: ["today", date],
+    queryFn: () => (date ? api.todayFor(date) : api.today()),
+    // Keep the previous day on screen while the next loads, so the week strip stays where it was swiped.
+    placeholderData: (prev) => prev,
+  });
   const week = useQuery({ queryKey: ["progress"], queryFn: api.progress });
   const profile = useQuery({
     queryKey: ["profile", profileId],
@@ -99,7 +105,19 @@ function StreakPill({ days }: { days: number }) {
   );
 }
 
-/** Mon–Sun: dashed for nothing logged, a ring for logged, filled for on target; today is raised. */
+/** How far back the strip can swipe. */
+const WEEKS_BACK = 8;
+
+function addDaysIso(iso: string, days: number): string {
+  const d = new Date(`${iso}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * The week strip pages a whole week at a time (Cal AI-style): swipe right for earlier weeks,
+ * it snaps to the week, and a light tick marks each one. Today's week is where it starts.
+ */
 function WeekStrip({
   week,
   selected,
@@ -109,8 +127,86 @@ function WeekStrip({
   selected: string;
   onPick: (date: string, isToday: boolean) => void;
 }) {
-  // The last day that isn't still ahead is today.
+  const { width } = useWindowDimensions();
+  const pageW = width;
   const todayIso = [...week.days].reverse().find((d) => d.calories !== null)?.date ?? selected;
+  const starts = Array.from({ length: WEEKS_BACK + 1 }, (_, i) => addDaysIso(week.weekStart, (i - WEEKS_BACK) * 7));
+  const [page, setPage] = useState(WEEKS_BACK);
+  const scroll = useRef<ScrollView>(null);
+  return (
+    <ScrollView
+      ref={scroll}
+      horizontal
+      pagingEnabled
+      showsHorizontalScrollIndicator={false}
+      style={{ marginHorizontal: -space.xl }}
+      contentOffset={{ x: WEEKS_BACK * pageW, y: 0 }}
+      onLayout={() => scroll.current?.scrollTo({ x: page * pageW, animated: false })}
+      onMomentumScrollEnd={(e) => {
+        const p = Math.round(e.nativeEvent.contentOffset.x / pageW);
+        if (p !== page) {
+          setPage(p);
+          Haptics.selectionAsync().catch(() => {});
+        }
+      }}
+    >
+      {starts.map((start, i) => (
+        <View key={start} style={{ width: pageW, paddingHorizontal: space.xl }}>
+          {i === WEEKS_BACK ? (
+            <WeekRow week={week} selected={selected} todayIso={todayIso} onPick={onPick} />
+          ) : (
+            // Earlier weeks load as they come into view.
+            <PastWeek
+              start={start}
+              near={Math.abs(i - page) <= 1}
+              selected={selected}
+              todayIso={todayIso}
+              onPick={onPick}
+            />
+          )}
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
+function PastWeek({
+  start,
+  near,
+  selected,
+  todayIso,
+  onPick,
+}: {
+  start: string;
+  near: boolean;
+  selected: string;
+  todayIso: string;
+  onPick: (date: string, isToday: boolean) => void;
+}) {
+  const q = useQuery({ queryKey: ["progress", start], queryFn: () => api.progressFor(start), enabled: near });
+  const placeholder: ProgressResponse["days"] = Array.from({ length: 7 }, (_, i) => ({
+    date: addDaysIso(start, i),
+    calories: 0,
+  }));
+  return q.data ? (
+    <WeekRow week={q.data} selected={selected} todayIso={todayIso} onPick={onPick} />
+  ) : (
+    <WeekRow week={{ days: placeholder, goal: null }} selected={selected} todayIso={todayIso} onPick={onPick} />
+  );
+}
+
+/** One week: dashed for nothing logged, a ring for logged, filled for on target; today is raised. */
+function WeekRow({
+  week,
+  selected,
+  todayIso,
+  onPick,
+}: {
+  week: Pick<ProgressResponse, "days" | "goal">;
+  selected: string;
+  todayIso: string;
+  onPick: (date: string, isToday: boolean) => void;
+}) {
   const band = week.goal ? (week.goal.targetCalories * week.goal.bandPct) / 100 : null;
   return (
     <View style={styles.week}>
@@ -188,7 +284,8 @@ function CaloriesCard({ data }: { data: TodayResponse }) {
           <T variant="label">kcal eaten</T>
         </View>
         <Ring value={eaten} max={target || 1} size={96} stroke={9}>
-          <Icon name="sun" size={22} color={colors.ink} />
+          <T style={styles.ringNum}>{Math.abs(target - eaten).toLocaleString("en-IN")}</T>
+          <T variant="caption">{eaten > target ? "over" : "left"}</T>
         </Ring>
       </View>
     </Surface>
@@ -207,7 +304,6 @@ function MacroCarousel({ data }: { data: TodayResponse }) {
     max: number;
     unit: string;
     color: string;
-    icon: IconName;
     limit?: boolean;
   }[][] = [
     [
@@ -217,7 +313,6 @@ function MacroCarousel({ data }: { data: TodayResponse }) {
         max: t?.protein ?? 0,
         unit: "g",
         color: macroColors.protein,
-        icon: "zap",
       },
       {
         label: "Carbs",
@@ -225,9 +320,8 @@ function MacroCarousel({ data }: { data: TodayResponse }) {
         max: t?.carbs ?? 0,
         unit: "g",
         color: macroColors.carbs,
-        icon: "sun",
       },
-      { label: "Fat", value: data.totals.fat, max: t?.fat ?? 0, unit: "g", color: macroColors.fat, icon: "droplet" },
+      { label: "Fat", value: data.totals.fat, max: t?.fat ?? 0, unit: "g", color: macroColors.fat },
     ],
     [
       {
@@ -236,7 +330,6 @@ function MacroCarousel({ data }: { data: TodayResponse }) {
         max: t?.fibre ?? 0,
         unit: "g",
         color: macroColors.fibre,
-        icon: "feather",
       },
       {
         label: "Sat fat",
@@ -244,7 +337,6 @@ function MacroCarousel({ data }: { data: TodayResponse }) {
         max: t?.satFat ?? 0,
         unit: "g",
         color: colors.plum,
-        icon: "alert-circle",
         limit: true,
       },
       {
@@ -253,7 +345,6 @@ function MacroCarousel({ data }: { data: TodayResponse }) {
         max: Math.max(1, data.focusSummary?.total ?? 0),
         unit: "",
         color: colors.leaf,
-        icon: "target",
       },
     ],
   ];
@@ -282,7 +373,7 @@ function MacroCarousel({ data }: { data: TodayResponse }) {
                   {c.limit ? `${c.label} limit` : c.label}
                 </T>
                 <Ring value={c.value} max={c.max || 1} size={58} stroke={6} color={c.color}>
-                  <Icon name={c.icon} size={16} color={c.color} />
+                  <T style={[styles.ringPct, { color: c.color }]}>{c.max ? Math.round((c.value / c.max) * 100) : 0}%</T>
                 </Ring>
               </View>
             ))}
@@ -461,6 +552,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.leafSoft,
   },
   calRow: { flexDirection: "row", alignItems: "center", gap: space.lg },
+  ringNum: { fontFamily: fonts.bold, fontSize: 18, color: colors.ink },
+  ringPct: { fontFamily: fonts.bold, fontSize: 13 },
   calBig: { fontFamily: fonts.display, fontSize: 48, lineHeight: 54, color: colors.ink },
   page: { flexDirection: "row", gap: space.sm },
   mini: {
