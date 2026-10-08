@@ -603,8 +603,6 @@ function Reveal({
   onBack: () => void;
 }) {
   const shown = useCountUp(target);
-  // Closed by default: the plan line says what matters; the formula is there for anyone who asks.
-  const [why, setWhy] = useState(false);
   const b = goal.breakdown;
   const macros = [
     { label: "Protein", grams: goal.targets.protein, kcalPerGram: 4, color: macroColors.protein },
@@ -667,101 +665,132 @@ function Reveal({
             dateLabel={dateInWeeks(b.weeksToGoal!)}
             losing={goal.goal === "lose"}
           />
-          <T variant="body" align="center">
-            <T variant="bodyStrong">{target.toLocaleString("en-IN")} kcal a day</T> gets you there.
-          </T>
-          <T variant="caption" align="center">
-            Set from your age, height, weight and activity. Kimbo adjusts it as you log.
-          </T>
         </View>
-      ) : null}
-      <View style={[styles.revealTop, showPath && { marginTop: space.md }]}>
-        <SegmentRing
-          segments={macros.map((m) => ({ value: m.grams * m.kcalPerGram, color: m.color }))}
-          size={showPath ? 160 : 220}
-          stroke={showPath ? 12 : 16}
-        >
-          {/* With the plan line above, Kimbo is already on screen; the ring just splits the number. */}
-          {showPath ? null : <Kimbo mood="happy" size={56} leaves={2} />}
-          <T variant="display" style={showPath ? styles.midNumber : styles.bigNumber}>
-            {shown}
-          </T>
-          <T variant="label">kcal a day</T>
-        </SegmentRing>
-        {showPath ? null : (
+      ) : (
+        <View style={styles.revealTop}>
+          <SegmentRing
+            segments={macros.map((m) => ({ value: m.grams * m.kcalPerGram, color: m.color }))}
+            size={220}
+            stroke={16}
+          >
+            <Kimbo mood="happy" size={56} leaves={2} />
+            <T variant="display" style={styles.bigNumber}>
+              {shown}
+            </T>
+            <T variant="label">kcal a day</T>
+          </SegmentRing>
           <View style={styles.pace}>
             <Icon name={paceIcon} size={16} color={colors.leafDeep} />
             <T variant="label" tone="leaf">
               {pace}
             </T>
           </View>
-        )}
-      </View>
-
-      <View style={styles.macroRow}>
-        {macros.map((m) => (
-          <View key={m.label} style={styles.macro}>
-            <View style={[styles.macroDot, { backgroundColor: m.color }]} />
-            <T variant="heading">{m.grams} g</T>
-            <T variant="caption">{m.label}</T>
-          </View>
-        ))}
-      </View>
-      <View style={styles.extraRow}>
-        <View style={styles.extra}>
-          <View style={[styles.macroDot, { backgroundColor: macroColors.fibre, marginBottom: 0 }]} />
-          <T variant="label">Fibre {goal.targets.fibre} g or more</T>
         </View>
-        <View style={styles.extra}>
-          <View style={[styles.macroDot, { backgroundColor: "#8E4A6B", marginBottom: 0 }]} />
-          <T variant="label">Sat fat under {goal.targets.satFat} g</T>
-        </View>
-      </View>
+      )}
 
-      <View style={styles.adjust}>
-        <Chip label="−50" disabled={target <= 1200} onPress={() => onAdjust(Math.max(1200, target - 50))} />
-        <T variant="caption" style={{ flex: 1 }} align="center">
+      {/* The one sentence this screen exists for; everything else is a tap away. */}
+      <View style={{ gap: space.xs }}>
+        <T variant="heading" align="center">
+          {showPath ? `${target.toLocaleString("en-IN")} kcal a day gets you there.` : "Your daily target"}
+        </T>
+        <T variant="caption" align="center">
           {target === goal.computedTarget
-            ? "Doctor gave you a different number? Adjust it."
-            : `Kimbo suggested ${goal.computedTarget}`}
+            ? "Set from your age, height, weight and activity. Kimbo adjusts it as you log."
+            : `You set this. Kimbo suggested ${goal.computedTarget.toLocaleString("en-IN")}.`}
         </T>
-        <Chip label="+50" disabled={target >= 4000} onPress={() => onAdjust(Math.min(4000, target + 50))} />
       </View>
 
-      <Pressable accessibilityRole="button" onPress={() => setWhy(!why)} style={styles.whyToggle}>
-        <T variant="bodyStrong" tone="leaf">
-          How we calculated this
-        </T>
-        <Icon name={why ? "chevron-up" : "chevron-down"} size={18} color={colors.leaf} />
-      </Pressable>
-      {why ? (
-        <View style={styles.equation}>
-          <Term value={b.bmr} label="at rest" />
-          <T variant="heading" tone="soft">
-            ×{b.activityFactor}
-          </T>
-          <Term value={b.maintenance} label="your day" />
-          {b.adjustment !== 0 ? (
-            <>
-              <T variant="heading" tone="soft">
-                {b.adjustment > 0 ? "+" : "−"}
-                {Math.abs(b.adjustment)}
-              </T>
-              <Term value={goal.computedTarget} label="target" highlight />
-            </>
-          ) : null}
-        </View>
-      ) : null}
-      {why ? (
-        <View style={styles.whyText}>
-          {goal.explanation.map((line) => (
-            <T key={line} variant="caption">
-              {line}
-            </T>
+      <View style={styles.disclosures}>
+        <Disclosure title="See the breakdown">
+          {[
+            { value: `${goal.targets.protein} g protein`, why: PROTEIN_WHY[goal.goal], color: macroColors.protein },
+            { value: `${goal.targets.carbs} g carbs`, why: "Energy for your day", color: macroColors.carbs },
+            { value: `${goal.targets.fat} g fat`, why: "Keeps meals satisfying", color: macroColors.fat },
+            {
+              value: `${goal.targets.fibre} g fibre or more`,
+              why: "Keeps you full, helps cholesterol",
+              color: macroColors.fibre,
+            },
+            { value: `Under ${goal.targets.satFat} g saturated fat`, why: "A limit, not a goal", color: colors.plum },
+          ].map((r) => (
+            // Value on one line, what it's for on the next: no maths needed.
+            <View key={r.value} style={styles.breakdownRow}>
+              <View style={[styles.macroDot, { backgroundColor: r.color, marginBottom: 0, marginTop: 7 }]} />
+              <View style={{ flex: 1 }}>
+                <T variant="bodyStrong">{r.value}</T>
+                <T variant="caption">{r.why}</T>
+              </View>
+            </View>
           ))}
-        </View>
-      ) : null}
+        </Disclosure>
+        <Disclosure title="Adjust the number">
+          <View style={styles.adjust}>
+            <Chip label="−50" disabled={target <= 1200} onPress={() => onAdjust(Math.max(1200, target - 50))} />
+            <View style={{ flex: 1, alignItems: "center" }}>
+              <T variant="heading">{target.toLocaleString("en-IN")} kcal</T>
+              <T variant="caption" align="center">
+                Doctor gave you a different number? Set it here.
+              </T>
+            </View>
+            <Chip label="+50" disabled={target >= 4000} onPress={() => onAdjust(Math.min(4000, target + 50))} />
+          </View>
+        </Disclosure>
+        <Disclosure title="How we calculated this">
+          <View style={styles.equation}>
+            <Term value={b.bmr} label="at rest" />
+            <T variant="heading" tone="soft">
+              ×{b.activityFactor}
+            </T>
+            <Term value={b.maintenance} label="your day" />
+            {b.adjustment !== 0 ? (
+              <>
+                <T variant="heading" tone="soft">
+                  {b.adjustment > 0 ? "+" : "−"}
+                  {Math.abs(b.adjustment)}
+                </T>
+                <Term value={goal.computedTarget} label="target" highlight />
+              </>
+            ) : null}
+          </View>
+          <View style={styles.whyText}>
+            {goal.explanation.map((line) => (
+              <T key={line} variant="caption">
+                {line}
+              </T>
+            ))}
+          </View>
+        </Disclosure>
+      </View>
     </Screen>
+  );
+}
+
+/** What the protein number is for, in the user's terms. */
+const PROTEIN_WHY: Record<GoalType, string> = {
+  lose: "Keeps muscle while you lose",
+  maintain: "Keeps you full between meals",
+  build_muscle: "Builds muscle with your training",
+  recomp: "Builds muscle while weight stays put",
+};
+
+/** A closed-by-default row: detail for anyone who wants it, nothing to read for anyone who doesn't. */
+function Disclosure({ title, children }: { title: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        onPress={() => setOpen(!open)}
+        style={styles.disclosureRow}
+      >
+        <T variant="bodyStrong" style={{ flex: 1 }}>
+          {title}
+        </T>
+        <Icon name={open ? "chevron-up" : "chevron-down"} size={18} color={colors.inkSoft} />
+      </Pressable>
+      {open ? <View style={styles.disclosureBody}>{children}</View> : null}
+    </View>
   );
 }
 
@@ -948,7 +977,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   revealTop: { alignItems: "center", gap: space.md, marginTop: space.xl },
-  midNumber: { fontSize: 36, lineHeight: 42, fontVariant: ["tabular-nums"] },
+  disclosures: { borderRadius: radius.lg, backgroundColor: colors.surface, overflow: "hidden" },
+  disclosureRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
+    minHeight: 52,
+  },
+  disclosureBody: { paddingHorizontal: space.lg, paddingBottom: space.lg, gap: space.md },
+  breakdownRow: { flexDirection: "row", gap: space.md, alignItems: "flex-start" },
   bigNumber: { fontSize: 48, lineHeight: 54, fontVariant: ["tabular-nums"] },
   pace: {
     flexDirection: "row",
@@ -959,36 +997,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.md,
     paddingVertical: 6,
   },
-  macroRow: { flexDirection: "row", gap: space.md },
-  macro: {
-    flex: 1,
-    alignItems: "center",
-    gap: 2,
-    paddingVertical: space.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-  },
   macroDot: { width: 10, height: 10, borderRadius: 5, marginBottom: 4 },
   adjust: { flexDirection: "row", alignItems: "center", gap: space.sm },
-  extraRow: { flexDirection: "row", gap: space.sm, marginTop: -space.sm },
-  extra: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: space.sm,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-  },
   whyText: { gap: 4, paddingHorizontal: space.sm },
-  whyToggle: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: space.xs,
-    paddingVertical: space.sm,
-  },
   equation: {
     flexDirection: "row",
     flexWrap: "wrap",
