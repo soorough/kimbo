@@ -460,6 +460,22 @@ export const TodayMeal = Meal.extend({
 });
 export type TodayMeal = z.infer<typeof TodayMeal>;
 
+/** Today's score out of 10, worked out by Kimbo's rules; null until a meal is logged. */
+export const HealthScore = z.object({
+  score: z.number().nullable(),
+  status: z.string(),
+  line: z.string(),
+  parts: z.array(
+    z.object({
+      key: z.enum(["fibre", "protein", "satFat", "processed"]),
+      label: z.string(),
+      value: z.string(),
+      status: z.enum(["good", "ok", "low"]),
+    }),
+  ),
+});
+export type HealthScore = z.infer<typeof HealthScore>;
+
 export const TodayResponse = z.object({
   date: LocalDate,
   targets: MacroTargets.nullable(),
@@ -470,6 +486,7 @@ export const TodayResponse = z.object({
   /** Meal types logged yesterday, i.e. what "same as yesterday" can repeat. */
   repeatableMealTypes: z.array(MealType),
   water: z.object({ glasses: z.number(), goal: z.number() }),
+  healthScore: HealthScore,
 });
 export type TodayResponse = z.infer<typeof TodayResponse>;
 

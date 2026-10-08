@@ -21,7 +21,7 @@ const useMode = create<{ mode: "left" | "eaten"; flip: () => void }>((set) => ({
 }));
 
 /** Protein looks like what this person actually eats. */
-const PROTEIN_ICON: Record<Diet, string> = {
+export const PROTEIN_ICON: Record<Diet, string> = {
   non_vegetarian: "🍗",
   eggetarian: "🥚",
   vegetarian: "🧀",
@@ -83,9 +83,9 @@ export function DayNumbers({ data, diet }: { data: TodayResponse; diet: Diet | n
         {extras.map((s) => (
           <MiniCard key={s.key} stat={s} />
         ))}
-        <HelpedCard helped={data.focusSummary?.supported ?? 0} />
+        <FocusMini data={data} />
       </View>
-      <FocusCard data={data} />
+      <HealthScoreCard score={data.healthScore} />
     </View>,
     <View key="health" style={styles.pageBody}>
       <HealthSoon />
@@ -206,59 +206,64 @@ function MiniCard({ stat }: { stat: Stat }) {
   );
 }
 
-/** Meals that helped the food focus today: a count, not a ratio. */
-function HelpedCard({ helped }: { helped: number }) {
+/**
+ * The food focus in words: "On track" / "Add one" under its name, so it's clear what it
+ * tracks. Tapping it explains the focus on the Report tab.
+ */
+function FocusMini({ data }: { data: TodayResponse }) {
+  const f = data.focus;
+  const s = data.focusSummary;
+  const status = !f ? "Set one" : !s?.total ? "Not yet" : s.supported * 2 >= s.total ? "On track" : "Add one";
+  const name = f ? f.title.replace(/^More /, "").replace(/^./, (c) => c.toUpperCase()) : "Food focus";
+  const on = status === "On track";
   return (
-    <View style={[styles.card, styles.mini]} accessible accessibilityLabel={`${helped} meals helped your focus today`}>
-      <T style={styles.miniValue}>{helped}</T>
-      <T variant="label" numberOfLines={1}>
-        {helped === 1 ? "Meal helped" : "Meals helped"}
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${name}: ${status}`}
+      accessibilityHint="Explains your food focus"
+      onPress={() => router.navigate("/(tabs)/report")}
+      style={({ pressed }) => [styles.card, styles.mini, pressed && styles.pressed]}
+    >
+      <T style={[styles.miniValue, on && { color: colors.leaf }]}>{status}</T>
+      <T variant="label" numberOfLines={2}>
+        {name}
       </T>
       <View style={styles.miniRing}>
-        <Ring value={helped} max={Math.max(1, helped)} size={62} stroke={6} color={colors.leaf}>
+        <Ring value={s?.supported ?? 0} max={Math.max(1, s?.total ?? 0)} size={62} stroke={6} color={colors.leaf}>
           <T style={styles.miniIcon}>🌱</T>
         </Ring>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
-/** Kimbo's answer to Cal AI's health score: the one food habit, and how today is going. */
-function FocusCard({ data }: { data: TodayResponse }) {
-  const f = data.focus;
-  const s = data.focusSummary;
+const SCORE_COLOR = (score: number) => (score >= 8 ? colors.leaf : score >= 5 ? colors.turmeric : colors.plum);
+
+/** Cal AI's health score card: score out of 10, a bar, one line on what would lift it. Opens the breakdown. */
+function HealthScoreCard({ score: h }: { score: TodayResponse["healthScore"] }) {
   return (
-    <View style={[styles.card, styles.wide]}>
-      {f ? (
-        <>
-          <View style={styles.labelRow}>
-            <T variant="heading" style={{ flex: 1 }} numberOfLines={1}>
-              {f.title}
-            </T>
-          </View>
-          <View style={styles.track}>
-            <View style={[styles.fill, { width: `${s && s.total ? (s.supported / s.total) * 100 : 0}%` }]} />
-          </View>
-          <T variant="caption" numberOfLines={2}>
-            {s && s.total
-              ? s.supported === s.total
-                ? "Every meal today helped your focus."
-                : "Each meal that helps fills this up."
-              : "Log a meal and see if it helps."}
-          </T>
-        </>
-      ) : (
-        <>
-          <T variant="heading">Your food focus</T>
-          <T variant="caption">Add your blood report and Kimbo picks one food habit for you.</T>
-        </>
-      )}
-      <Pressable accessibilityRole="link" hitSlop={8} onPress={() => router.push("/nutrition")} style={{ alignSelf: "flex-start" }}>
-        <T variant="label" tone="leaf" style={{ fontFamily: fonts.bold }}>
-          Full breakdown ›
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Health score ${h.score ?? "not evaluated"}. ${h.line}`}
+      accessibilityHint="Opens your daily breakdown"
+      onPress={() => router.push("/nutrition")}
+      style={({ pressed }) => [styles.card, styles.wide, pressed && styles.pressed]}
+    >
+      <View style={styles.labelRow}>
+        <T variant="heading" style={{ flex: 1 }}>
+          Health score
         </T>
-      </Pressable>
-    </View>
+        <T variant="heading">{h.score === null ? "N/A" : `${h.score}/10`}</T>
+      </View>
+      <View style={styles.track}>
+        {h.score !== null ? (
+          <View style={[styles.fill, { width: `${h.score * 10}%`, backgroundColor: SCORE_COLOR(h.score) }]} />
+        ) : null}
+      </View>
+      <T variant="caption" numberOfLines={2}>
+        {h.line}
+      </T>
+    </Pressable>
   );
 }
 

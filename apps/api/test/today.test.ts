@@ -204,3 +204,28 @@ describe("Water", () => {
     expect((await api.put("/water", { glasses: 1, date: "2026-10-07" }, id)).status).toBe(400);
   });
 });
+
+describe("Health score", () => {
+  it("is not evaluated until a meal is logged", async () => {
+    const id = await onboarded();
+    expect((await api.get("/today", id)).json.healthScore).toMatchObject({ score: null, status: "Not evaluated", parts: [] });
+  });
+
+  it("scores a wholesome plate above a fried, sugary one, with four rated parts and one tip", async () => {
+    const good = await onboarded();
+    await api.post("/meals", meal("lunch", [item("dal_tadka", 1, "katori"), item("roti", 2, "piece"), item("salad", 1, "bowl")]), good);
+    const g = (await api.get("/today", good)).json.healthScore;
+
+    const fried = await onboarded();
+    await api.post("/meals", meal("lunch", [item("samosa", 2, "piece"), item("jalebi", 3, "piece")]), fried);
+    const f = (await api.get("/today", fried)).json.healthScore;
+
+    expect(g.score).toBeGreaterThan(f.score);
+    expect(f.score).toBeGreaterThanOrEqual(0);
+    expect(g.score).toBeLessThanOrEqual(10);
+    expect(g.parts.map((p: { key: string }) => p.key)).toEqual(["fibre", "protein", "satFat", "processed"]);
+    expect(f.parts.find((p: { key: string }) => p.key === "processed")).toMatchObject({ value: "A lot", status: "low" });
+    expect(g.parts.find((p: { key: string }) => p.key === "processed")).toMatchObject({ value: "None", status: "good" });
+    expect(f.line).toMatch(/lift it|go easy/i);
+  });
+});

@@ -1,152 +1,122 @@
-import type { MacroTargets, Nutrition, TodayResponse } from "@kimbo/shared";
+import type { Nutrition, TodayResponse } from "@kimbo/shared";
 import { useQuery } from "@tanstack/react-query";
+import { router } from "expo-router";
 import { StyleSheet, View } from "react-native";
-import { ErrorState, Icon, Screen, Surface, T, type IconName } from "@/components/ui";
+import { Button } from "@/components/Button";
+import { PROTEIN_ICON } from "@/components/DayNumbers";
+import { ErrorState, Icon, Ring, Screen, Surface, T } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { MEAL_LABEL } from "@/lib/format";
 import { useSession } from "@/lib/session";
-import { colors, macroColors, radius, space } from "@/lib/theme";
+import { colors, fonts, macroColors, space } from "@/lib/theme";
 
-type Key = keyof MacroTargets;
+const STATUS_COLOR = { good: colors.leaf, ok: colors.turmeric, low: colors.plum } as const;
+const PART_ICON = { fibre: "🥦", protein: "", satFat: "🧈", processed: "🍟" } as const;
 
-/** "limit" rows warn when crossed; "aim" rows are goals to reach, so going past is fine. */
-const ROWS: { key: Key; label: string; unit: string; kind: "limit" | "aim"; color: string }[] = [
-  { key: "calories", label: "Calories", unit: "kcal", kind: "limit", color: colors.leaf },
-  { key: "protein", label: "Protein", unit: "g", kind: "aim", color: macroColors.protein },
-  { key: "carbs", label: "Carbs", unit: "g", kind: "limit", color: macroColors.carbs },
-  { key: "fat", label: "Fat", unit: "g", kind: "limit", color: macroColors.fat },
-  { key: "satFat", label: "Saturated fat", unit: "g", kind: "limit", color: "#8E4A6B" },
-  { key: "fibre", label: "Fibre", unit: "g", kind: "aim", color: macroColors.fibre },
-];
-
-/** Today's nutrients against targets, with plain warnings when a limit is crossed. */
-export default function NutritionDetail() {
+/** Cal AI's daily breakdown: calories with macros, water, and the health score with what's behind it. */
+export default function DailyBreakdown() {
   const profileId = useSession((s) => s.profileId);
   const today = useQuery({ queryKey: ["today"], queryFn: api.today });
   const profile = useQuery({ queryKey: ["profile", profileId], queryFn: () => api.getProfile(profileId!) });
-  const cutting = profile.data?.profile.goal?.goal === "lose";
+  const protein = PROTEIN_ICON[profile.data?.profile.diet ?? "vegetarian"];
 
   if (today.error) {
     return (
-      <Screen back title="Today's nutrition">
+      <Screen back title="Daily breakdown">
         <ErrorState message={errorMessage(today.error)} onRetry={() => today.refetch()} />
       </Screen>
     );
   }
   const data = today.data;
-  const t = data?.targets;
+  if (!data) return <Screen back title="Daily breakdown">{null}</Screen>;
+  const t = data.targets;
+  const n = data.totals;
+  const h = data.healthScore;
 
   return (
-    <Screen back title="Today's nutrition">
-      {data && t ? (
-        <>
-          <Warnings data={data} targets={t} cutting={cutting} />
-          <Surface style={{ gap: space.lg }}>
-            {ROWS.map((r) => (
-              <Row key={r.key} row={r} value={data.totals[r.key]} target={t[r.key]} />
-            ))}
-          </Surface>
-          {data.meals.length ? <ByMeal data={data} /> : null}
-        </>
-      ) : data ? (
-        <T variant="body">Set a goal to see targets here.</T>
-      ) : null}
-    </Screen>
-  );
-}
-
-function Row({ row, value, target }: { row: (typeof ROWS)[number]; value: number; target: number }) {
-  const v = Math.round(value);
-  const over = row.kind === "limit" && v > target;
-  const reached = row.kind === "aim" && v >= target;
-  const pct = target > 0 ? Math.min(1, value / target) : 0;
-  const status = over
-    ? `${v - target} ${row.unit} over`
-    : reached
-      ? "Reached"
-      : `${target - v} ${row.unit} ${row.kind === "limit" ? "left" : "to go"}`;
-
-  return (
-    <View style={{ gap: 6 }} accessible accessibilityLabel={`${row.label}: ${v} of ${target} ${row.unit}. ${status}.`}>
-      <View style={styles.between}>
-        <T variant="bodyStrong">{row.label}</T>
-        <T variant="label">
-          {v} / {target} {row.unit}
-          {row.kind === "limit" ? " max" : ""}
-        </T>
-      </View>
-      {over ? (
-        // Rescaled to the whole amount: solid up to the limit, a tick, then the excess outlined.
-        <View style={[styles.track, styles.overTrack]}>
-          <View style={[styles.fill, { flex: target, backgroundColor: row.color, borderRadius: 0 }]} />
-          <View style={styles.limitTick} />
-          <View style={[styles.excess, { flex: v - target }]} />
-        </View>
-      ) : (
-        <View style={styles.track}>
-          <View style={[styles.fill, { width: `${pct * 100}%`, backgroundColor: row.color }]} />
-        </View>
-      )}
-      <T variant="caption" tone={over ? "plum" : reached ? "leaf" : "soft"}>
-        {over ? "▲ " : reached ? "✓ " : ""}
-        {status}
-      </T>
-    </View>
-  );
-}
-
-/** Heads-ups when a limit is crossed, naming the dish that did most of it. */
-function Warnings({ data, targets, cutting }: { data: TodayResponse; targets: MacroTargets; cutting: boolean }) {
-  const items = data.meals.flatMap((m) => m.items);
-  const top = (k: keyof Nutrition) =>
-    items.length ? items.reduce((a, b) => (b.nutrition[k] > a.nutrition[k] ? b : a)).name : null;
-  const notes: { icon: IconName; title: string; body: string; good?: boolean }[] = [];
-  const v = (k: Key) => Math.round(data.totals[k]);
-
-  if (v("satFat") > targets.satFat) {
-    notes.push({
-      icon: "alert-triangle",
-      title: "Saturated fat is over your limit",
-      body:
-        `${v("satFat")} g of ${targets.satFat} g. ` +
-        (cutting ? "On a cut it's also an easy place to save calories. " : "") +
-        `Too much raises LDL cholesterol. Most came from ${top("satFat")}.`,
-    });
-  }
-  if (v("calories") > targets.calories) {
-    notes.push({
-      icon: "alert-circle",
-      title: `${v("calories") - targets.calories} kcal over today's target`,
-      body: `${cutting ? "One day won't undo a cut; " : ""}${top("calories")} was the biggest share.`,
-    });
-  }
-  if (v("fat") > targets.fat) {
-    notes.push({ icon: "alert-circle", title: `Fat is ${v("fat") - targets.fat} g over`, body: `Mostly from ${top("fat")}.` });
-  }
-  if (v("carbs") > targets.carbs) {
-    notes.push({
-      icon: "alert-circle",
-      title: `Carbs are ${v("carbs") - targets.carbs} g over`,
-      body: `Mostly from ${top("carbs")}.`,
-    });
-  }
-  if (v("protein") >= targets.protein) {
-    notes.push({ icon: "check-circle", title: "Protein goal reached", body: "Nice — that helps keep you full.", good: true });
-  }
-  if (!notes.length) return null;
-
-  return (
-    <View style={{ gap: space.sm }}>
-      {notes.map((n) => (
-        <View key={n.title} style={[styles.note, n.good ? styles.noteGood : styles.noteWarn]}>
-          <Icon name={n.icon} size={18} color={n.good ? colors.leaf : colors.plum} />
+    <Screen back title="Daily breakdown">
+      <Surface style={{ gap: space.md }}>
+        <View style={styles.head}>
           <View style={{ flex: 1, gap: 2 }}>
-            <T variant="bodyStrong">{n.title}</T>
-            <T variant="caption">{n.body}</T>
+            <T variant="label">Calories</T>
+            <T style={styles.big}>
+              {Math.round(n.calories).toLocaleString("en-IN")}
+              {t ? <T style={styles.of}>{` / ${t.calories.toLocaleString("en-IN")}`}</T> : null}
+            </T>
           </View>
+          <Ring value={n.calories} max={t?.calories || 1} size={64} stroke={6}>
+            <Icon name="zap" size={20} color={colors.leafDeep} />
+          </Ring>
         </View>
-      ))}
-    </View>
+        {(
+          [
+            ["Protein", protein, n.protein, t?.protein, macroColors.protein],
+            ["Carbs", "🌾", n.carbs, t?.carbs, macroColors.carbs],
+            ["Fat", "🥜", n.fat, t?.fat, macroColors.fat],
+          ] as const
+        ).map(([label, icon, v, target]) => (
+          <View key={label} style={styles.row}>
+            <T style={styles.icon}>{icon}</T>
+            <T variant="body" style={{ flex: 1 }}>
+              {label}
+            </T>
+            <T variant="bodyStrong">
+              {Math.round(v)}
+              <T variant="body" tone="soft">
+                {target ? ` / ${target}g` : "g"}
+              </T>
+            </T>
+          </View>
+        ))}
+        <Button label="Edit daily goals" kind="secondary" onPress={() => router.push("/edit-goal")} />
+      </Surface>
+
+      <Surface>
+        <View style={styles.head}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <T variant="label">Water</T>
+            <T style={styles.big}>
+              {data.water.glasses}
+              <T style={styles.of}>{` / ${data.water.goal} glasses`}</T>
+            </T>
+          </View>
+          <Ring value={data.water.glasses} max={data.water.goal} size={64} stroke={6} color="#4A90C2" overColor="#4A90C2">
+            <Icon name="droplet" size={20} color="#4A90C2" />
+          </Ring>
+        </View>
+      </Surface>
+
+      <Surface style={{ gap: space.md }}>
+        <View style={styles.head}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <T variant="label">Health score</T>
+            <T variant="heading">{h.status}</T>
+          </View>
+          <Ring
+            value={h.score ?? 0}
+            max={10}
+            size={64}
+            stroke={6}
+            color={h.score === null ? colors.sunk : h.score >= 8 ? colors.leaf : h.score >= 5 ? colors.turmeric : colors.plum}
+          >
+            <T style={styles.ringText}>{h.score === null ? "–" : `${h.score}/10`}</T>
+          </Ring>
+        </View>
+        <T variant="caption">{h.line}</T>
+        {h.parts.map((p) => (
+          <View key={p.key} style={styles.row} accessible accessibilityLabel={`${p.label}: ${p.value}, ${p.status}`}>
+            <T style={styles.icon}>{p.key === "protein" ? protein : PART_ICON[p.key]}</T>
+            <T variant="body" style={{ flex: 1 }}>
+              {p.label}
+            </T>
+            <T variant="bodyStrong">{p.value}</T>
+            <View style={[styles.dot, { backgroundColor: STATUS_COLOR[p.status] }]} />
+          </View>
+        ))}
+      </Surface>
+
+      {data.meals.length ? <ByMeal data={data} /> : null}
+    </Screen>
   );
 }
 
@@ -188,22 +158,13 @@ function ByMeal({ data }: { data: TodayResponse }) {
 }
 
 const styles = StyleSheet.create({
-  between: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" },
-  track: { height: 10, borderRadius: radius.pill, backgroundColor: colors.sunk, overflow: "hidden" },
-  fill: { height: 10, borderRadius: radius.pill },
-  overTrack: { flexDirection: "row", alignItems: "center" },
-  limitTick: { width: 3, height: 10, backgroundColor: colors.ink },
-  excess: {
-    height: 10,
-    backgroundColor: colors.plumSoft,
-    borderWidth: 1.5,
-    borderColor: colors.plum,
-    borderTopRightRadius: radius.pill,
-    borderBottomRightRadius: radius.pill,
-  },
-  note: { flexDirection: "row", gap: space.md, padding: space.md, borderRadius: radius.md, alignItems: "flex-start" },
-  noteWarn: { backgroundColor: colors.plumSoft },
-  noteGood: { backgroundColor: colors.leafSoft },
+  head: { flexDirection: "row", alignItems: "center", gap: space.md },
+  big: { fontFamily: fonts.bold, fontSize: 26, lineHeight: 32, color: colors.ink },
+  row: { flexDirection: "row", alignItems: "center", gap: space.md },
+  icon: { width: 24, fontSize: 18, lineHeight: 24, textAlign: "center" },
+  of: { fontFamily: fonts.semibold, fontSize: 17, color: colors.inkSoft },
+  ringText: { fontFamily: fonts.bold, fontSize: 14, color: colors.ink },
+  dot: { width: 9, height: 9, borderRadius: 5 },
   tableRow: { flexDirection: "row", alignItems: "center" },
   cellNum: { width: 44, textAlign: "right" },
 });

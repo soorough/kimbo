@@ -6,6 +6,7 @@ import { WATER_GOAL_GLASSES } from "../domain/config.js";
 import { focusForDay } from "../domain/focus-history.js";
 import { mealSupportsFocus } from "../domain/focus-match.js";
 import { FOCI } from "../domain/health.js";
+import { healthScore } from "../domain/health-score.js";
 import { addDays, localDate, startOfLocalDay } from "../domain/time.js";
 import { badRequest } from "../errors.js";
 import { parse, requireProfile } from "../http.js";
@@ -49,6 +50,7 @@ export function todayRoutes(app: FastifyInstance, deps: Deps) {
         : null,
       repeatableMealTypes: MEAL_ORDER.filter((t) => yesterdayMeals.some((m) => m.mealType === t)),
       water: { glasses, goal: WATER_GOAL_GLASSES },
+      healthScore: healthScore(meals, goalOf(profile)?.targets ?? null, profile.diet),
     };
   });
 
