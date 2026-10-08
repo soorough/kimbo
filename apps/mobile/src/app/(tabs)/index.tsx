@@ -99,7 +99,7 @@ export default function Today() {
 function StreakPill({ days }: { days: number }) {
   return (
     <View style={styles.streak} accessibilityLabel={`${days} day streak`}>
-      <Icon name="zap" size={14} color={colors.turmericDeep} />
+      <T style={styles.streakFire}>🔥</T>
       <T style={styles.streakText}>{days}</T>
     </View>
   );
@@ -520,6 +520,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     ...shadow.card,
   },
+  streakFire: { fontSize: 15, lineHeight: 20 },
   streakText: { fontFamily: fonts.bold, fontSize: 15, color: colors.ink },
   week: { flexDirection: "row", justifyContent: "space-between" },
   day: {
