@@ -1,12 +1,14 @@
 import { afterAll, beforeEach } from "vitest";
-import type {
-  Coach,
-  CoachReply,
-  ExtractedReport,
-  MealRecognizer,
-  RecognizedItem,
-  ReportExtractor,
-  Voice,
+import {
+  AiUnavailableError,
+  type Coach,
+  type CoachGreeting,
+  type CoachReply,
+  type ExtractedReport,
+  type MealRecognizer,
+  type RecognizedItem,
+  type ReportExtractor,
+  type Voice,
 } from "../src/ai/types.js";
 import { createApp } from "../src/app.js";
 import { createDb } from "../src/db/index.js";
@@ -46,6 +48,14 @@ export class FakeCoach implements Coach {
   async reply(input: Parameters<Coach["reply"]>[0]) {
     this.lastInput = input;
     return this.next;
+  }
+  /** null: the greeting model is "down", so Kimbo's own line is used. */
+  nextGreeting: CoachGreeting | null = null;
+  greetFacts: string[] = [];
+  async greet(input: { facts: string }) {
+    this.greetFacts.push(input.facts);
+    if (!this.nextGreeting) throw new AiUnavailableError();
+    return this.nextGreeting;
   }
 }
 

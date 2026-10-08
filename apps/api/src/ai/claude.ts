@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   AiUnavailableError,
   type Coach,
+  type CoachGreeting,
   type CoachReply,
   type ExtractedReport,
   type MealRecognizer,
@@ -128,15 +129,36 @@ Respect their diet. Suggest dishes from the "Dishes Kimbo can suggest" list when
 You do not diagnose, treat, or adjust medicines. For symptoms, medicines or anything medical, kindly suggest they talk to their doctor.
 If the question isn't about food, their goal, their report or their progress, say briefly what you can help with.`;
 
+const GREET_SYSTEM = `You are Kimbo, a small, warm food buddy who knows this person's habits well. Write the one line they see when they open the app: what to eat next.
+- Just the next move. Don't recap, praise or mention anything they already ate.
+- Talk like a friend who knows them, e.g. "Your usual rajma rice for lunch, Asha? (~420 kcal)". If they've had the idea before, call it their usual (or "again" if only once, never both); if it's new, offer it lightly.
+- One short sentence, two at most, under 14 words. Use their name if given. Add a tiny personal touch (streak, busy day, cravings, time of day) only if it fits naturally.
+- Use the meal idea exactly as written in the facts, with its calories as "(~N kcal)".
+- No other numbers. No medical claims, no lecturing, no guilt. At most one emoji.`;
+
+const GreetOutput = z.object({ text: z.string(), mood: z.string() });
+
+const GREET_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["text", "mood"],
+  properties: {
+    text: { type: "string", description: "The line: one short sentence, under 14 words" },
+    mood: { type: "string", enum: ["happy", "proud", "cheer", "wave"] },
+  },
+};
+
 export class ClaudeAdapters implements MealRecognizer, ReportExtractor, Coach {
   private client: Anthropic;
   private mealSystem: string;
 
   /** knownDishes: Kimbo's catalogue names, offered so Claude names dishes the way Kimbo will recognise. */
+  /** greetModel: a small, fast model for Today's one line; everything else uses `model`. */
   constructor(
     apiKey: string,
     private model: string,
     knownDishes: string[] = [],
+    private greetModel = model,
   ) {
     this.client = new Anthropic({ apiKey, maxRetries: 1, timeout: 45_000 });
     this.mealSystem = knownDishes.length
@@ -183,11 +205,26 @@ export class ClaudeAdapters implements MealRecognizer, ReportExtractor, Coach {
     return checked(() => CoachOutput.parse(out));
   }
 
+  async greet(input: { facts: string }): Promise<CoachGreeting> {
+    const out = await this.callJson(
+      GREET_SYSTEM,
+      GREET_SCHEMA,
+      [{ type: "text", text: `Facts about them:\n${input.facts}` }],
+      this.greetModel,
+    );
+    return checked(() => GreetOutput.parse(out));
+  }
+
   /** One request with a JSON-schema constrained answer; any failure is a provider failure. */
-  private async callJson(system: string, schema: object, content: Anthropic.ContentBlockParam[]): Promise<unknown> {
+  private async callJson(
+    system: string,
+    schema: object,
+    content: Anthropic.ContentBlockParam[],
+    model = this.model,
+  ): Promise<unknown> {
     try {
       const res = await this.client.messages.create({
-        model: this.model,
+        model,
         max_tokens: 2048,
         system,
         output_config: { effort: "low", format: { type: "json_schema", schema: schema as Record<string, unknown> } },

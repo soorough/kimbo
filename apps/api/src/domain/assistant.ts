@@ -36,7 +36,9 @@ export interface AssistantContext {
   diet: Diet | null;
   barriers: Barrier[];
   week: { daysLogged: number; daysElapsed: number; focusHelped: number; focusTotal: number; onTargetDays: number | null };
-  goal: { label: string; targetKg: number | null; currentKg: number | null } | null;
+  goal: { label: string; targetKg: number | null; currentKg: number | null; startKg: number | null } | null;
+  /** days in a row with something logged */
+  streak: number;
   /** distinct meals eaten before today at the next meal's time, most often first */
   pastMeals: PastMeal[];
 }
@@ -97,16 +99,82 @@ function shortName(names: string[]): string {
     .join(" + ");
 }
 
-const MEAL_TITLE: Record<MealType, string> = { breakfast: "Breakfast", lunch: "Lunch", snack: "Snack", dinner: "Dinner" };
 
-/** One glanceable idea for the next meal: something they've eaten before, else one catalogue dish. */
-function nextMealIdea(ctx: AssistantContext): string {
+export interface MealIdea {
+  meal: MealType;
+  name: string;
+  kcal: number;
+  /** times they've eaten it before; 0 when it's a catalogue suggestion */
+  times: number;
+}
+
+/** The next meal Kimbo would suggest right now, or null when the day's target is already met. */
+export function mealIdea(ctx: AssistantContext): MealIdea | null {
   const left = ctx.targets ? ctx.targets.calories - ctx.totals.calories : null;
-  if (left !== null && left <= 0) return `Keep ${MEAL_WORD[ctx.nextMeal]} light today.`;
+  if (left !== null && left <= 0) return null;
   const past = suggestFromHistory(ctx);
-  const idea = past ? { name: past.short, kcal: past.kcal } : suggestDishes(ctx)[0];
-  if (!idea) return "";
-  return `${MEAL_TITLE[ctx.nextMeal]} idea: ${idea.name.replace(/\s*\(.*?\)/g, "").toLowerCase()} (~${idea.kcal} kcal).`;
+  if (past) return { meal: ctx.nextMeal, name: past.short, kcal: past.kcal, times: past.times };
+  const dish = suggestDishes(ctx)[0];
+  return dish ? { meal: ctx.nextMeal, name: shortName([dish.name]), kcal: dish.kcal, times: 0 } : null;
+}
+
+/** Just the next move, the way a friend who knows their habits would put it. */
+function nextMealOffer(ctx: AssistantContext, hi: string): string {
+  const meal = MEAL_WORD[ctx.nextMeal];
+  const idea = mealIdea(ctx);
+  if (!idea) return ctx.targets ? `You're done for today${hi}. Keep ${meal} light.` : `What's for ${meal}${hi}?`;
+  const kcal = `(~${idea.kcal} kcal)`;
+  if (idea.times > 1) return `Your usual ${idea.name} for ${meal}${hi}? ${kcal}`;
+  if (idea.times === 1) return `${capitalise(idea.name)} again for ${meal}${hi}? ${kcal}`;
+  return `How about ${idea.name} for ${meal}${hi}? ${kcal}`;
+}
+
+function capitalise(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+const BARRIER_TEXT: Record<Barrier, string> = {
+  busy: "busy days",
+  ideas: "running out of meal ideas",
+  consistency: "staying consistent",
+  eating_out: "eating out",
+  cravings: "cravings",
+};
+
+/**
+ * What Kimbo knows about this person, for the language model to write one line that feels
+ * like a friend who knows them. Every number here is Kimbo's own; the model may not add any.
+ */
+export function greetingFacts(ctx: AssistantContext, idea: MealIdea): string {
+  const part = ctx.hour < 12 ? "morning" : ctx.hour < 17 ? "afternoon" : ctx.hour < 21 ? "evening" : "late night";
+  const usual = ctx.pastMeals.filter((m) => m.times > 1).slice(0, 2);
+  const kg =
+    ctx.goal?.startKg != null && ctx.goal.currentKg != null
+      ? Math.round((ctx.goal.currentKg - ctx.goal.startKg) * 10) / 10
+      : null;
+  const lines = [
+    `Name: ${ctx.name ?? "not given (don't use a name)"}`,
+    `Time: ${part}`,
+    ctx.focus ? `Food focus: ${FOCI[ctx.focus].title.toLowerCase()}` : null,
+    ctx.streak >= 2 ? `Logging streak: ${ctx.streak} days in a row` : null,
+    ctx.week.focusTotal > 0 ? `This week: ${ctx.week.focusHelped} of ${ctx.week.focusTotal} meals helped the focus` : null,
+    ctx.goal ? `Goal: ${ctx.goal.label}` : null,
+    kg !== null && kg !== 0 ? `Weight so far: ${kg < 0 ? "down" : "up"} ${Math.abs(kg)} kg since they started` : null,
+    ctx.barriers.length ? `What gets in their way: ${ctx.barriers.map((b) => BARRIER_TEXT[b]).join(", ")}` : null,
+    usual.length ? `Their usual ${ctx.nextMeal}: ${usual.map((m) => m.short).join("; ")}` : null,
+    `Meal idea to suggest (use exactly): ${idea.name}, ~${idea.kcal} kcal, for ${MEAL_WORD[idea.meal]}${idea.times > 1 ? ` — they've had it ${idea.times} times` : idea.times === 1 ? " — they've had it once" : " — something new"}`,
+  ];
+  return lines.filter(Boolean).join("\n");
+}
+
+/** The model's line is used only if it is short, names the idea with its exact kcal, and adds no numbers of its own. */
+export function greetingIsSafe(text: string, idea: MealIdea, facts: string): boolean {
+  const t = text.trim();
+  if (t.length < 10 || t.length > 160) return false;
+  if (!t.toLowerCase().includes(idea.name.split(" + ")[0]!)) return false;
+  if (!t.includes(String(idea.kcal))) return false;
+  const known = new Set(facts.match(/\d+(\.\d+)?/g) ?? []);
+  return (t.match(/\d+(\.\d+)?/g) ?? []).every((n) => known.has(n));
 }
 
 const MEAL_WORD: Record<MealType, string> = { breakfast: "breakfast", lunch: "lunch", snack: "a snack", dinner: "dinner" };
@@ -181,7 +249,7 @@ export function greeting(ctx: AssistantContext): AssistantReply {
   if (helped > 0) {
     return {
       mood: "proud",
-      text: `Nice one${hi}! That helped your focus. ${nextMealIdea(ctx)}`.trim(),
+      text: nextMealOffer(ctx, hi),
       points: [],
       actions: [logAction(ctx.nextMeal)],
     };

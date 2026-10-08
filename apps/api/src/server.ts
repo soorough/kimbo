@@ -19,6 +19,7 @@ const ai = apiKey
       apiKey,
       model,
       CATALOGUE.map((f) => f.name),
+      process.env.KIMBO_GREET_MODEL ?? "claude-haiku-5-5",
     )
   : new DemoAdapters();
 const voiceKey = process.env.ELEVENLABS_API_KEY;

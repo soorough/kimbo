@@ -3,6 +3,7 @@ import {
   type AskResponse,
   type AssistantHomeResponse,
   type AssistantQuestion,
+  type AssistantReply,
   type KimboMood,
 } from "@kimbo/shared";
 import type { FastifyInstance } from "fastify";
@@ -12,6 +13,9 @@ import {
   answer,
   factSheet,
   greeting,
+  greetingFacts,
+  greetingIsSafe,
+  mealIdea,
   pastMealsFor,
   SAFE_MOODS,
   suggestions,
@@ -21,7 +25,7 @@ import { sumNutrition } from "../domain/catalogue.js";
 import { focusForDay } from "../domain/focus-history.js";
 import { mealSupportsFocus } from "../domain/focus-match.js";
 import { MARKER_FOCUS } from "../domain/health.js";
-import { weekStats } from "../domain/progress.js";
+import { consistencyStreak, trackedDateSet, weekStats } from "../domain/progress.js";
 import { localHour, suggestMealType } from "../domain/time.js";
 import { HttpError } from "../errors.js";
 import { parse, requireProfile } from "../http.js";
@@ -69,10 +73,60 @@ async function contextFor(deps: Deps, profile: ProfileRow): Promise<AssistantCon
       onTargetDays: week.goalDaysMet,
     },
     goal: goal
-      ? { label: GOAL_LABEL[goal.goal], targetKg: goal.targetWeightKg, currentKg: weighIns.at(-1)?.kg ?? goal.weightKg }
+      ? {
+          label: GOAL_LABEL[goal.goal],
+          targetKg: goal.targetWeightKg,
+          currentKg: weighIns.at(-1)?.kg ?? goal.weightKg,
+          startKg: goal.weightKg,
+        }
       : null,
+    streak: consistencyStreak(trackedDateSet(input.meals), input.today, input.meals[0]?.localDate ?? input.today),
     pastMeals: pastMealsFor(input.meals, nextMeal, input.today, focus),
   };
+}
+
+const GREET_TIMEOUT_MS = 2500;
+const GREETING_CACHE_MAX = 1000;
+/** One worded line per profile per state of the day, so opening the app again costs nothing. */
+const greetings = new Map<string, AssistantReply>();
+
+/**
+ * After a meal that helped, the language model words Today's line from Kimbo's facts, so it
+ * sounds like Kimbo knows them. Kimbo picks the idea and its kcal; the model's line is used
+ * only when it passes the check, and Kimbo's own line stands in if the model is slow or down.
+ */
+async function personalGreeting(deps: Deps, profileId: string, ctx: AssistantContext): Promise<AssistantReply> {
+  const rule = greeting(ctx);
+  const idea = mealIdea(ctx);
+  if (!deps.coach || rule.mood !== "proud" || !idea) return rule;
+  const key = `${profileId}|${ctx.todayMeals.length}|${rule.text}`;
+  const cached = greetings.get(key);
+  if (cached) return cached;
+
+  const facts = greetingFacts(ctx, idea);
+  const worded = deps.coach
+    .greet({ facts })
+    .then((out): AssistantReply => {
+      const reply = greetingIsSafe(out.text, idea, facts)
+        ? {
+            ...rule,
+            mood: SAFE_MOODS.includes(out.mood as KimboMood) ? (out.mood as KimboMood) : rule.mood,
+            text: out.text.trim(),
+          }
+        : rule;
+      remember(key, reply);
+      return reply;
+    })
+    // Unavailable: don't remember, so the next open tries again.
+    .catch(() => rule);
+  // Slow: show Kimbo's own line now; the worded one is remembered for the next open.
+  const timeout = new Promise<AssistantReply>((resolve) => setTimeout(() => resolve(rule), GREET_TIMEOUT_MS));
+  return Promise.race([worded, timeout]);
+}
+
+function remember(key: string, reply: AssistantReply) {
+  if (greetings.size >= GREETING_CACHE_MAX) greetings.delete(greetings.keys().next().value!);
+  greetings.set(key, reply);
 }
 
 /** The meal the clock suggests, unless it's already logged: then the next one not yet logged. */
@@ -99,8 +153,9 @@ const ListenRequest = z.object({ audioBase64: z.string().min(1), mimeType: z.str
 
 export function assistantRoutes(app: FastifyInstance, deps: Deps) {
   app.get("/assistant", async (req): Promise<AssistantHomeResponse> => {
-    const ctx = await contextFor(deps, await requireProfile(deps, req));
-    return { greeting: greeting(ctx), suggestions: suggestions(ctx) };
+    const profile = await requireProfile(deps, req);
+    const ctx = await contextFor(deps, profile);
+    return { greeting: await personalGreeting(deps, profile.id, ctx), suggestions: suggestions(ctx) };
   });
 
   app.post("/assistant/ask", async (req): Promise<AskResponse> => {

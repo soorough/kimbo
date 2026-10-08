@@ -36,9 +36,16 @@ export interface CoachReply {
   mood: string;
 }
 
+export interface CoachGreeting {
+  text: string;
+  mood: string;
+}
+
 /** Answers free-form questions using only the facts Kimbo hands it. */
 export interface Coach {
   reply(input: { question: string; facts: string; history: { role: "user" | "kimbo"; text: string }[] }): Promise<CoachReply>;
+  /** One personal line for Today, worded from facts Kimbo chose; Kimbo checks it before use. */
+  greet(input: { facts: string }): Promise<CoachGreeting>;
 }
 
 /** Kimbo's voice: speech out and in. Optional, so the app works without it. */
