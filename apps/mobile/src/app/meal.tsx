@@ -74,7 +74,6 @@ export default function MealDetail() {
     startEdit(meal, Object.fromEntries(foods.map((f) => [f.id, f])));
     router.push("/review");
   };
-  const pageW = width - space.xl * 2;
 
   return (
     <Screen footer={<Button label="Done" onPress={() => router.back()} />}>
@@ -146,31 +145,23 @@ export default function MealDetail() {
       </View>
 
       <View style={{ gap: space.sm }}>
+        {/* Full-width pages that each keep the screen's margins, so cards never slice at the edge. */}
         <ScrollView
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / pageW))}
+          onMomentumScrollEnd={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / width))}
+          style={{ marginHorizontal: -space.xl }}
         >
-          <View style={[styles.page, { width: pageW }]}>
+          <View style={[styles.page, { width }]}>
             <Macro icon={protein} label="Protein" value={`${Math.round(n.protein)}g`} />
             <Macro icon="🌾" label="Carbs" value={`${Math.round(n.carbs)}g`} />
             <Macro icon="🥜" label="Fats" value={`${Math.round(n.fat)}g`} />
           </View>
-          <View style={{ width: pageW, gap: space.sm, alignSelf: "flex-start" }}>
-            <View style={styles.page}>
-              <Macro icon="🥦" label="Fibre" value={`${Math.round(n.fibre * 10) / 10}g`} />
-              <Macro icon="🧈" label="Sat fat" value={`${Math.round(n.satFat * 10) / 10}g`} />
-            </View>
-            <View style={[styles.card, styles.focus]}>
-              <Icon name={meal.supportsFocus ? "check-circle" : "circle"} size={20} color={meal.supportsFocus ? colors.leaf : colors.inkFaint} />
-              <View style={{ flex: 1 }}>
-                <T variant="bodyStrong">{meal.supportsFocus ? "Helped your focus" : "Your food focus"}</T>
-                <T variant="caption" numberOfLines={2}>
-                  {meal.focusReason ?? "Add your blood report to see how meals help."}
-                </T>
-              </View>
-            </View>
+          <View style={[styles.page, { width }]}>
+            <Macro icon="🥦" label="Fibre" value={`${Math.round(n.fibre * 10) / 10}g`} />
+            <Macro icon="🧈" label="Sat fat" value={`${Math.round(n.satFat * 10) / 10}g`} />
+            <Macro icon="🌱" label="Focus" value={meal.supportsFocus ? "Helped" : meal.supportsFocus === false ? "Not yet" : "—"} />
           </View>
         </ScrollView>
         <View style={styles.pager}>
@@ -274,11 +265,10 @@ const styles = StyleSheet.create({
   card: { borderRadius: radius.lg, backgroundColor: colors.surface, ...shadow.card },
   calCard: { flexDirection: "row", alignItems: "center", gap: space.lg, padding: space.lg },
   calBig: { fontFamily: fonts.bold, fontSize: 32, lineHeight: 38, color: colors.ink },
-  // Natural height, not stretched to the taller second page.
-  page: { flexDirection: "row", alignItems: "flex-start", gap: space.sm },
+  // Both pages are one row of three, so they're the same height and nothing jumps.
+  page: { flexDirection: "row", gap: space.sm, paddingHorizontal: space.xl, paddingVertical: 4 },
   macro: { flex: 1, padding: space.md, gap: 4 },
-  macroValue: { fontFamily: fonts.bold, fontSize: 18, color: colors.ink },
-  focus: { flexDirection: "row", alignItems: "center", gap: space.md, padding: space.md },
+  macroValue: { fontFamily: fonts.bold, fontSize: 18, lineHeight: 24, color: colors.ink },
   pager: { flexDirection: "row", justifyContent: "center", gap: 6 },
   dot: { width: 7, height: 7, borderRadius: 4, borderWidth: 1.5, borderColor: colors.inkFaint },
   dotOn: { backgroundColor: colors.ink, borderColor: colors.ink },
