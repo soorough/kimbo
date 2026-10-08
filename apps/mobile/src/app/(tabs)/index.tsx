@@ -5,7 +5,6 @@ import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { AppState, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
-import { KimboBuddy } from "@/components/KimboBuddy";
 import { useMoments } from "@/components/Moments";
 import { TodaySkeleton } from "@/components/Skeleton";
 import { ErrorState, Icon, Ring, Screen, Surface, T, type IconName } from "@/components/ui";
@@ -60,17 +59,17 @@ export default function Today() {
   }
   const data = today.data;
   const isToday = date === null;
-  const supported = data.focusSummary?.supported ?? 0;
 
   return (
     <Screen>
       <View style={styles.header}>
+        {/* Kimbo as the logo, like an app mark before its name. */}
+        <Kimbo mood="happy" size={38} leaves={2} />
         <T variant="display" style={styles.wordmark}>
           kimbo
         </T>
         <View style={{ flex: 1 }} />
         <StreakPill days={week.data?.streak ?? 0} />
-        <KimboBuddy mood={data.meals.length ? "happy" : "idle"} leaves={1 + supported} />
       </View>
 
       {week.data ? (

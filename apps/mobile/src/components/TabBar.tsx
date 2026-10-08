@@ -32,15 +32,17 @@ export function TabBar({ state, descriptors, navigation, insets }: TabBarProps) 
         style={[styles.tab, focused && styles.tabOn]}
       >
         <Icon name={ICONS[route.name] ?? "circle"} size={22} color={tint} />
-        <T style={{ fontFamily: focused ? fonts.bold : fonts.medium, fontSize: 11, color: tint }}>{label}</T>
+        <T style={{ fontFamily: focused ? fonts.bold : fonts.medium, fontSize: 11, lineHeight: 14, color: tint }}>
+          {label}
+        </T>
       </Pressable>
     );
   });
 
   return (
-    <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, space.sm) }]}>
-      {/* Kimbo floats over Progress and Report. Today has Kimbo's own line at the top; You is settings. */}
-      {["progress", "report"].includes(state.routes[state.index]?.name ?? "") ? <AskKimboPill /> : null}
+    <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom - space.xs, space.sm) }]}>
+      {/* Kimbo sits fixed at the bottom centre of every tab, one tap from the assistant. */}
+      <AskKimboPill />
       {/* A floating pill of tabs, with logging as its own round button beside it. */}
       <View style={styles.pill}>{tabs}</View>
       <Pressable
@@ -56,30 +58,41 @@ export function TabBar({ state, descriptors, navigation, insets }: TabBarProps) 
 }
 
 const styles = StyleSheet.create({
+  // Floats over the content (Cal AI-style): no band behind it, just the pill and the + button.
   bar: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
     flexDirection: "row",
     alignItems: "center",
     gap: space.sm,
-    paddingHorizontal: space.md,
-    paddingTop: space.sm,
-    backgroundColor: colors.paper,
+    paddingHorizontal: space.xl,
   },
   pill: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 6,
-    paddingHorizontal: 6,
+    // Sized to Cal AI's bar: a 64-tall pill and a 56 round + button.
+    height: 64,
+    padding: 5,
     borderRadius: radius.pill,
     backgroundColor: colors.surface,
     ...shadow.raised,
   },
-  tab: { flex: 1, alignItems: "center", gap: 2, paddingVertical: 6, borderRadius: radius.pill },
+  tab: {
+    flex: 1,
+    alignSelf: "stretch",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+    borderRadius: radius.pill,
+  },
   tabOn: { backgroundColor: colors.leafSoft },
   logButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: colors.ink,
     alignItems: "center",
     justifyContent: "center",
