@@ -316,7 +316,6 @@ export default function Assistant() {
                       <KimboAnswer
                         reply={m.reply}
                         onAct={act}
-                        onReplay={voiceOn ? () => speak(m.reply.text) : undefined}
                       />
                     )}
                   </View>
@@ -387,11 +386,9 @@ function useRotatingHint() {
 function KimboAnswer({
   reply,
   onAct,
-  onReplay,
 }: {
   reply: AssistantReply;
   onAct: (a: AssistantAction) => void;
-  onReplay?: () => void;
 }) {
   const [typed, setTyped] = useState(false);
   return (
@@ -416,7 +413,7 @@ function KimboAnswer({
           ))}
         </PopIn>
       ) : null}
-      {typed && (reply.actions.length || onReplay) ? (
+      {typed && reply.actions.length ? (
         <PopIn style={styles.actions}>
           {reply.actions.map((a) => (
             <Pressable key={a.label} accessibilityRole="button" onPress={() => onAct(a)} style={styles.actionChip}>
@@ -425,16 +422,6 @@ function KimboAnswer({
               </T>
             </Pressable>
           ))}
-          {onReplay ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Hear it again"
-              onPress={onReplay}
-              style={styles.replay}
-            >
-              <Icon name="volume-2" size={16} color={colors.leafDeep} />
-            </Pressable>
-          ) : null}
         </PopIn>
       ) : null}
     </View>
@@ -590,14 +577,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingHorizontal: space.lg,
     paddingVertical: 10,
-  },
-  replay: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.leafSoft,
   },
   dots: { flexDirection: "row", gap: 6, paddingVertical: 6 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.inkFaint },
