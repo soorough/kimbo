@@ -9,10 +9,11 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import { View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Intro } from "@/components/Intro";
+import { useIntro } from "@/lib/intro";
 import { Celebration, MomentToast } from "@/components/Moments";
 import { useSession } from "@/lib/session";
 import { useUnits } from "@/lib/units";
@@ -35,8 +36,8 @@ const sheet = {
 export default function RootLayout() {
   const load = useSession((s) => s.load);
   // The intro plays once per cold start, over whichever screen the app opens on.
-  const [introDone, setIntroDone] = useState(false);
-  const finishIntro = useCallback(() => setIntroDone(true), []);
+  const introDone = useIntro((s) => s.done);
+  const finishIntro = useIntro((s) => s.finish);
   const loadUnits = useUnits((s) => s.load);
   // Only the weights the type scale uses. Per-weight subpath imports matter: the
   // package root requires every weight, so Metro would bundle all 32 files.

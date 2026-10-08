@@ -23,6 +23,7 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Kimbo } from "@/components/Kimbo";
+import { TypeOut } from "@/components/TypeOut";
 import { Icon, T, type IconName } from "@/components/ui";
 import { api, errorMessage, speechSource } from "@/lib/api";
 import { useDraft } from "@/lib/draft";
@@ -412,53 +413,6 @@ function KimboAnswer({
         </PopIn>
       ) : null}
     </View>
-  );
-}
-
-/** Reveals text word by word, like Kimbo is saying it. Instant when motion is reduced. */
-function TypeOut({
-  text,
-  variant,
-  align,
-  onDone,
-}: {
-  text: string;
-  variant: "body" | "title";
-  align?: "center";
-  onDone: () => void;
-}) {
-  const still = useReduceMotion();
-  const words = text.split(" ");
-  const [n, setN] = useState(still ? words.length : 0);
-  const done = useRef(onDone);
-  done.current = onDone;
-  useEffect(() => {
-    if (still) {
-      setN(words.length);
-      done.current();
-      return;
-    }
-    setN(0);
-    let i = 0;
-    const t = setInterval(() => {
-      i += 1;
-      setN(i);
-      if (i >= words.length) {
-        clearInterval(t);
-        done.current();
-      }
-    }, 45);
-    return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [text, still]);
-  return (
-    <T variant={variant} align={align} style={variant === "title" ? { fontSize: 24, lineHeight: 31 } : undefined}>
-      {words.slice(0, n).join(" ")}
-      {/* The rest is laid out invisibly so the bubble doesn't grow line by line. */}
-      <T variant={variant} style={{ opacity: 0 }}>
-        {n < words.length ? ` ${words.slice(n).join(" ")}` : ""}
-      </T>
-    </T>
   );
 }
 

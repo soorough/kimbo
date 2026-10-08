@@ -1,11 +1,12 @@
-import type { ProgressResponse, TodayMeal, TodayResponse } from "@kimbo/shared";
+import type { KimboMood, MealDraft, MealType, ProgressResponse, TodayMeal, TodayResponse } from "@kimbo/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { AppState, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
+import { Animated, AppState, Easing, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { Button } from "@/components/Button";
 import { Kimbo } from "@/components/Kimbo";
+import { TypeOut } from "@/components/TypeOut";
 import { useMoments } from "@/components/Moments";
 import { TodaySkeleton } from "@/components/Skeleton";
 import { ErrorState, Icon, Ring, Screen, Surface, T, type IconName } from "@/components/ui";
@@ -13,6 +14,8 @@ import { api, errorMessage } from "@/lib/api";
 import { useDraft } from "@/lib/draft";
 import { MEAL_LABEL } from "@/lib/format";
 import { useAfterWrite } from "@/lib/mutations";
+import { useIntro } from "@/lib/intro";
+import { useReduceMotion } from "@/lib/motion";
 import { useSession } from "@/lib/session";
 import { colors, fonts, macroColors, radius, shadow, space } from "@/lib/theme";
 
@@ -250,7 +253,6 @@ function WeekRow({
  */
 function KimboLine() {
   const home = useQuery({ queryKey: ["assistant"], queryFn: api.assistantHome, staleTime: 60_000 });
-  const startFromAi = useDraft((s) => s.startFromAi);
   const line = home.data?.greeting;
   if (!line) return null;
   const log = line.actions.find((a) => a.kind === "log_meal" && a.draft);
@@ -274,16 +276,72 @@ function KimboLine() {
     );
   }
 
-  const draft = log.draft;
+  return <MealNudge text={line.text} mood={line.mood} mealType={log.mealType} draft={log.draft} />;
+}
+
+const MEAL_EMOJI: Record<MealType, string> = { breakfast: "☕", lunch: "🍛", snack: "🍎", dinner: "🌙" };
+/** The last line Kimbo said out loud, so coming back to Today doesn't replay it. */
+let lastSpoken: string | null = null;
+
+/**
+ * Kimbo's meal suggestion, said like a little moment: Kimbo thinks while the words type in,
+ * hops when done, then the actions slide in and the Log pill breathes once.
+ */
+function MealNudge({
+  text,
+  mood,
+  mealType,
+  draft,
+}: {
+  text: string;
+  mood: KimboMood;
+  mealType: MealType;
+  draft: MealDraft;
+}) {
+  const startFromAi = useDraft((s) => s.startFromAi);
+  const still = useReduceMotion();
+  const introDone = useIntro((s) => s.done);
+  const seen = still || lastSpoken === text;
+  const [typed, setTyped] = useState(seen);
+  const footer = useRef(new Animated.Value(seen ? 1 : 0)).current;
+  const breathe = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (!typed || seen) return;
+    lastSpoken = text;
+    Animated.sequence([
+      Animated.spring(footer, { toValue: 1, damping: 14, stiffness: 160, useNativeDriver: true }),
+      Animated.delay(250),
+      Animated.timing(breathe, { toValue: 1.07, duration: 260, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.timing(breathe, { toValue: 1, duration: 320, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+    ]).start();
+  }, [typed, seen, text, footer, breathe]);
+
+  const label = MEAL_LABEL[mealType];
   return (
     <View style={styles.kimboLine}>
       <View style={styles.kimboRow}>
-        <Kimbo mood={line.mood} size={36} />
-        <T variant="bodyStrong" style={{ flex: 1 }} numberOfLines={4}>
-          {line.text}
-        </T>
+        <Kimbo mood={typed ? mood : "thinking"} size={40} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <T variant="overline" tone="leaf">
+            {`${label} time ${MEAL_EMOJI[mealType]}`.toUpperCase()}
+          </T>
+          {/* Kimbo starts talking once the launch intro is out of the way. */}
+          {introDone || seen ? (
+            <TypeOut text={text} variant="bodyStrong" numberOfLines={4} instant={seen} onDone={() => setTyped(true)} />
+          ) : (
+            <T variant="bodyStrong" numberOfLines={4} style={{ opacity: 0 }}>
+              {text}
+            </T>
+          )}
+        </View>
       </View>
-      <View style={styles.kimboActions}>
+      <Animated.View
+        style={[
+          styles.kimboActions,
+          { opacity: footer, transform: [{ translateY: footer.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }] },
+        ]}
+      >
         <Pressable
           accessibilityRole="button"
           accessibilityHint="Opens Ask Kimbo"
@@ -298,15 +356,18 @@ function KimboLine() {
             </T>
           </T>
         </Pressable>
-        <Button
-          label={`Log ${MEAL_LABEL[log.mealType].toLowerCase()}`}
-          compact
-          onPress={() => {
-            startFromAi(draft, "repeat", log.mealType);
-            router.push("/review");
-          }}
-        />
-      </View>
+        <Animated.View style={{ transform: [{ scale: breathe }] }}>
+          <Button
+            label={`Log ${label.toLowerCase()}`}
+            compact
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              startFromAi(draft, "repeat", mealType);
+              router.push("/review");
+            }}
+          />
+        </Animated.View>
+      </Animated.View>
     </View>
   );
 }
