@@ -16,6 +16,7 @@ import type {
 import type { StoredMeal } from "../repo/meals.js";
 import { CATALOGUE, type CatalogueEntry } from "./catalogue-data.js";
 import { perUnit } from "./catalogue.js";
+import { GOAL_BAND_PCT } from "./config.js";
 import { eats } from "./diet.js";
 import { mealSupportsFocus } from "./focus-match.js";
 import { FOCI } from "./health.js";
@@ -106,6 +107,14 @@ export interface MealIdea {
   kcal: number;
   /** times they've eaten it before; 0 when it's a catalogue suggestion */
   times: number;
+  /** "completes": eating it lands today inside the goal band; "fits": still under it; null: no target */
+  goal: "completes" | "fits" | null;
+}
+
+function goalAfter(ctx: AssistantContext, kcal: number): MealIdea["goal"] {
+  if (!ctx.targets) return null;
+  const after = ctx.totals.calories + kcal;
+  return after >= ctx.targets.calories * (1 - GOAL_BAND_PCT / 100) ? "completes" : "fits";
 }
 
 /** The next meal Kimbo would suggest right now, or null when the day's target is already met. */
@@ -113,9 +122,11 @@ export function mealIdea(ctx: AssistantContext): MealIdea | null {
   const left = ctx.targets ? ctx.targets.calories - ctx.totals.calories : null;
   if (left !== null && left <= 0) return null;
   const past = suggestFromHistory(ctx);
-  if (past) return { meal: ctx.nextMeal, name: past.short, kcal: past.kcal, times: past.times };
+  if (past) return { meal: ctx.nextMeal, name: past.short, kcal: past.kcal, times: past.times, goal: goalAfter(ctx, past.kcal) };
   const dish = suggestDishes(ctx)[0];
-  return dish ? { meal: ctx.nextMeal, name: shortName([dish.name]), kcal: dish.kcal, times: 0 } : null;
+  return dish
+    ? { meal: ctx.nextMeal, name: shortName([dish.name]), kcal: dish.kcal, times: 0, goal: goalAfter(ctx, dish.kcal) }
+    : null;
 }
 
 /** Just the next move, the way a friend who knows their habits would put it. */
@@ -123,11 +134,16 @@ function nextMealOffer(ctx: AssistantContext, hi: string): string {
   const meal = MEAL_WORD[ctx.nextMeal];
   const idea = mealIdea(ctx);
   if (!idea) return ctx.targets ? `You're done for today${hi}. Keep ${meal} light.` : `What's for ${meal}${hi}?`;
-  const kcal = `(~${idea.kcal} kcal)`;
-  if (idea.times > 1) return `Your usual ${idea.name} for ${meal}${hi}? ${kcal}`;
-  if (idea.times === 1) return `${capitalise(idea.name)} again for ${meal}${hi}? ${kcal}`;
-  return `How about ${idea.name} for ${meal}${hi}? ${kcal}`;
+  const offer =
+    idea.times > 1
+      ? `Your usual ${idea.name} for ${meal}${hi}?`
+      : idea.times === 1
+        ? `${capitalise(idea.name)} again for ${meal}${hi}?`
+        : `How about ${idea.name} for ${meal}${hi}?`;
+  return idea.goal ? `${offer} ${GOAL_TEXT[idea.goal]}` : offer;
 }
+
+const GOAL_TEXT = { completes: "That completes today's goal.", fits: "It fits today's goal." } as const;
 
 function capitalise(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -162,17 +178,22 @@ export function greetingFacts(ctx: AssistantContext, idea: MealIdea): string {
     kg !== null && kg !== 0 ? `Weight so far: ${kg < 0 ? "down" : "up"} ${Math.abs(kg)} kg since they started` : null,
     ctx.barriers.length ? `What gets in their way: ${ctx.barriers.map((b) => BARRIER_TEXT[b]).join(", ")}` : null,
     usual.length ? `Their usual ${ctx.nextMeal}: ${usual.map((m) => m.short).join("; ")}` : null,
-    `Meal idea to suggest (use exactly): ${idea.name}, ~${idea.kcal} kcal, for ${MEAL_WORD[idea.meal]}${idea.times > 1 ? ` — they've had it ${idea.times} times` : idea.times === 1 ? " — they've had it once" : " — something new"}`,
+    `Meal idea to suggest (use exactly): ${idea.name}, for ${MEAL_WORD[idea.meal]}${idea.times > 1 ? " — their usual" : idea.times === 1 ? " — they've had it once before" : " — something new"}`,
+    idea.goal === "completes"
+      ? "Eating it completes today's calorie goal"
+      : idea.goal === "fits"
+        ? "It fits within today's calorie goal (it won't complete it)"
+        : null,
   ];
   return lines.filter(Boolean).join("\n");
 }
 
-/** The model's line is used only if it is short, names the idea with its exact kcal, and adds no numbers of its own. */
+/** The model's line is used only if it is short, names the idea, adds no numbers of its own and claims "complete" only when true. */
 export function greetingIsSafe(text: string, idea: MealIdea, facts: string): boolean {
   const t = text.trim();
   if (t.length < 10 || t.length > 160) return false;
   if (!t.toLowerCase().includes(idea.name.split(" + ")[0]!)) return false;
-  if (!t.includes(String(idea.kcal))) return false;
+  if (/complet/i.test(t) && idea.goal !== "completes") return false;
   const known = new Set(facts.match(/\d+(\.\d+)?/g) ?? []);
   return (t.match(/\d+(\.\d+)?/g) ?? []).every((n) => known.has(n));
 }
