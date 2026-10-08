@@ -180,3 +180,27 @@ describe("connecting meals to the report focus", () => {
     expect(res.json.focusResult.supports).toBe(supports);
   });
 });
+
+describe("Water", () => {
+  it("counts glasses per day toward an 8-glass goal, and setting the count replaces it", async () => {
+    const id = await onboarded();
+    expect((await api.get("/today", id)).json.water).toEqual({ glasses: 0, goal: 8 });
+
+    expect((await api.put("/water", { glasses: 3 }, id)).json.water).toEqual({ glasses: 3, goal: 8 });
+    await api.put("/water", { glasses: 2 }, id);
+    expect((await api.get("/today", id)).json.water.glasses).toBe(2);
+
+    // Another day keeps its own count. The test clock's today is 6 Oct.
+    await api.put("/water", { glasses: 5, date: "2026-10-05" }, id);
+    expect((await api.get("/today?date=2026-10-05", id)).json.water.glasses).toBe(5);
+    expect((await api.get("/today", id)).json.water.glasses).toBe(2);
+  });
+
+  it("rejects impossible counts and future days", async () => {
+    const id = await onboarded();
+    expect((await api.put("/water", { glasses: -1 }, id)).status).toBe(400);
+    expect((await api.put("/water", { glasses: 21 }, id)).status).toBe(400);
+    expect((await api.put("/water", { glasses: 1.5 }, id)).status).toBe(400);
+    expect((await api.put("/water", { glasses: 1, date: "2026-10-07" }, id)).status).toBe(400);
+  });
+});

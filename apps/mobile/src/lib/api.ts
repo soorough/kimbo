@@ -125,6 +125,8 @@ export const api = {
 
   today: () => request(TodayResponse, "GET", "/today"),
   todayFor: (date: string) => request(TodayResponse, "GET", `/today?date=${date}`),
+  setWater: (glasses: number, date: string) =>
+    request(z.object({ water: TodayResponse.shape.water }), "PUT", "/water", { glasses, date }),
   progress: () => request(ProgressResponse, "GET", "/progress"),
   progressFor: (weekOf: string) => request(ProgressResponse, "GET", `/progress?weekOf=${weekOf}`),
   checkin: () => request(CheckinResponse, "POST", "/checkins", {}),

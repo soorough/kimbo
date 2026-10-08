@@ -469,8 +469,15 @@ export const TodayResponse = z.object({
   focusSummary: z.object({ supported: z.number(), total: z.number() }).nullable(),
   /** Meal types logged yesterday, i.e. what "same as yesterday" can repeat. */
   repeatableMealTypes: z.array(MealType),
+  water: z.object({ glasses: z.number(), goal: z.number() }),
 });
 export type TodayResponse = z.infer<typeof TodayResponse>;
+
+export const WaterRequest = z.object({
+  glasses: z.number().int().min(0, "Glasses can't be negative").max(20, "That's a lot of water for one day"),
+  date: LocalDate.optional(),
+});
+export type WaterRequest = z.infer<typeof WaterRequest>;
 
 // ---------- Assistant ----------
 

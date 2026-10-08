@@ -112,4 +112,13 @@ CREATE TABLE IF NOT EXISTS saved_meals (
   created_at timestamptz NOT NULL
 );
 CREATE INDEX IF NOT EXISTS saved_meals_profile_idx ON saved_meals (profile_id, created_at);
+
+-- Glasses of water per day; setting the count replaces it.
+CREATE TABLE IF NOT EXISTS water_days (
+  profile_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  day date NOT NULL,
+  glasses integer NOT NULL,
+  updated_at timestamptz NOT NULL,
+  PRIMARY KEY (profile_id, day)
+);
 `;
