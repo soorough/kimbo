@@ -1,9 +1,10 @@
 import type { JourneyResponse } from "@kimbo/shared";
 import { useState } from "react";
 import { View, type LayoutChangeEvent } from "react-native";
-import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from "react-native-svg";
+import Svg, { Circle, ClipPath, Defs, Line, LinearGradient, Path, Rect, Stop } from "react-native-svg";
 import { colors, space } from "@/lib/theme";
 import { formatWeight, useUnits } from "@/lib/units";
+import { useDrawProgress } from "./GoalPath";
 import { Surface } from "./Surface";
 import { T } from "./Text";
 
@@ -14,17 +15,33 @@ const PAD = 12;
 export function WeightTrend({ journey }: { journey: JourneyResponse }) {
   const unit = useUnits((u) => u.weight);
   const [w, setW] = useState(0);
+  const drawn = useDrawProgress(1100);
   const points = journey.history;
   if (points.length < 2) return null;
 
-  const values = points.map((p) => p.kg).concat(journey.targetKg ?? []);
+  // Time on the x axis (not weigh-in index), so gaps between weigh-ins look like gaps.
+  const day0 = Date.parse(`${points[0]!.date}T12:00:00`);
+  const dayOf = (date: string) => (Date.parse(`${date}T12:00:00`) - day0) / 86_400_000;
+  const span = Math.max(1, dayOf(points.at(-1)!.date));
+  const plan = planLine(journey);
+  const planKg = (d: number) => (plan ? plan(d) : null);
+  const values = points
+    .map((p) => p.kg)
+    .concat(journey.targetKg ?? [])
+    .concat(planKg(span) ?? []);
   const min = Math.min(...values) - 0.5;
   const max = Math.max(...values) + 0.5;
-  const x = (i: number) => PAD + (i / (points.length - 1)) * (w - PAD * 2);
+  const xd = (d: number) => PAD + (d / span) * (w - PAD * 2);
+  const x = (i: number) => xd(dayOf(points[i]!.date));
   const y = (kg: number) => PAD + ((max - kg) / (max - min)) * (H - PAD * 2);
   const line = points.map((p, i) => `${i ? "L" : "M"} ${x(i)} ${y(p.kg)}`).join(" ");
   const area = `${line} L ${x(points.length - 1)} ${H} L ${x(0)} ${H} Z`;
   const change = Math.round((points.at(-1)!.kg - points[0]!.kg) * 10) / 10;
+  const planPath = plan
+    ? Array.from({ length: 25 }, (_, i) => (i / 24) * span)
+        .map((d, i) => `${i ? "L" : "M"} ${xd(d)} ${y(plan(d))}`)
+        .join(" ")
+    : null;
 
   return (
     <Surface tint="leaf">
@@ -41,6 +58,23 @@ export function WeightTrend({ journey }: { journey: JourneyResponse }) {
       >
         {w > 0 ? (
           <Svg width={w} height={H}>
+            <Defs>
+              {/* Both lines draw in left to right, like the plan on the target reveal. */}
+              <ClipPath id="weightReveal">
+                <Rect x={0} y={0} width={PAD + (w - PAD) * drawn + 8} height={H} />
+              </ClipPath>
+            </Defs>
+            {planPath ? (
+              <Path
+                d={planPath}
+                clipPath="url(#weightReveal)"
+                fill="none"
+                stroke={colors.inkFaint}
+                strokeWidth={2}
+                strokeDasharray="2 5"
+                strokeLinecap="round"
+              />
+            ) : null}
             {journey.targetKg !== null ? (
               <Line
                 x1={PAD}
@@ -59,11 +93,27 @@ export function WeightTrend({ journey }: { journey: JourneyResponse }) {
                 <Stop offset="1" stopColor={colors.leaf} stopOpacity="0" />
               </LinearGradient>
             </Defs>
-            <Path d={area} fill="url(#weightArea)" />
-            <Path d={line} fill="none" stroke={colors.leaf} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
+            <Path d={area} fill="url(#weightArea)" clipPath="url(#weightReveal)" />
+            <Path
+              d={line}
+              clipPath="url(#weightReveal)"
+              fill="none"
+              stroke={colors.leaf}
+              strokeWidth={3}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
             {points.map((p, i) =>
-              i === points.length - 1 ? (
-                <Circle key={p.date} cx={x(i)} cy={y(p.kg)} r={6} fill={colors.leaf} stroke={colors.leafSoft} strokeWidth={3} />
+              x(i) > PAD + (w - PAD) * drawn ? null : i === points.length - 1 ? (
+                <Circle
+                  key={p.date}
+                  cx={x(i)}
+                  cy={y(p.kg)}
+                  r={6}
+                  fill={colors.leaf}
+                  stroke={colors.leafSoft}
+                  strokeWidth={3}
+                />
               ) : (
                 <Circle key={p.date} cx={x(i)} cy={y(p.kg)} r={3} fill={colors.leaf} />
               ),
@@ -71,9 +121,25 @@ export function WeightTrend({ journey }: { journey: JourneyResponse }) {
           </Svg>
         ) : null}
       </View>
-      {journey.targetKg !== null ? (
-        <T variant="caption">Dashed line: goal {formatWeight(journey.targetKg, unit)}</T>
-      ) : null}
+      <T variant="caption">
+        {[
+          plan ? "Dotted: your plan" : null,
+          journey.targetKg !== null ? `Dashed: goal ${formatWeight(journey.targetKg, unit)}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+      </T>
     </Surface>
   );
+}
+
+/** Where the plan says you'd be, d days after the first weigh-in: a steady weekly pace that stops at the goal. */
+function planLine(j: JourneyResponse): ((d: number) => number) | null {
+  if (j.targetKg === null || j.weeklyKg === 0 || (j.goal !== "lose" && j.goal !== "build_muscle")) return null;
+  const dir = j.goal === "lose" ? -1 : 1;
+  const target = j.targetKg;
+  return (d) => {
+    const kg = j.startKg + (dir * j.weeklyKg * d) / 7;
+    return dir < 0 ? Math.max(target, kg) : Math.min(target, kg);
+  };
 }

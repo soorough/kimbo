@@ -5,17 +5,21 @@ import {
   maintenanceFor,
   PACES,
   TARGET_BOUNDS_KCAL,
+  type Barrier,
+  type Diet,
   type Goal,
   type GoalRequest,
 } from "@kimbo/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
 import { KimboScene } from "@/components/KimboScene";
 import { NameField } from "@/components/NameField";
+import { BuildingPlan } from "@/components/BuildingPlan";
+import { GoalPath } from "@/components/GoalPath";
 import { PacePlanner } from "@/components/PacePlanner";
 import { RulerPicker } from "@/components/RulerPicker";
 import { Button, Chip, Icon, Screen, Segmented, SegmentRing, T, type IconName } from "@/components/ui";
@@ -55,6 +59,23 @@ const GOALS: { key: GoalType; icon: IconName; label: string; hint: string }[] = 
     hint: "Maingain: maintenance calories, more protein, for people who lift",
   },
 ];
+/** Indian diets, so Kimbo never suggests chicken to a vegetarian or onion to someone who eats Jain. */
+const DIETS: { key: Diet; label: string; hint: string }[] = [
+  { key: "vegetarian", label: "Vegetarian", hint: "No meat, fish or eggs" },
+  { key: "eggetarian", label: "Eggetarian", hint: "Vegetarian, plus eggs" },
+  { key: "non_vegetarian", label: "Non-vegetarian", hint: "Chicken, fish, mutton, eggs" },
+  { key: "vegan", label: "Vegan", hint: "No dairy, meat or eggs" },
+  { key: "jain", label: "Jain", hint: "No onion, garlic or root vegetables" },
+];
+/** Kimbo shapes its suggestions around these; pick up to two. */
+const BARRIERS: { key: Barrier; icon: IconName; label: string; hint: string }[] = [
+  { key: "busy", icon: "clock", label: "Busy schedule", hint: "Kimbo keeps logging to one tap" },
+  { key: "ideas", icon: "help-circle", label: "Not sure what to eat", hint: "Kimbo suggests dishes that fit" },
+  { key: "consistency", icon: "repeat", label: "Hard to stay consistent", hint: "Gentle nudges, no broken streaks" },
+  { key: "eating_out", icon: "map-pin", label: "Eating out or family meals", hint: "Swaps and portions, not recipes" },
+  { key: "cravings", icon: "coffee", label: "Cravings, sweets and chai", hint: "Small swaps, no guilt" },
+];
+
 const SEXES: { key: Sex; label: string }[] = [
   { key: "female", label: "Female" },
   { key: "male", label: "Male" },
@@ -69,11 +90,14 @@ const ACTIVITY: { key: Activity; label: string; hint: string }[] = [
   { key: "very_active", label: "Physical job or athlete", hint: "Labour work, or training twice a day" },
 ];
 
-type Step = "name" | "goal" | "sex" | "age" | "height" | "weight" | "activity" | "goalWeight" | "pace";
+type Step =
+  "name" | "goal" | "diet" | "barriers" | "sex" | "age" | "height" | "weight" | "activity" | "goalWeight" | "pace";
 
 const QUESTIONS: Record<Step, string> = {
   name: "Hi, I'm Kimbo. What should I call you?",
   goal: "What's your goal?",
+  diet: "What do you eat?",
+  barriers: "What usually gets in the way?",
   sex: "Your sex",
   age: "How old are you?",
   height: "How tall are you?",
@@ -85,7 +109,7 @@ const QUESTIONS: Record<Step, string> = {
 
 /** Maintaining has no goal weight or pace to choose. */
 function stepsFor(goal: GoalType | null): Step[] {
-  const base: Step[] = ["name", "goal", "sex", "age", "height", "weight", "activity"];
+  const base: Step[] = ["name", "goal", "diet", "barriers", "sex", "age", "height", "weight", "activity"];
   return goal && isWeightGoal(goal) ? [...base, "goalWeight", "pace"] : base;
 }
 
@@ -106,6 +130,8 @@ export default function Onboarding() {
 
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
+  const [diet, setDiet] = useState<Diet | null>(null);
+  const [barriers, setBarriers] = useState<Barrier[]>([]);
   const [goalType, setGoalType] = useState<GoalType | null>(null);
   const [sex, setSex] = useState<Sex | null>(null);
   const [age, setAge] = useState(28);
@@ -115,9 +141,17 @@ export default function Onboarding() {
   const [goalWeight, setGoalWeight] = useState<number | null>(null);
   const [weeklyKg, setWeeklyKg] = useState<number | null>(null);
   const [result, setResult] = useState<Goal | null>(null);
+  const [building, setBuilding] = useState(false);
+  const finishBuilding = useCallback(() => setBuilding(false), []);
   const [target, setTarget] = useState(0);
 
   const savedName = existing.data?.profile.name;
+  const savedPrefs = existing.data?.profile;
+  useEffect(() => {
+    if (!savedPrefs) return;
+    setDiet(savedPrefs.diet);
+    setBarriers(savedPrefs.barriers);
+  }, [savedPrefs]);
   useEffect(() => {
     if (savedName) setName(savedName);
   }, [savedName]);
@@ -152,10 +186,13 @@ export default function Onboarding() {
     // Preserve an existing custom target while recalculating; "Looks good" decides the final value.
     mutationFn: (req: GoalRequest) =>
       api.saveGoal(profileId, saved?.targetOverride ? { ...req, targetOverride: saved.targetOverride } : req),
+    // First setup gets the "putting your plan together" moment; editing later goes straight to the plan.
+    onMutate: () => setBuilding(firstSetup.current === true),
     onSuccess: ({ profile }) => {
       setResult(profile.goal);
       setTarget(profile.goal!.effectiveTarget);
     },
+    onError: () => setBuilding(false),
   });
 
   const confirm = useMutation({
@@ -182,6 +219,25 @@ export default function Onboarding() {
       next();
     },
   });
+  const savePrefs = useMutation({
+    mutationFn: (body: { diet: Diet | null; barriers: Barrier[] }) => api.savePreferences(profileId, body),
+    onSuccess: ({ profile }) => queryClient.setQueryData(["profile", profileId], { profile }),
+  });
+  /** Saved as each step is answered; a failed save never blocks onboarding (both are editable later). */
+  const chooseDiet = (d: Diet | null) =>
+    choose(setDiet, d, () => {
+      savePrefs.mutate({ diet: d, barriers });
+      next();
+    });
+  const toggleBarrier = (b: Barrier) => {
+    Haptics.selectionAsync().catch(() => {});
+    setBarriers((cur) => (cur.includes(b) ? cur.filter((x) => x !== b) : [...cur, b].slice(-2)));
+  };
+  const submitBarriers = () => {
+    savePrefs.mutate({ diet, barriers });
+    next();
+  };
+
   /** Skipping is fine; only a changed name costs a request. */
   const submitName = () => ((name.trim() || null) === (savedName ?? null) ? next() : saveName.mutate());
   /** Single-choice answers move on by themselves after a beat, so the choice registers visually. */
@@ -190,6 +246,10 @@ export default function Onboarding() {
     Haptics.selectionAsync().catch(() => {});
     setTimeout(then, 220);
   };
+
+  if (building) {
+    return <BuildingPlan name={name.trim() || null} ready={result !== null} onDone={finishBuilding} />;
+  }
 
   if (result) {
     return (
@@ -223,6 +283,10 @@ export default function Onboarding() {
         ) : null}
         <Button label={name.trim() ? "Continue" : "Skip"} loading={saveName.isPending} onPress={submitName} />
       </View>
+    ) : current === "diet" ? (
+      <Button label="Skip" kind="ghost" onPress={() => chooseDiet(null)} />
+    ) : current === "barriers" ? (
+      <Button label={barriers.length ? "Continue" : "Skip"} onPress={submitBarriers} />
     ) : current === "age" || current === "height" || current === "weight" ? (
       <Button label="Continue" onPress={next} />
     ) : current === "goalWeight" ? (
@@ -307,6 +371,41 @@ export default function Onboarding() {
               leading={<Icon name={g.icon} size={22} color={goalType === g.key ? colors.white : colors.leafDeep} />}
               label={g.label}
               hint={g.hint}
+            />
+          ))}
+        </Options>
+      ) : null}
+
+      {current === "diet" ? (
+        <Options>
+          {DIETS.map((d) => (
+            <Card
+              key={d.key}
+              selected={diet === d.key}
+              onPress={() => chooseDiet(d.key)}
+              label={d.label}
+              hint={d.hint}
+            />
+          ))}
+          <T variant="caption" align="center">
+            Kimbo only suggests dishes you eat.
+          </T>
+        </Options>
+      ) : null}
+
+      {current === "barriers" ? (
+        <Options>
+          <T variant="label">Pick up to two. Kimbo will plan around them.</T>
+          {BARRIERS.map((b) => (
+            <Card
+              key={b.key}
+              selected={barriers.includes(b.key)}
+              onPress={() => toggleBarrier(b.key)}
+              leading={
+                <Icon name={b.icon} size={22} color={barriers.includes(b.key) ? colors.white : colors.leafDeep} />
+              }
+              label={b.label}
+              hint={b.hint}
             />
           ))}
         </Options>
@@ -504,8 +603,8 @@ function Reveal({
   onBack: () => void;
 }) {
   const shown = useCountUp(target);
-  // Open by default: the breakdown is the most useful thing on this screen, not a footnote.
-  const [why, setWhy] = useState(true);
+  // Closed by default: the plan line says what matters; the formula is there for anyone who asks.
+  const [why, setWhy] = useState(false);
   const b = goal.breakdown;
   const macros = [
     { label: "Protein", grams: goal.targets.protein, kcalPerGram: 4, color: macroColors.protein },
@@ -519,11 +618,19 @@ function Reveal({
       ? "Same weight, more protein, so muscle replaces fat"
       : b.kgPerWeek === 0
         ? "Keeps your weight where it is"
-      : goal.targetWeightKg && b.weeksToGoal
-        ? `${verb} ${formatPace(Math.abs(b.kgPerWeek), weightUnit)} a week · ${formatWeight(goal.targetWeightKg, weightUnit)} by ${dateInWeeks(b.weeksToGoal)}`
-        : `${verb} ${formatPace(Math.abs(b.kgPerWeek), weightUnit)} a week`;
+        : goal.targetWeightKg && b.weeksToGoal
+          ? `${verb} ${formatPace(Math.abs(b.kgPerWeek), weightUnit)} a week · ${formatWeight(goal.targetWeightKg, weightUnit)} by ${dateInWeeks(b.weeksToGoal)}`
+          : `${verb} ${formatPace(Math.abs(b.kgPerWeek), weightUnit)} a week`;
   const paceIcon: IconName =
-    goal.goal === "recomp" ? "refresh-cw" : b.kgPerWeek < 0 ? "trending-down" : b.kgPerWeek > 0 ? "trending-up" : "minus";
+    goal.goal === "recomp"
+      ? "refresh-cw"
+      : b.kgPerWeek < 0
+        ? "trending-down"
+        : b.kgPerWeek > 0
+          ? "trending-up"
+          : "minus";
+
+  const showPath = isWeightGoal(goal.goal) && goal.targetWeightKg !== null && b.weeksToGoal !== null;
 
   return (
     <Screen
@@ -538,24 +645,57 @@ function Reveal({
         </View>
       }
     >
-      <View style={styles.revealTop}>
+      <View style={styles.progressRow}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Edit answers"
+          hitSlop={12}
+          onPress={onBack}
+          style={styles.back}
+        >
+          <Icon name="arrow-left" size={20} />
+        </Pressable>
+      </View>
+      {showPath ? (
+        <View style={{ gap: space.md }}>
+          <T variant="title" style={styles.question}>
+            {formatWeight(goal.targetWeightKg!, weightUnit)} by {dateInWeeks(b.weeksToGoal!)}
+          </T>
+          <GoalPath
+            startLabel={formatWeight(goal.weightKg, weightUnit)}
+            goalLabel={formatWeight(goal.targetWeightKg!, weightUnit)}
+            dateLabel={dateInWeeks(b.weeksToGoal!)}
+            losing={goal.goal === "lose"}
+          />
+          <T variant="body" align="center">
+            <T variant="bodyStrong">{target.toLocaleString("en-IN")} kcal a day</T> gets you there.
+          </T>
+          <T variant="caption" align="center">
+            Set from your age, height, weight and activity. Kimbo adjusts it as you log.
+          </T>
+        </View>
+      ) : null}
+      <View style={[styles.revealTop, showPath && { marginTop: space.md }]}>
         <SegmentRing
           segments={macros.map((m) => ({ value: m.grams * m.kcalPerGram, color: m.color }))}
-          size={220}
-          stroke={16}
+          size={showPath ? 160 : 220}
+          stroke={showPath ? 12 : 16}
         >
-          <Kimbo mood="happy" size={56} leaves={2} />
-          <T variant="display" style={styles.bigNumber}>
+          {/* With the plan line above, Kimbo is already on screen; the ring just splits the number. */}
+          {showPath ? null : <Kimbo mood="happy" size={56} leaves={2} />}
+          <T variant="display" style={showPath ? styles.midNumber : styles.bigNumber}>
             {shown}
           </T>
           <T variant="label">kcal a day</T>
         </SegmentRing>
-        <View style={styles.pace}>
-          <Icon name={paceIcon} size={16} color={colors.leafDeep} />
-          <T variant="label" tone="leaf">
-            {pace}
-          </T>
-        </View>
+        {showPath ? null : (
+          <View style={styles.pace}>
+            <Icon name={paceIcon} size={16} color={colors.leafDeep} />
+            <T variant="label" tone="leaf">
+              {pace}
+            </T>
+          </View>
+        )}
       </View>
 
       <View style={styles.macroRow}>
@@ -590,7 +730,7 @@ function Reveal({
 
       <Pressable accessibilityRole="button" onPress={() => setWhy(!why)} style={styles.whyToggle}>
         <T variant="bodyStrong" tone="leaf">
-          Why this number?
+          How we calculated this
         </T>
         <Icon name={why ? "chevron-up" : "chevron-down"} size={18} color={colors.leaf} />
       </Pressable>
@@ -621,8 +761,6 @@ function Reveal({
           ))}
         </View>
       ) : null}
-
-      <Button label="Edit answers" kind="ghost" onPress={onBack} />
     </Screen>
   );
 }
@@ -810,6 +948,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   revealTop: { alignItems: "center", gap: space.md, marginTop: space.xl },
+  midNumber: { fontSize: 36, lineHeight: 42, fontVariant: ["tabular-nums"] },
   bigNumber: { fontSize: 48, lineHeight: 54, fontVariant: ["tabular-nums"] },
   pace: {
     flexDirection: "row",
