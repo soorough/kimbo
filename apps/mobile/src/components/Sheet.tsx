@@ -41,7 +41,8 @@ export function SheetPanel({
   const backdrop = y.interpolate({ inputRange: [0, SCREEN_H], outputRange: [1, 0], extrapolate: "clamp" });
 
   useEffect(() => {
-    Animated.spring(y, { toValue: 0, useNativeDriver: true, damping: 22, stiffness: 220, mass: 0.9 }).start();
+    // Critically damped: slides up and stops, no bounce past the top that flashes what's behind.
+    Animated.spring(y, { toValue: 0, useNativeDriver: true, damping: 30, stiffness: 220, mass: 0.9, overshootClamping: true }).start();
   }, [y]);
 
   const close = () => Animated.timing(y, { toValue: SCREEN_H, duration: 200, useNativeDriver: true }).start(onClose);

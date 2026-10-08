@@ -1,7 +1,7 @@
 import * as Haptics from "expo-haptics";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
-  ScrollView,
+  FlatList,
   StyleSheet,
   View,
   type LayoutChangeEvent,
@@ -49,7 +49,7 @@ export function RulerPicker({
   /** smaller readout for long values (dates), so it never wraps and shifts the layout */
   compact?: boolean;
 }) {
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<FlatList<number>>(null);
   const [width, setWidth] = useState(0);
   const last = useRef(value);
   const count = Math.round((max - min) / step) + 1;
@@ -63,7 +63,7 @@ export function RulerPicker({
     const w = e.nativeEvent.layout.width;
     setWidth(w);
     // Android ignores contentOffset, so position the ruler once it has a size.
-    requestAnimationFrame(() => scroll.current?.scrollTo({ x: indexOf(value) * SPACING, animated: false }));
+    requestAnimationFrame(() => scroll.current?.scrollToOffset({ offset: indexOf(value) * SPACING, animated: false }));
   };
 
   const isMajor = useCallback(
@@ -105,7 +105,7 @@ export function RulerPicker({
   const settle = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const i = Math.max(0, Math.min(count - 1, Math.round(e.nativeEvent.contentOffset.x / SPACING)));
     if (Math.abs(e.nativeEvent.contentOffset.x - i * SPACING) > 0.5) {
-      scroll.current?.scrollTo({ x: i * SPACING, animated: true });
+      scroll.current?.scrollToOffset({ offset: i * SPACING, animated: true });
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid).catch(() => {});
   };
@@ -114,26 +114,31 @@ export function RulerPicker({
     const next = valueAt(indexOf(value) + dir);
     last.current = next;
     onChange(next);
-    scroll.current?.scrollTo({ x: indexOf(next) * SPACING, animated: true });
+    scroll.current?.scrollToOffset({ offset: indexOf(next) * SPACING, animated: true });
   };
 
-  const ticks = useMemo(
-    () =>
-      Array.from({ length: count }, (_, i) => {
-        // Long ticks sit on round values (150, 160…), whatever the ruler's lower limit is.
-        const major = isMajor(valueAt(i));
-        return (
-          <View key={i} style={styles.tickSlot}>
-            <View style={[styles.tick, major ? styles.tickMajor : styles.tickMinor]} />
-            {major ? (
-              <T variant="caption" style={styles.tickLabel}>
-                {tickFormat ? tickFormat(valueAt(i)) : valueAt(i)}
-              </T>
-            ) : null}
-          </View>
-        );
-      }),
-    [count, isMajor, valueAt, tickFormat],
+  // Rulers can be long (30–200 kg in 0.1s is 1,701 ticks), so only ticks near the screen are drawn.
+  const data = useMemo(() => Array.from({ length: count }, (_, i) => i), [count]);
+  const renderTick = useCallback(
+    ({ item: i }: { item: number }) => {
+      // Long ticks sit on round values (150, 160…), whatever the ruler's lower limit is.
+      const major = isMajor(valueAt(i));
+      return (
+        <View style={styles.tickSlot}>
+          <View style={[styles.tick, major ? styles.tickMajor : styles.tickMinor]} />
+          {major ? (
+            <T variant="caption" style={styles.tickLabel}>
+              {tickFormat ? tickFormat(valueAt(i)) : valueAt(i)}
+            </T>
+          ) : null}
+        </View>
+      );
+    },
+    [isMajor, valueAt, tickFormat],
+  );
+  const itemLayout = useCallback(
+    (_: unknown, i: number) => ({ length: SPACING, offset: SPACING * i, index: i }),
+    [],
   );
 
   // Fractional rulers always show one decimal (71.0, not 71) so digits keep their slots and roll in place.
@@ -163,8 +168,15 @@ export function RulerPicker({
       </View>
       <View style={styles.rulerArea} onLayout={onLayout}>
         {width > 0 ? (
-          <ScrollView
+          <FlatList
             ref={scroll}
+            data={data}
+            renderItem={renderTick}
+            keyExtractor={String}
+            getItemLayout={itemLayout}
+            initialNumToRender={60}
+            maxToRenderPerBatch={60}
+            windowSize={5}
             horizontal
             showsHorizontalScrollIndicator={false}
             snapToInterval={SPACING}
@@ -179,9 +191,7 @@ export function RulerPicker({
             }}
             scrollEventThrottle={16}
             contentContainerStyle={{ paddingHorizontal: width / 2 - SPACING / 2 }}
-          >
-            {ticks}
-          </ScrollView>
+          />
         ) : null}
         <View pointerEvents="none" style={styles.needle} />
         <View pointerEvents="none" style={[styles.fade, styles.fadeLeft]} />
