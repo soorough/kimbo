@@ -129,6 +129,15 @@ describe("Ask Kimbo", () => {
       }
     });
 
+    it("tapping the line logs the suggested meal: its action carries the meal ready to save", async () => {
+      const id = await withHistory();
+      const [action] = (await api.get("/assistant", id)).json.greeting.actions;
+      expect(action).toMatchObject({ kind: "log_meal", label: "Log it", mealType: "snack" });
+      expect(action.draft.suggestedMealType).toBe("snack");
+      expect(action.draft.items).toMatchObject([{ kind: "catalogue", food: { id: "sprouts" }, quantity: 1, unit: "katori" }]);
+      expect(action.draft.totals.calories).toBeGreaterThan(0);
+    });
+
     it("says the idea completes today's goal only when it does", async () => {
       const id = await withHistory();
       const today = (await api.get("/today", id)).json;

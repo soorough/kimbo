@@ -25,6 +25,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Kimbo } from "@/components/Kimbo";
 import { Icon, T, type IconName } from "@/components/ui";
 import { api, errorMessage, speechSource } from "@/lib/api";
+import { useDraft } from "@/lib/draft";
 import { useReduceMotion } from "@/lib/motion";
 import { colors, fonts, radius, shadow, space } from "@/lib/theme";
 
@@ -56,6 +57,7 @@ const CARD_STYLE: Record<AssistantQuestion, { icon: IconName; bg: string; fg: st
 export default function Assistant() {
   const insets = useSafeAreaInsets();
   const home = useQuery({ queryKey: ["assistant"], queryFn: api.assistantHome });
+  const startFromAi = useDraft((s) => s.startFromAi);
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
   const [voiceOn, setVoiceOn] = useState(true);
@@ -173,7 +175,10 @@ export default function Assistant() {
   };
 
   const act = (a: AssistantAction) => {
-    if (a.kind === "log_meal") router.push({ pathname: "/log", params: { mealType: a.mealType } });
+    if (a.kind === "log_meal" && a.draft) {
+      startFromAi(a.draft, "repeat", a.mealType);
+      router.push("/review");
+    } else if (a.kind === "log_meal") router.push({ pathname: "/log", params: { mealType: a.mealType } });
     else if (a.screen === "nutrition") router.push("/nutrition");
     else router.navigate(a.screen === "report" ? "/(tabs)/report" : "/(tabs)/progress");
   };

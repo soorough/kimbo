@@ -1,5 +1,7 @@
 import type {
   AssistantAction,
+  DraftItem,
+  MealDraft,
   AssistantQuestion,
   AssistantReply,
   AssistantSuggestion,
@@ -15,12 +17,12 @@ import type {
 } from "@kimbo/shared";
 import type { StoredMeal } from "../repo/meals.js";
 import { CATALOGUE, type CatalogueEntry } from "./catalogue-data.js";
-import { perUnit } from "./catalogue.js";
+import { getEntry, nutritionFor, perUnit, sumNutrition, toFood } from "./catalogue.js";
 import { GOAL_BAND_PCT } from "./config.js";
 import { eats } from "./diet.js";
 import { mealSupportsFocus } from "./focus-match.js";
 import { FOCI } from "./health.js";
-import { mealKey, RECENT_LOOKBACK_DAYS } from "./recent-meals.js";
+import { mealKey, RECENT_LOOKBACK_DAYS, toDraftItem } from "./recent-meals.js";
 import { addDays } from "./time.js";
 
 /** Everything Kimbo knows about the user right now. All numbers come from Kimbo's own rules. */
@@ -52,6 +54,8 @@ export interface PastMeal {
   kcal: number;
   times: number;
   supportsFocus: boolean | null;
+  /** the meal as they last logged it, ready to log again */
+  draft: MealDraft;
 }
 
 /** The user's own history for one meal slot: same dishes in the same portions count as one meal. */
@@ -76,7 +80,19 @@ export function pastMealsFor(meals: StoredMeal[], mealType: MealType, today: str
       kcal: Math.round(latest.totals.calories),
       times,
       supportsFocus: focus ? mealSupportsFocus(latest, focus).supports : null,
+      draft: toDraft(latest.items.map(toDraftItem), mealType),
     }));
+}
+
+function toDraft(items: DraftItem[], mealType: MealType): MealDraft {
+  return { items, totals: sumNutrition(items.map((i) => i.nutrition)), suggestedMealType: mealType };
+}
+
+/** One default serving of a catalogue dish, as a draft line. */
+function catalogueLine(id: string): DraftItem[] {
+  const e = getEntry(id);
+  if (!e) return [];
+  return [{ kind: "catalogue", food: toFood(e), heardAs: e.name, quantity: 1, unit: e.defaultUnit, nutrition: nutritionFor(e, 1, e.defaultUnit) }];
 }
 
 /** The past meal to eat again: fits what's left today, helps the focus if one does, most eaten first. */
@@ -107,6 +123,7 @@ export interface MealIdea {
   kcal: number;
   /** times they've eaten it before; 0 when it's a catalogue suggestion */
   times: number;
+  draft: MealDraft;
   /** "completes": eating it lands today inside the goal band; "fits": still under it; null: no target */
   goal: "completes" | "fits" | null;
 }
@@ -122,10 +139,18 @@ export function mealIdea(ctx: AssistantContext): MealIdea | null {
   const left = ctx.targets ? ctx.targets.calories - ctx.totals.calories : null;
   if (left !== null && left <= 0) return null;
   const past = suggestFromHistory(ctx);
-  if (past) return { meal: ctx.nextMeal, name: past.short, kcal: past.kcal, times: past.times, goal: goalAfter(ctx, past.kcal) };
+  if (past)
+    return { meal: ctx.nextMeal, name: past.short, kcal: past.kcal, times: past.times, draft: past.draft, goal: goalAfter(ctx, past.kcal) };
   const dish = suggestDishes(ctx)[0];
   return dish
-    ? { meal: ctx.nextMeal, name: shortName([dish.name]), kcal: dish.kcal, times: 0, goal: goalAfter(ctx, dish.kcal) }
+    ? {
+        meal: ctx.nextMeal,
+        name: shortName([dish.name]),
+        kcal: dish.kcal,
+        times: 0,
+        draft: toDraft(catalogueLine(dish.id), ctx.nextMeal),
+        goal: goalAfter(ctx, dish.kcal),
+      }
     : null;
 }
 
@@ -227,7 +252,7 @@ function servingKcal(e: CatalogueEntry): number {
 }
 
 /** Up to three dishes for the next meal: eaten by this diet, good for the focus, within what's left. */
-export function suggestDishes(ctx: AssistantContext): { name: string; kcal: number }[] {
+export function suggestDishes(ctx: AssistantContext): { id: string; name: string; kcal: number }[] {
   const left = ctx.targets ? ctx.targets.calories - ctx.totals.calories : null;
   const budget = left === null ? null : Math.max(150, left * (ctx.nextMeal === "snack" ? 0.4 : 0.8));
   const helps = ctx.focus ? HELPS[ctx.focus] : [];
@@ -236,12 +261,12 @@ export function suggestDishes(ctx: AssistantContext): { name: string; kcal: numb
     .map((id) => CATALOGUE.find((e) => e.id === id))
     .filter((e): e is CatalogueEntry => !!e && eats(ctx.diet, e.id) && !e.tags.some((t) => hurts.includes(t)));
   const score = (e: CatalogueEntry) => (e.tags.some((t) => helps.includes(t)) ? 0 : 1);
-  const picked: { name: string; kcal: number }[] = [];
+  const picked: { id: string; name: string; kcal: number }[] = [];
   let spent = 0;
   for (const e of [...pool].sort((a, b) => score(a) - score(b))) {
     const kcal = servingKcal(e);
     if (budget !== null && spent + kcal > budget && picked.length > 0) continue;
-    picked.push({ name: e.name, kcal });
+    picked.push({ id: e.id, name: e.name, kcal });
     spent += kcal;
     if (picked.length === 3) break;
   }
@@ -253,10 +278,11 @@ function list(names: string[]): string {
   return `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
 }
 
-const logAction = (meal: MealType): AssistantAction => ({
+const logAction = (meal: MealType, draft?: MealDraft): AssistantAction => ({
   kind: "log_meal",
-  label: `Log ${meal === "snack" ? "a snack" : meal}`,
+  label: draft ? "Log it" : `Log ${meal === "snack" ? "a snack" : meal}`,
   mealType: meal,
+  ...(draft ? { draft } : {}),
 });
 
 /** The line Kimbo opens with, chosen by the time of day and what's happened so far. */
@@ -272,7 +298,7 @@ export function greeting(ctx: AssistantContext): AssistantReply {
       mood: "proud",
       text: nextMealOffer(ctx, hi),
       points: [],
-      actions: [logAction(ctx.nextMeal)],
+      actions: [logAction(ctx.nextMeal, mealIdea(ctx)?.draft)],
     };
   }
   const part = ctx.hour < 12 ? "Good morning" : ctx.hour < 17 ? "Good afternoon" : "Good evening";
@@ -321,7 +347,7 @@ export function answer(q: AssistantQuestion, ctx: AssistantContext): AssistantRe
             `${past.label[0]!.toUpperCase()}${past.label.slice(1)} · about ${past.kcal} kcal · eaten ${past.times === 1 ? "once" : `${past.times} times`}`,
             ...others.map((d) => `${d.name} · about ${d.kcal} kcal`),
           ],
-          actions: [logAction(ctx.nextMeal)],
+          actions: [logAction(ctx.nextMeal, past.draft)],
         };
       }
       return {

@@ -483,7 +483,8 @@ export const AssistantQuestion = z.enum(["what_to_eat", "why_focus", "how_am_i_d
 export type AssistantQuestion = z.infer<typeof AssistantQuestion>;
 
 export const AssistantAction = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("log_meal"), label: z.string(), mealType: MealType }),
+  /** with a draft, the meal Kimbo suggested opens ready to save; without, logging starts empty */
+  z.object({ kind: z.literal("log_meal"), label: z.string(), mealType: MealType, draft: MealDraft.optional() }),
   z.object({ kind: z.literal("open"), label: z.string(), screen: z.enum(["report", "progress", "nutrition"]) }),
 ]);
 export type AssistantAction = z.infer<typeof AssistantAction>;

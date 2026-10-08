@@ -243,23 +243,42 @@ function WeekRow({
   );
 }
 
-/** Kimbo speaks first: one line for right now. Tapping it opens Ask Kimbo. */
+/**
+ * Kimbo speaks first: one line for right now. When it suggests a meal, tapping opens that
+ * meal ready to save; otherwise it opens Ask Kimbo.
+ */
 function KimboLine() {
   const home = useQuery({ queryKey: ["assistant"], queryFn: api.assistantHome, staleTime: 60_000 });
+  const startFromAi = useDraft((s) => s.startFromAi);
   const line = home.data?.greeting;
   if (!line) return null;
+  const log = line.actions.find((a) => a.kind === "log_meal" && a.draft);
+  const onPress = () => {
+    if (log?.kind === "log_meal" && log.draft) {
+      startFromAi(log.draft, "repeat", log.mealType);
+      router.push("/review");
+    } else router.push("/assistant");
+  };
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityHint="Opens Ask Kimbo"
-      onPress={() => router.push("/assistant")}
+      accessibilityHint={log ? "Opens this meal, ready to log" : "Opens Ask Kimbo"}
+      onPress={onPress}
       style={({ pressed }) => [styles.kimboLine, pressed && { opacity: 0.85 }]}
     >
       <Kimbo mood={line.mood} size={36} />
       <T variant="bodyStrong" style={{ flex: 1 }} numberOfLines={4}>
         {line.text}
       </T>
-      <Icon name="chevron-right" size={18} color={colors.leafDeep} />
+      {log ? (
+        <View style={styles.logPill}>
+          <T variant="label" style={{ color: colors.white }}>
+            Log it
+          </T>
+        </View>
+      ) : (
+        <Icon name="chevron-right" size={18} color={colors.leafDeep} />
+      )}
     </Pressable>
   );
 }
@@ -548,6 +567,12 @@ const styles = StyleSheet.create({
     padding: space.md,
     borderRadius: radius.lg,
     backgroundColor: colors.leafSoft,
+  },
+  logPill: {
+    backgroundColor: colors.leaf,
+    borderRadius: radius.pill,
+    paddingHorizontal: space.md,
+    paddingVertical: 6,
   },
   calRow: { flexDirection: "row", alignItems: "center", gap: space.lg },
   ringNum: { fontFamily: fonts.bold, fontSize: 18, color: colors.ink },
