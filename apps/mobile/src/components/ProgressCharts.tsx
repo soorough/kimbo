@@ -29,10 +29,10 @@ function dayState(calories: number | null, goal: ProgressResponse["goal"]): DayS
  * turmeric (a small celebration), days over the band go plum (worth watching, never red),
  * lighter days stay quiet. Today is outlined because it is still going.
  */
-export function CaloriesWeek({ p }: { p: ProgressResponse }) {
+export function CaloriesWeek({ p, current = true }: { p: ProgressResponse; current?: boolean }) {
   const [w, setW] = useState(0);
   const goal = p.goal;
-  const todayIndex = p.daysElapsed - 1;
+  const todayIndex = current ? p.daysElapsed - 1 : -1;
   const top =
     Math.max(goal ? goal.targetCalories * (1 + goal.bandPct / 100) * 1.12 : 0, ...p.days.map((d) => d.calories ?? 0)) ||
     1;
@@ -48,7 +48,11 @@ export function CaloriesWeek({ p }: { p: ProgressResponse }) {
     ahead: "transparent",
   };
 
-  const { summary, hint } = caloriesCopy(p);
+  const { summary, hint } = caloriesCopy(p, current);
+  const logged = p.days.filter((d) => (d.calories ?? 0) > 0);
+  const average = logged.length
+    ? Math.round(logged.reduce((sum, d) => sum + d.calories!, 0) / logged.length)
+    : null;
 
   return (
     <Surface tint="turmeric" accessibilityLabel={`Calories this week. ${summary}. ${hint ?? ""}`}>
@@ -56,6 +60,9 @@ export function CaloriesWeek({ p }: { p: ProgressResponse }) {
         CALORIES
       </T>
       <T variant="heading">{summary}</T>
+      {average !== null ? (
+        <T variant="label">Daily average {average.toLocaleString("en-IN")} kcal</T>
+      ) : null}
       {hint ? <T variant="caption">{hint}</T> : null}
       <View style={{ height: CHART_H, marginTop: space.sm }} onLayout={(e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width)}>
         {w > 0 ? (
@@ -143,9 +150,14 @@ export function CaloriesWeek({ p }: { p: ProgressResponse }) {
 const plural = (n: number) => (n === 1 ? "day" : "days");
 
 /** Today only counts toward the goal once it lands in the band, so early in the week there may be nothing to score yet. */
-function caloriesCopy(p: ProgressResponse): { summary: string; hint?: string } {
+function caloriesCopy(p: ProgressResponse, current: boolean): { summary: string; hint?: string } {
   const goal = p.goal;
-  if (p.daysTracked === 0) return { summary: "Your week starts with one meal", hint: "Each day you log gets a bar here." };
+  if (p.daysTracked === 0)
+    return current
+      ? { summary: "Your week starts with one meal", hint: "Each day you log gets a bar here." }
+      : { summary: "Nothing logged this week" };
+  if (!current && (!goal || goal.daysTracked === 0))
+    return { summary: `${p.daysTracked} of 7 ${plural(7)} logged` };
   if (!goal) return { summary: `${p.daysTracked} of ${p.daysElapsed} ${plural(p.daysElapsed)} logged` };
   if (goal.daysTracked > 0)
     return { summary: `${goal.daysMet} of ${goal.daysTracked} ${plural(goal.daysTracked)} on target` };
@@ -172,7 +184,6 @@ export function FocusRing({ focus }: { focus: NonNullable<ProgressResponse["focu
   return (
     <Surface
       tint="leaf"
-      style={{ flex: 1 }}
       accessibilityLabel={`Focus: ${focus.title}. ${focus.supported} of ${focus.total} meals helped.`}
     >
       <View style={styles.cardHead}>

@@ -2,19 +2,33 @@ import type { MarkerReading, Report } from "@kimbo/shared";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, View } from "react-native";
+import { BmiCard } from "@/components/BodyCards";
 import { Kimbo } from "@/components/Kimbo";
+import { FocusRing } from "@/components/ProgressCharts";
 import { ReportInsightsCard } from "@/components/ReportInsightsCard";
 import { CardSkeleton } from "@/components/Skeleton";
 import { ErrorState, Icon, Screen, Surface, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { DISCLAIMER } from "@/lib/copy";
 import { useReportIntake } from "@/lib/report-intake";
+import { useSession } from "@/lib/session";
 import { colors, radius, space } from "@/lib/theme";
 
 export default function ReportTab() {
   const reports = useQuery({ queryKey: ["reports"], queryFn: api.reports });
   const today = useQuery({ queryKey: ["today"], queryFn: api.today });
   const insights = useQuery({ queryKey: ["reportInsights"], queryFn: api.reportInsights });
+  // Health beside the report: this week's focus score and BMI from height and the latest weight.
+  const progress = useQuery({ queryKey: ["progress"], queryFn: api.progress });
+  const journey = useQuery({ queryKey: ["journey"], queryFn: api.journey, retry: false });
+  const profileId = useSession((s) => s.profileId);
+  const profile = useQuery({
+    queryKey: ["profile", profileId],
+    queryFn: () => api.getProfile(profileId!),
+    enabled: !!profileId,
+  });
+  const heightCm = profile.data?.profile.goal?.heightCm;
+  const kg = journey.data?.currentKg ?? profile.data?.profile.goal?.weightKg;
   const intake = useReportIntake();
 
   if (intake.reading) {
@@ -58,6 +72,10 @@ export default function ReportTab() {
           <T variant="body">{focus.description}</T>
         </Surface>
       ) : null}
+
+      {latest && progress.data?.focus ? <FocusRing focus={progress.data.focus} /> : null}
+
+      {heightCm && kg ? <BmiCard heightCm={heightCm} kg={kg} /> : null}
 
       {latest && insights.data?.insights ? <ReportInsightsCard insights={insights.data.insights} /> : null}
 

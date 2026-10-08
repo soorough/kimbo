@@ -1,15 +1,15 @@
-import type { Achievement, KimboEventType, ProgressResponse } from "@kimbo/shared";
-import { useQuery } from "@tanstack/react-query";
-import { router } from "expo-router";
-import { StyleSheet, View } from "react-native";
+import type { ProgressResponse } from "@kimbo/shared";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
+import { StatTiles, WeightChanges } from "@/components/BodyCards";
 import { JourneyCard } from "@/components/JourneyCard";
-import { CaloriesWeek, FocusRing } from "@/components/ProgressCharts";
+import { CaloriesWeek } from "@/components/ProgressCharts";
 import { RoadToGoal } from "@/components/RoadToGoal";
-import { ProgressSkeleton } from "@/components/Skeleton";
+import { CardSkeleton, ProgressSkeleton } from "@/components/Skeleton";
 import { WeightTrend } from "@/components/WeightTrend";
-import { ErrorState, Icon, Screen, Surface, T, type IconName } from "@/components/ui";
+import { ErrorState, Icon, Screen, Surface, T } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
-import { HABIT_BADGES, MEAL_BADGES, STREAK_BADGES } from "@/lib/badges";
 import { colors, radius, space } from "@/lib/theme";
 
 export default function Progress() {
@@ -30,21 +30,22 @@ export default function Progress() {
   }
   const p = progress.data;
 
+  // Body and habits live here; health (BMI, the report's food focus) lives on Report.
   return (
     <Screen>
       <View style={{ gap: 2, marginTop: space.sm }}>
         <T variant="overline" tone="faint">
           {rangeLabel(p)}
         </T>
-        <T variant="display">This week</T>
+        <T variant="display">Progress</T>
       </View>
 
-      {/* The goal and "Log weight" live here now that Today follows the day, not the journey. */}
+      <StatTiles p={p} />
       {journey.data ? <JourneyCard /> : null}
-      {journey.data ? <RoadToGoal journey={journey.data} /> : null}
-      <CaloriesWeek p={p} />
-      {p.focus ? <FocusRing focus={p.focus} /> : null}
       {journey.data ? <WeightTrend journey={journey.data} /> : null}
+      {journey.data ? <WeightChanges journey={journey.data} /> : null}
+      {journey.data ? <RoadToGoal journey={journey.data} /> : null}
+      <CaloriesWeeks p={p} />
 
       <WeekOverWeek p={p} />
 
@@ -63,10 +64,49 @@ export default function Progress() {
           ))}
         </Surface>
       ) : null}
-
-      <MilestonesRow p={p} />
     </Screen>
   );
+}
+
+const WEEKS = ["This wk", "Last wk", "2 wk ago", "3 wk ago"];
+
+/** The calories chart with Cal AI's week tabs: this week comes with Progress, earlier weeks load on tap. */
+function CaloriesWeeks({ p }: { p: ProgressResponse }) {
+  const [back, setBack] = useState(0);
+  const weekOf = addDays(p.weekStart, -7 * back);
+  const past = useQuery({
+    queryKey: ["progress", weekOf],
+    queryFn: () => api.progressFor(weekOf),
+    enabled: back > 0,
+    placeholderData: keepPreviousData,
+  });
+  const shown = back === 0 ? p : past.data;
+  return (
+    <View style={{ gap: space.sm }}>
+      {shown ? <CaloriesWeek p={shown} current={back === 0} /> : <CardSkeleton h={260} />}
+      <View style={styles.weeks}>
+        {WEEKS.map((label, i) => (
+          <Pressable
+            key={label}
+            accessibilityRole="button"
+            accessibilityState={{ selected: i === back }}
+            onPress={() => setBack(i)}
+            style={[styles.week, i === back && styles.weekOn]}
+          >
+            <T variant="label" tone={i === back ? "ink" : "faint"}>
+              {label}
+            </T>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function addDays(iso: string, days: number): string {
+  const d = new Date(`${iso}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
 /** Only celebrates gains; a quieter week is simply not mentioned. */
@@ -93,33 +133,6 @@ function WeekOverWeek({ p }: { p: ProgressResponse }) {
   );
 }
 
-/** All badges live on the Milestones screen; Progress just shows the count and the next one. */
-function MilestonesRow({ p }: { p: ProgressResponse }) {
-  const earned =
-    new Set(p.achievements.map((a) => a.type)).size +
-    STREAK_BADGES.filter((b) => Math.max(p.streak, p.longestStreak) >= b.days).length +
-    MEAL_BADGES.filter((b) => p.mealsLogged >= b.meals).length;
-  const total = HABIT_BADGES.length + STREAK_BADGES.length + MEAL_BADGES.length;
-  const next = STREAK_BADGES.find((b) => b.days > p.streak);
-  return (
-    <Surface onPress={() => router.push("/milestones")} accessibilityLabel={`Milestones, ${earned} of ${total} badges`}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
-        <T style={{ fontSize: 30, lineHeight: 42, includeFontPadding: false }}>🏅</T>
-        <View style={{ flex: 1, gap: 2 }}>
-          <T variant="heading">Milestones</T>
-          <T variant="label">
-            {earned} of {total} badges
-            {next
-              ? ` · ${next.days - p.streak} more ${next.days - p.streak === 1 ? "day" : "days"} for ${next.title}`
-              : ""}
-          </T>
-        </View>
-        <Icon name="chevron-right" size={20} color={colors.inkFaint} />
-      </View>
-    </Surface>
-  );
-}
-
 function rangeLabel(p: ProgressResponse): string {
   const fmt = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString([], { day: "numeric", month: "short" });
   return `${fmt(p.weekStart)} – ${fmt(p.weekEnd)}`.toUpperCase();
@@ -127,33 +140,7 @@ function rangeLabel(p: ProgressResponse): string {
 
 const styles = StyleSheet.create({
   insight: { flexDirection: "row", alignItems: "center", gap: space.sm },
-  badges: { flexDirection: "row", flexWrap: "wrap", gap: space.md },
-  // Fixed thirds so a partial last row keeps the same badge size.
-  badge: {
-    width: "31%",
-    alignItems: "center",
-    gap: 4,
-    padding: space.md,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-  },
-  badgeLocked: { backgroundColor: colors.sunk },
-  badgeIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
-  },
-  badgeIconOn: { backgroundColor: colors.turmericDeep },
-  badgeIconOff: { backgroundColor: colors.paper },
-  badgeCount: {
-    position: "absolute",
-    right: -6,
-    top: -4,
-    backgroundColor: colors.leaf,
-    borderRadius: radius.pill,
-    paddingHorizontal: 5,
-  },
+  weeks: { flexDirection: "row", backgroundColor: colors.sunk, borderRadius: radius.pill, padding: 3 },
+  week: { flex: 1, alignItems: "center", paddingVertical: 6, borderRadius: radius.pill },
+  weekOn: { backgroundColor: colors.surface },
 });

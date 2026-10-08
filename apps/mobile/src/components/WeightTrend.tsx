@@ -1,8 +1,8 @@
 import type { JourneyResponse } from "@kimbo/shared";
 import { useState } from "react";
-import { View, type LayoutChangeEvent } from "react-native";
+import { Pressable, StyleSheet, View, type LayoutChangeEvent } from "react-native";
 import Svg, { Circle, ClipPath, Defs, Line, LinearGradient, Path, Rect, Stop } from "react-native-svg";
-import { colors, space } from "@/lib/theme";
+import { colors, radius, space } from "@/lib/theme";
 import { formatWeight, useUnits } from "@/lib/units";
 import { useDrawProgress } from "./GoalPath";
 import { Surface } from "./Surface";
@@ -11,52 +11,82 @@ import { T } from "./Text";
 const H = 140;
 const PAD = 12;
 
+const RANGES = [
+  { label: "90D", days: 90 },
+  { label: "6M", days: 182 },
+  { label: "1Y", days: 365 },
+  { label: "All", days: null },
+] as const;
+type RangeLabel = (typeof RANGES)[number]["label"];
+
 /** Weigh-ins over time as a filled line, with the goal weight dashed. Needs at least two points. */
 export function WeightTrend({ journey }: { journey: JourneyResponse }) {
   const unit = useUnits((u) => u.weight);
   const [w, setW] = useState(0);
+  const [range, setRange] = useState<RangeLabel>("90D");
   const drawn = useDrawProgress(1100);
-  const points = journey.history;
-  if (points.length < 2) return null;
+  const all = journey.history;
+  if (all.length < 2) return null;
+
+  const days = RANGES.find((r) => r.label === range)!.days;
+  const cutoff = days === null ? "" : new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+  const points = all.filter((p) => p.date >= cutoff);
 
   // Time on the x axis (not weigh-in index), so gaps between weigh-ins look like gaps.
-  const day0 = Date.parse(`${points[0]!.date}T12:00:00`);
+  // The plan is measured from the very first weigh-in, whatever range is showing.
+  const day0 = Date.parse(`${all[0]!.date}T12:00:00`);
   const dayOf = (date: string) => (Date.parse(`${date}T12:00:00`) - day0) / 86_400_000;
-  const span = Math.max(1, dayOf(points.at(-1)!.date));
+  const from = points.length ? dayOf(points[0]!.date) : 0;
+  const span = Math.max(1, points.length ? dayOf(points.at(-1)!.date) - from : 1);
   const plan = planLine(journey);
   const planKg = (d: number) => (plan ? plan(d) : null);
   const values = points
     .map((p) => p.kg)
     .concat(journey.targetKg ?? [])
-    .concat(planKg(span) ?? []);
+    .concat(planKg(from) ?? [])
+    .concat(planKg(from + span) ?? []);
   const min = Math.min(...values) - 0.5;
   const max = Math.max(...values) + 0.5;
-  const xd = (d: number) => PAD + (d / span) * (w - PAD * 2);
+  const xd = (d: number) => PAD + ((d - from) / span) * (w - PAD * 2);
   const x = (i: number) => xd(dayOf(points[i]!.date));
   const y = (kg: number) => PAD + ((max - kg) / (max - min)) * (H - PAD * 2);
   const line = points.map((p, i) => `${i ? "L" : "M"} ${x(i)} ${y(p.kg)}`).join(" ");
-  const area = `${line} L ${x(points.length - 1)} ${H} L ${x(0)} ${H} Z`;
-  const change = Math.round((points.at(-1)!.kg - points[0]!.kg) * 10) / 10;
+  const area = points.length >= 2 ? `${line} L ${x(points.length - 1)} ${H} L ${x(0)} ${H} Z` : "";
+  // Android's SVG can keep a stale clip after the reveal finishes, so drop it once drawn.
+  const clip = drawn < 1 ? "url(#weightReveal)" : undefined;
+  const change = points.length ? Math.round((points.at(-1)!.kg - points[0]!.kg) * 10) / 10 : 0;
   const planPath = plan
-    ? Array.from({ length: 25 }, (_, i) => (i / 24) * span)
+    ? Array.from({ length: 25 }, (_, i) => from + (i / 24) * span)
         .map((d, i) => `${i ? "L" : "M"} ${xd(d)} ${y(plan(d))}`)
         .join(" ")
     : null;
 
   return (
     <Surface tint="leaf">
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
-        <T variant="heading">Weight</T>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+        <T variant="heading">Weight progress</T>
+        {journey.pct !== null ? (
+          <View style={styles.goalChip}>
+            <T variant="caption" tone="ink" style={{ fontWeight: "700" }}>
+              {journey.pct}%
+            </T>
+            <T variant="caption"> of goal</T>
+          </View>
+        ) : null}
+      </View>
+      {points.length >= 2 ? (
         <T variant="label">
           {change === 0 ? "No change" : `${change > 0 ? "+" : "−"}${formatWeight(Math.abs(change), unit)}`} since{" "}
           {new Date(`${points[0]!.date}T12:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
         </T>
-      </View>
+      ) : (
+        <T variant="label">Not enough weigh-ins in this range yet.</T>
+      )}
       <View
         style={{ height: H, marginTop: space.sm }}
         onLayout={(e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width)}
       >
-        {w > 0 ? (
+        {w > 0 && points.length >= 2 ? (
           <Svg width={w} height={H}>
             <Defs>
               {/* Both lines draw in left to right, like the plan on the target reveal. */}
@@ -67,7 +97,7 @@ export function WeightTrend({ journey }: { journey: JourneyResponse }) {
             {planPath ? (
               <Path
                 d={planPath}
-                clipPath="url(#weightReveal)"
+                clipPath={clip}
                 fill="none"
                 stroke={colors.inkFaint}
                 strokeWidth={2}
@@ -93,10 +123,10 @@ export function WeightTrend({ journey }: { journey: JourneyResponse }) {
                 <Stop offset="1" stopColor={colors.leaf} stopOpacity="0" />
               </LinearGradient>
             </Defs>
-            <Path d={area} fill="url(#weightArea)" clipPath="url(#weightReveal)" />
+            <Path d={area} fill="url(#weightArea)" clipPath={clip} />
             <Path
               d={line}
-              clipPath="url(#weightReveal)"
+              clipPath={clip}
               fill="none"
               stroke={colors.leaf}
               strokeWidth={3}
@@ -121,6 +151,21 @@ export function WeightTrend({ journey }: { journey: JourneyResponse }) {
           </Svg>
         ) : null}
       </View>
+      <View style={styles.ranges}>
+        {RANGES.map((r) => (
+          <Pressable
+            key={r.label}
+            accessibilityRole="button"
+            accessibilityState={{ selected: r.label === range }}
+            onPress={() => setRange(r.label)}
+            style={[styles.range, r.label === range && styles.rangeOn]}
+          >
+            <T variant="label" tone={r.label === range ? "ink" : "faint"}>
+              {r.label}
+            </T>
+          </Pressable>
+        ))}
+      </View>
       <T variant="caption">
         {[
           plan ? "Dotted: your plan" : null,
@@ -143,3 +188,22 @@ function planLine(j: JourneyResponse): ((d: number) => number) | null {
     return dir < 0 ? Math.max(target, kg) : Math.min(target, kg);
   };
 }
+
+const styles = StyleSheet.create({
+  goalChip: {
+    flexDirection: "row",
+    backgroundColor: colors.surface,
+    borderRadius: radius.pill,
+    paddingHorizontal: space.md,
+    paddingVertical: 4,
+  },
+  ranges: {
+    flexDirection: "row",
+    backgroundColor: "rgba(46,107,79,0.08)",
+    borderRadius: radius.pill,
+    padding: 3,
+    marginTop: space.xs,
+  },
+  range: { flex: 1, alignItems: "center", paddingVertical: 6, borderRadius: radius.pill },
+  rangeOn: { backgroundColor: colors.surface },
+});

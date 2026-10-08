@@ -8,7 +8,15 @@ import {
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { Deps } from "../app.js";
-import { answer, factSheet, greeting, SAFE_MOODS, suggestions, type AssistantContext } from "../domain/assistant.js";
+import {
+  answer,
+  factSheet,
+  greeting,
+  pastMealsFor,
+  SAFE_MOODS,
+  suggestions,
+  type AssistantContext,
+} from "../domain/assistant.js";
 import { sumNutrition } from "../domain/catalogue.js";
 import { focusForDay } from "../domain/focus-history.js";
 import { mealSupportsFocus } from "../domain/focus-match.js";
@@ -37,10 +45,11 @@ async function contextFor(deps: Deps, profile: ProfileRow): Promise<AssistantCon
   const goal = goalOf(profile);
   const week = weekStats(input, input.today);
   const latest = reports[0] ?? null;
+  const nextMeal = nextMealType(suggestMealType(now, profile.timezone), todays.map((m) => m.mealType));
   return {
     name: profile.name,
     hour: localHour(now, profile.timezone),
-    nextMeal: nextMealType(suggestMealType(now, profile.timezone), todays.map((m) => m.mealType)),
+    nextMeal,
     targets: goal?.targets ?? null,
     totals: sumNutrition(todays.map((m) => m.totals)),
     todayMeals: todays.map((m) => ({
@@ -62,6 +71,7 @@ async function contextFor(deps: Deps, profile: ProfileRow): Promise<AssistantCon
     goal: goal
       ? { label: GOAL_LABEL[goal.goal], targetKg: goal.targetWeightKg, currentKg: weighIns.at(-1)?.kg ?? goal.weightKg }
       : null,
+    pastMeals: pastMealsFor(input.meals, nextMeal, input.today, focus),
   };
 }
 

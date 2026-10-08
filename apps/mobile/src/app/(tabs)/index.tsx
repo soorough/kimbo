@@ -256,7 +256,7 @@ function KimboLine() {
       style={({ pressed }) => [styles.kimboLine, pressed && { opacity: 0.85 }]}
     >
       <Kimbo mood={line.mood} size={36} />
-      <T variant="bodyStrong" style={{ flex: 1 }} numberOfLines={3}>
+      <T variant="bodyStrong" style={{ flex: 1 }} numberOfLines={4}>
         {line.text}
       </T>
       <Icon name="chevron-right" size={18} color={colors.leafDeep} />

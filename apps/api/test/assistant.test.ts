@@ -58,6 +58,39 @@ describe("Ask Kimbo", () => {
     expect(res.json.reply.points.length).toBeGreaterThan(0);
   });
 
+  it("after a meal that helped, suggests the next meal from history first, within the calories left", async () => {
+    const id = await onboarded();
+    await addReport(id);
+    const snack = (foodId: string, unit: string, date: string) =>
+      api.post(
+        "/meals",
+        { mealType: "snack", source: "text", eatenAt: `${date}T11:00:00Z`, items: [{ kind: "catalogue", foodId, quantity: 1, unit }] },
+        id,
+      );
+    // Sprouts twice, samosa three times: samosa is eaten more, but it works against the fibre focus.
+    await snack("sprouts", "katori", "2026-10-03");
+    await snack("sprouts", "katori", "2026-10-05");
+    for (const d of ["2026-10-02", "2026-10-04", "2026-10-05"]) await snack("samosa", "piece", d);
+    await lunch(id);
+
+    const home = await api.get("/assistant", id);
+    expect(home.json.greeting.mood).toBe("proud");
+    expect(home.json.greeting.text).toMatch(/^One meal today already helped your focus\. For a snack, your usual sprouts salad \(~\d+ kcal\) fits the [\d,]+ left\.$/);
+
+    const res = await ask(id, { question: "what_to_eat" });
+    expect(res.json.reply.text).toMatch(/^For a snack, your usual sprouts salad works/);
+    expect(res.json.reply.points[0]).toMatch(/^Sprouts salad · about \d+ kcal · eaten 2 times$/);
+    expect(JSON.stringify(res.json.reply)).not.toMatch(/samosa/i);
+  });
+
+  it("with no history yet, the greeting suggests catalogue dishes for the next meal", async () => {
+    const id = await onboarded();
+    await addReport(id);
+    await lunch(id);
+    const home = await api.get("/assistant", id);
+    expect(home.json.greeting.text).toMatch(/already helped your focus\. For a snack, try .+ \(~\d+ kcal of the [\d,]+ left\)\.$/);
+  });
+
   it("explains the focus from the real report value, or asks for a report", async () => {
     const id = await onboarded();
     const none = await ask(id, { question: "why_focus" });

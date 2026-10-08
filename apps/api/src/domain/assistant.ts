@@ -13,10 +13,14 @@ import type {
   MealType,
   Nutrition,
 } from "@kimbo/shared";
+import type { StoredMeal } from "../repo/meals.js";
 import { CATALOGUE, type CatalogueEntry } from "./catalogue-data.js";
 import { perUnit } from "./catalogue.js";
 import { eats } from "./diet.js";
+import { mealSupportsFocus } from "./focus-match.js";
 import { FOCI } from "./health.js";
+import { mealKey, RECENT_LOOKBACK_DAYS } from "./recent-meals.js";
+import { addDays } from "./time.js";
 
 /** Everything Kimbo knows about the user right now. All numbers come from Kimbo's own rules. */
 export interface AssistantContext {
@@ -33,6 +37,68 @@ export interface AssistantContext {
   barriers: Barrier[];
   week: { daysLogged: number; daysElapsed: number; focusHelped: number; focusTotal: number; onTargetDays: number | null };
   goal: { label: string; targetKg: number | null; currentKg: number | null } | null;
+  /** distinct meals eaten before today at the next meal's time, most often first */
+  pastMeals: PastMeal[];
+}
+
+/** A meal the user has already eaten at this time of day, as they logged it. */
+export interface PastMeal {
+  label: string;
+  kcal: number;
+  times: number;
+  supportsFocus: boolean | null;
+}
+
+/** The user's own history for one meal slot: same dishes in the same portions count as one meal. */
+export function pastMealsFor(meals: StoredMeal[], mealType: MealType, today: string, focus: FocusKey | null): PastMeal[] {
+  const since = addDays(today, -RECENT_LOOKBACK_DAYS);
+  const groups = new Map<string, { latest: StoredMeal; times: number }>();
+  for (const m of meals) {
+    if (m.mealType !== mealType || m.localDate >= today || m.localDate < since) continue;
+    const key = mealKey(m);
+    const g = groups.get(key);
+    if (!g) groups.set(key, { latest: m, times: 1 });
+    else {
+      g.times++;
+      if (m.eatenAt > g.latest.eatenAt) g.latest = m;
+    }
+  }
+  return [...groups.values()]
+    .sort((a, b) => b.times - a.times || b.latest.eatenAt.localeCompare(a.latest.eatenAt))
+    .map(({ latest, times }) => ({
+      label: list(latest.items.map((i) => i.name.toLowerCase())),
+      kcal: Math.round(latest.totals.calories),
+      times,
+      supportsFocus: focus ? mealSupportsFocus(latest, focus).supports : null,
+    }));
+}
+
+/** The past meal to eat again: fits what's left today, helps the focus if one does, most eaten first. */
+export function suggestFromHistory(ctx: AssistantContext): PastMeal | null {
+  const left = ctx.targets ? ctx.targets.calories - ctx.totals.calories : null;
+  if (left !== null && left <= 0) return null;
+  const fits = ctx.pastMeals.filter((m) => left === null || m.kcal <= left);
+  return fits.find((m) => m.supportsFocus) ?? fits.find((m) => m.supportsFocus !== false) ?? null;
+}
+
+/** "your usual X" when it's a habit, "X again" when it happened once. */
+function pastMealPhrase(m: PastMeal): string {
+  return m.times > 1 ? `your usual ${m.label}` : `${m.label} again`;
+}
+
+/** One short line on what to eat next, from history first and the catalogue second. */
+function nextMealLine(ctx: AssistantContext): string {
+  const left = ctx.targets ? Math.round(ctx.targets.calories - ctx.totals.calories) : null;
+  if (left !== null && left <= 0) return `You're at today's target, so keep ${MEAL_WORD[ctx.nextMeal]} light.`;
+  const leftText = left === null ? null : `the ${left.toLocaleString("en-IN")} left`;
+  const past = suggestFromHistory(ctx);
+  if (past)
+    return `For ${MEAL_WORD[ctx.nextMeal]}, ${pastMealPhrase(past)} (~${past.kcal} kcal) fits${leftText ? ` ${leftText}` : " well"}.`;
+  const ofLeft = leftText ? ` of ${leftText}` : "";
+  const dishes = suggestDishes(ctx).slice(0, 2);
+  if (!dishes.length) return "What's next?";
+  const kcal = dishes.reduce((s, d) => s + d.kcal, 0);
+  return `For ${MEAL_WORD[ctx.nextMeal]}, try ${list(dishes.map((d) => d.name.toLowerCase()))} (~${kcal} kcal${ofLeft}).`;
 }
 
 const MEAL_WORD: Record<MealType, string> = { breakfast: "breakfast", lunch: "lunch", snack: "a snack", dinner: "dinner" };
@@ -107,7 +173,7 @@ export function greeting(ctx: AssistantContext): AssistantReply {
   if (helped > 0) {
     return {
       mood: "proud",
-      text: `${helped === 1 ? "One meal" : `${helped} meals`} today already helped your focus${hi}. What's next?`,
+      text: `${helped === 1 ? "One meal" : `${helped} meals`} today already helped your focus${hi}. ${nextMealLine(ctx)}`,
       points: [],
       actions: [logAction(ctx.nextMeal)],
     };
@@ -148,6 +214,19 @@ export function answer(q: AssistantQuestion, ctx: AssistantContext): AssistantRe
           : left <= 0
             ? " You're at today's target, so keep it light."
             : ` That's about ${total.toLocaleString("en-IN")} kcal of the ${left.toLocaleString("en-IN")} you have left.`;
+      const past = suggestFromHistory(ctx);
+      if (past) {
+        const others = dishes.filter((d) => !past.label.includes(d.name.toLowerCase())).slice(0, 2);
+        return {
+          mood: "happy",
+          text: `For ${MEAL_WORD[ctx.nextMeal]}, ${pastMealPhrase(past)} works: about ${past.kcal} kcal${left !== null ? ` of the ${left.toLocaleString("en-IN")} you have left` : ""}.${past.supportsFocus ? " It helped your focus last time too." : ""}${others.length ? ` Or try ${list(others.map((d) => d.name.toLowerCase()))}.` : ""}`,
+          points: [
+            `${past.label[0]!.toUpperCase()}${past.label.slice(1)} · about ${past.kcal} kcal · eaten ${past.times === 1 ? "once" : `${past.times} times`}`,
+            ...others.map((d) => `${d.name} · about ${d.kcal} kcal`),
+          ],
+          actions: [logAction(ctx.nextMeal)],
+        };
+      }
       return {
         mood: "happy",
         text: `For ${MEAL_WORD[ctx.nextMeal]}, try ${list(dishes.map((d) => d.name.toLowerCase()))}.${why}${budget}`,
@@ -222,6 +301,9 @@ export function factSheet(ctx: AssistantContext): string {
       : "No blood report yet.",
     `This week: ${ctx.week.daysLogged} of ${ctx.week.daysElapsed} days logged; ${ctx.week.focusHelped} of ${ctx.week.focusTotal} meals helped the focus.`,
     ctx.goal ? `Goal: ${ctx.goal.label}${ctx.goal.targetKg ? `, target ${ctx.goal.targetKg} kg` : ""}${ctx.goal.currentKg ? `, now ${ctx.goal.currentKg} kg` : ""}.` : "",
+    ctx.pastMeals.length
+      ? `What they've eaten before for ${ctx.nextMeal}: ${ctx.pastMeals.slice(0, 4).map((m) => `${m.label} (~${m.kcal} kcal, ${m.times}x${m.supportsFocus ? ", helped the focus" : ""})`).join("; ")}.`
+      : "",
     `Dishes Kimbo can suggest for the next meal: ${suggestDishes(ctx).map((d) => `${d.name} (~${d.kcal} kcal)`).join(", ")}.`,
   ];
   return lines.filter(Boolean).join("\n");

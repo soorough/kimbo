@@ -5,18 +5,17 @@ import { StyleSheet, View } from "react-native";
 import { api, errorMessage } from "@/lib/api";
 import { useAfterWrite } from "@/lib/mutations";
 import { colors, radius, space } from "@/lib/theme";
-import { formatPace, formatWeight, kgToLb, lbToKg, useUnits } from "@/lib/units";
+import { formatWeight, kgToLb, lbToKg, useUnits } from "@/lib/units";
 import { Button } from "./Button";
 import { CardSkeleton } from "./Skeleton";
-import { Icon } from "./Icon";
 import { RulerPicker } from "./RulerPicker";
 import { Sheet } from "./Sheet";
 import { Surface } from "./Surface";
 import { T } from "./Text";
 
 /**
- * The goal made visible on Today: how far from start to goal weight, the on-target
- * streak, and a one-tap weigh-in. It keeps the target from feeling abstract.
+ * Cal AI's current-weight card: the latest weight, when the next weigh-in is due, the bar
+ * from start to goal and the date the plan gets there. One tap logs a weigh-in.
  */
 export function JourneyCard() {
   const journey = useQuery({ queryKey: ["journey"], queryFn: api.journey });
@@ -26,32 +25,39 @@ export function JourneyCard() {
   if (journey.isLoading) return <CardSkeleton h={140} />;
   if (!j) return null;
 
-  const title =
-    j.goal === "recomp"
-      ? `Build muscle at ${formatWeight(j.startKg, unit)}`
-      : j.goal === "maintain"
-        ? `Stay at ${formatWeight(j.startKg, unit)}`
-        : `${j.goal === "lose" ? "Lose" : "Build"} ${formatPace(j.weeklyKg, unit)} a week`;
+  const since = j.lastWeighIn ? daysSince(j.lastWeighIn) : null;
+  const due = since === null ? null : Math.max(0, WEIGH_IN_EVERY - since);
+  const arrival = goalDate(j);
 
   return (
     <Surface>
       <View style={styles.top}>
         <View style={{ flex: 1, gap: 2 }}>
-          <T variant="overline">YOUR GOAL</T>
-          <T variant="heading">{title}</T>
+          <T variant="label">Current weight</T>
+          <T style={styles.big}>{formatWeight(j.currentKg, unit)}</T>
         </View>
-        <Streak days={j.onTargetStreak} />
+        <View style={styles.chip}>
+          <T variant="caption" tone="soft">
+            {due === null ? "First weigh-in due" : due === 0 ? "Weigh-in due today" : `Next weigh-in: ${due}d`}
+          </T>
+        </View>
       </View>
 
       {j.targetKg !== null && j.pct !== null ? <GoalBar j={j} /> : null}
 
       <View style={styles.bottom}>
         <T variant="caption" style={{ flex: 1 }}>
-          {j.onTargetStreak === 0
-            ? "Land within 10% of your kcal target today to start a streak."
-            : j.lastWeighIn
-              ? `Last weigh-in ${daysAgo(j.lastWeighIn)}`
-              : "Weigh in to start tracking your trend."}
+          {j.kgToGo === 0 ? (
+            "You've reached your goal."
+          ) : arrival ? (
+            <>
+              At your goal by <T variant="caption" tone="ink" style={{ fontWeight: "700" }}>{arrival}</T>.
+            </>
+          ) : j.lastWeighIn ? (
+            `Last weigh-in ${daysAgo(j.lastWeighIn)}`
+          ) : (
+            "Weigh in to start tracking your trend."
+          )}
         </T>
         <Button label="Log weight" kind="secondary" compact onPress={() => setWeighing(true)} />
       </View>
@@ -61,6 +67,20 @@ export function JourneyCard() {
       </Sheet>
     </Surface>
   );
+}
+
+/** Weekly weigh-ins, like Cal AI; daily ones are welcome but not asked for. */
+const WEIGH_IN_EVERY = 7;
+
+/** When the planned weekly pace reaches the goal from the current weight. */
+function goalDate(j: JourneyResponse): string | null {
+  if (!j.kgToGo || !j.weeklyKg) return null;
+  const days = Math.ceil((j.kgToGo / j.weeklyKg) * 7);
+  return new Date(Date.now() + days * 86_400_000).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function GoalBar({ j }: { j: JourneyResponse }) {
@@ -73,27 +93,13 @@ function GoalBar({ j }: { j: JourneyResponse }) {
         <View style={[styles.marker, { left: `${pct}%` }]} />
       </View>
       <View style={styles.labels}>
-        <T variant="caption">{formatWeight(j.startKg, unit)}</T>
-        <T variant="label" tone="leaf">
-          {j.kgToGo === 0
-            ? "Goal reached"
-            : `${formatWeight(j.currentKg, unit)} now · ${formatWeight(j.kgToGo!, unit)} to go`}
+        <T variant="caption">
+          Start: <T variant="caption" tone="ink" style={{ fontWeight: "700" }}>{formatWeight(j.startKg, unit)}</T>
         </T>
-        <T variant="caption">{formatWeight(j.targetKg!, unit)}</T>
+        <T variant="caption">
+          Goal: <T variant="caption" tone="ink" style={{ fontWeight: "700" }}>{formatWeight(j.targetKg!, unit)}</T>
+        </T>
       </View>
-    </View>
-  );
-}
-
-/** Days in a row on the calorie target. Shown only when there's a run to protect. */
-function Streak({ days }: { days: number }) {
-  if (days === 0) return null;
-  return (
-    <View style={styles.streak} accessibilityLabel={`${days} days in a row on target`}>
-      <Icon name="sun" size={16} color={colors.turmericDeep} />
-      <T variant="label" tone="turmeric">
-        {days} {days === 1 ? "day" : "days"} on target
-      </T>
     </View>
   );
 }
@@ -145,18 +151,20 @@ function WeighIn({ startKg, unit, onDone }: { startKg: number; unit: "kg" | "lb"
   );
 }
 
+function daysSince(date: string): number {
+  return Math.round((Date.now() - new Date(`${date}T12:00:00`).getTime()) / 86_400_000);
+}
+
 function daysAgo(date: string): string {
-  const days = Math.round((Date.now() - new Date(`${date}T12:00:00`).getTime()) / 86_400_000);
+  const days = daysSince(date);
   return days <= 0 ? "today" : days === 1 ? "yesterday" : `${days} days ago`;
 }
 
 const styles = StyleSheet.create({
   top: { flexDirection: "row", alignItems: "flex-start", gap: space.md },
-  streak: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: colors.turmericSoft,
+  big: { fontSize: 30, lineHeight: 38, fontWeight: "700", color: colors.ink },
+  chip: {
+    backgroundColor: colors.sunk,
     borderRadius: radius.pill,
     paddingHorizontal: space.md,
     paddingVertical: 6,
