@@ -14,8 +14,8 @@ import { Surface } from "./Surface";
 import { T } from "./Text";
 
 /**
- * Cal AI's current-weight card: the latest weight, when the next weigh-in is due, the bar
- * from start to goal and the date the plan gets there. One tap logs a weigh-in.
+ * Cal AI's current-weight card: the latest weight, the bar from start to goal and the date
+ * the plan gets there. Weighing is a daily habit, so there's no countdown; one tap logs it.
  */
 export function JourneyCard() {
   const journey = useQuery({ queryKey: ["journey"], queryFn: api.journey });
@@ -25,8 +25,6 @@ export function JourneyCard() {
   if (journey.isLoading) return <CardSkeleton h={140} />;
   if (!j) return null;
 
-  const since = j.lastWeighIn ? daysSince(j.lastWeighIn) : null;
-  const due = since === null ? null : Math.max(0, WEIGH_IN_EVERY - since);
   const arrival = goalDate(j);
 
   return (
@@ -35,11 +33,6 @@ export function JourneyCard() {
         <View style={{ flex: 1, gap: 2 }}>
           <T variant="label">Current weight</T>
           <T style={styles.big}>{formatWeight(j.currentKg, unit)}</T>
-        </View>
-        <View style={styles.chip}>
-          <T variant="caption" tone="soft">
-            {due === null ? "First weigh-in due" : due === 0 ? "Weigh-in due today" : `Next weigh-in: ${due}d`}
-          </T>
         </View>
       </View>
 
@@ -68,9 +61,6 @@ export function JourneyCard() {
     </Surface>
   );
 }
-
-/** Weekly weigh-ins, like Cal AI; daily ones are welcome but not asked for. */
-const WEIGH_IN_EVERY = 7;
 
 /** When the planned weekly pace reaches the goal from the current weight. */
 function goalDate(j: JourneyResponse): string | null {
@@ -163,12 +153,6 @@ function daysAgo(date: string): string {
 const styles = StyleSheet.create({
   top: { flexDirection: "row", alignItems: "flex-start", gap: space.md },
   big: { fontSize: 30, lineHeight: 38, fontWeight: "700", color: colors.ink },
-  chip: {
-    backgroundColor: colors.sunk,
-    borderRadius: radius.pill,
-    paddingHorizontal: space.md,
-    paddingVertical: 6,
-  },
   track: { height: 10, borderRadius: radius.pill, backgroundColor: colors.sunk, marginTop: space.sm },
   fill: { height: 10, borderRadius: radius.pill, backgroundColor: colors.leaf },
   marker: {
