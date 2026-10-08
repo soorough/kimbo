@@ -50,19 +50,39 @@ export function GoalPath({
   /** e.g. "76.2 kg" */
   startLabel: string;
   goalLabel: string;
-  /** e.g. "6 Jan" */
+  /** e.g. "6 Jan 2027" */
   dateLabel: string;
   losing: boolean;
   /** called once Kimbo lands on the goal */
   onLanded?: () => void;
 }) {
+  const still = useReduceMotion();
   const [w, setW] = useState(0);
   const [landed, setLanded] = useState(false);
-  const p = useDrawProgress(DRAW_MS, () => {
-    setLanded(true);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    onLanded?.();
-  });
+  // One native-driven value runs the whole draw: no React re-render per frame, so it stays smooth.
+  const v = useRef(new Animated.Value(0)).current;
+  const landedCb = useRef(onLanded);
+  landedCb.current = onLanded;
+
+  useEffect(() => {
+    if (w === 0) return;
+    const land = () => {
+      setLanded(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      landedCb.current?.();
+    };
+    if (still) {
+      v.setValue(1);
+      land();
+      return;
+    }
+    Animated.timing(v, {
+      toValue: 1,
+      duration: DRAW_MS,
+      easing: Easing.inOut(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => finished && land());
+  }, [w, still, v]);
 
   const left = PAD_X;
   const right = w - PAD_X;
@@ -73,13 +93,16 @@ export function GoalPath({
     const k = 0.75 * t + 0.25 * t * t * (3 - 2 * t);
     return { x: left + (right - left) * t, y: yStart + (yGoal - yStart) * k };
   };
-  const steps = 48;
-  const n = Math.max(2, Math.round(steps * p) + 1);
-  const pts = Array.from({ length: n }, (_, i) => at((i / (n - 1)) * p));
+  // Drawn once in full; a cover slides off to reveal it.
+  const pts = Array.from({ length: 49 }, (_, i) => at(i / 48));
   const line = pts.map((q, i) => `${i ? "L" : "M"} ${q.x.toFixed(1)} ${q.y.toFixed(1)}`).join(" ");
-  const tip = pts.at(-1)!;
-  const area = `${line} L ${tip.x.toFixed(1)} ${H - BOTTOM + 6} L ${left} ${H - BOTTOM + 6} Z`;
-  const labels = Math.max(0, Math.min(1, (p - 0.85) / 0.15));
+  const area = `${line} L ${right.toFixed(1)} ${H - BOTTOM + 6} L ${left} ${H - BOTTOM + 6} Z`;
+  // Kimbo follows the same curve, sampled for the native interpolation.
+  const samples = Array.from({ length: 17 }, (_, i) => i / 16);
+  const kimboX = v.interpolate({ inputRange: samples, outputRange: samples.map((t) => at(t).x - KIMBO / 2) });
+  const kimboY = v.interpolate({ inputRange: samples, outputRange: samples.map((t) => at(t).y - KIMBO - 4) });
+  const coverX = v.interpolate({ inputRange: [0, 1], outputRange: [left + 1, right + 4] });
+  const labels = v.interpolate({ inputRange: [0, 0.85, 1], outputRange: [0, 0, 1] });
 
   return (
     <View
@@ -99,15 +122,25 @@ export function GoalPath({
             </Defs>
             <Path d={area} fill="url(#goalFill)" />
             <Path d={line} stroke={colors.leaf} strokeWidth={3} fill="none" strokeLinecap="round" />
-            <Circle cx={left} cy={yStart} r={6} fill={colors.surface} stroke={colors.ink} strokeWidth={2.5} />
             {landed ? (
               <Circle cx={right} cy={yGoal} r={7} fill={colors.leaf} stroke={colors.surface} strokeWidth={2.5} />
             ) : null}
           </Svg>
-          <View pointerEvents="none" style={[styles.kimbo, { left: tip.x - KIMBO / 2, top: tip.y - KIMBO - 4 }]}>
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.cover, { width: w, height: H, transform: [{ translateX: coverX }] }]}
+          />
+          {/* The start dot sits above the cover so it's there from the first frame. */}
+          <Svg width={w} height={H} style={[StyleSheet.absoluteFill, { top: space.sm }]} pointerEvents="none">
+            <Circle cx={left} cy={yStart} r={6} fill={colors.surface} stroke={colors.ink} strokeWidth={2.5} />
+          </Svg>
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.kimbo, { transform: [{ translateX: kimboX }, { translateY: kimboY }] }]}
+          >
             <Kimbo mood={landed ? "cheer" : "happy"} size={KIMBO} leaves={landed ? 3 : 1} />
-          </View>
-          <View pointerEvents="none" style={[styles.labelRow, { opacity: labels }]}>
+          </Animated.View>
+          <Animated.View pointerEvents="none" style={[styles.labelRow, { opacity: labels }]}>
             <View>
               <T variant="label" tone="soft">
                 Today
@@ -120,7 +153,7 @@ export function GoalPath({
               </T>
               <T variant="caption">{goalLabel}</T>
             </View>
-          </View>
+          </Animated.View>
         </>
       ) : null}
     </View>
@@ -135,7 +168,8 @@ const styles = StyleSheet.create({
     paddingTop: space.sm,
     overflow: "hidden",
   },
-  kimbo: { position: "absolute", width: KIMBO, height: KIMBO },
+  kimbo: { position: "absolute", left: 0, top: space.sm, width: KIMBO, height: KIMBO },
+  cover: { position: "absolute", left: 0, top: space.sm, backgroundColor: colors.surface },
   labelRow: {
     position: "absolute",
     left: PAD_X - 6,

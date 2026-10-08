@@ -128,13 +128,15 @@ const QUESTIONS: Record<Step, string> = {
  * plan is built, so its focus is part of the plan from day one.
  */
 const SECTIONS = [
-  { label: "About you", steps: ["name", "sex", "age", "height", "weight", "activity"] },
-  { label: "Your goal", steps: ["goal", "goalWeight", "pace"] },
-  { label: "Your plan", steps: ["diet", "barriers", "report"] },
+  { label: "Your goal", steps: ["goal", "goalWeight"] },
+  { label: "About you", steps: ["sex", "age", "height", "weight", "activity"] },
+  // Pace lives with the plan: its options show calories and dates, which need the body details first.
+  { label: "Your plan", steps: ["pace", "diet", "barriers", "report"] },
 ] as const satisfies readonly { label: string; steps: readonly Step[] }[];
 
 function stepsFor(goal: GoalType | null): Step[] {
-  const all = SECTIONS.flatMap((s) => s.steps) as Step[];
+  // Kimbo says hi and asks your name before the three sections start.
+  const all = ["name", ...SECTIONS.flatMap((s) => s.steps)] as Step[];
   // Maintaining has no goal weight or pace to choose.
   return goal && isWeightGoal(goal) ? all : all.filter((s) => s !== "goalWeight" && s !== "pace");
 }
@@ -313,11 +315,16 @@ export default function Onboarding() {
 
   const current = steps[Math.min(step, steps.length - 1)]!;
   const body = { age, sex: sex ?? "other", heightCm: height, weightKg: weight };
-  // A remembered goal is kept only while it still points the right way from today's weight.
-  const goalWeightValue =
-    goalType === "build_muscle"
+  // Goal weight is asked before today's weight, so until then it isn't held to a direction.
+  const weightKnown = !!saved || steps.indexOf("weight") < step;
+  // A goal is kept only while it still points the right way from today's weight.
+  const goalWeightValue = !weightKnown
+    ? (goalWeight ?? (goalType === "build_muscle" ? 70 : 60))
+    : goalType === "build_muscle"
       ? Math.max(goalWeight ?? round1(weight + 3), gainFloor(weight))
       : Math.min(goalWeight ?? Math.max(35, Math.round(weight - 5)), loseCeiling(weight));
+  // Said out loud if today's weight moved the goal (e.g. a "lose" goal above the weight just entered).
+  const goalAdjusted = weightKnown && goalWeight !== null && Math.abs(goalWeight - goalWeightValue) >= 0.1;
 
   const footer =
     current === "name" ? (
@@ -519,11 +526,22 @@ export default function Onboarding() {
       ) : null}
 
       {current === "goalWeight" && goalType && isWeightGoal(goalType) ? (
-        <GoalWeightStep goal={goalType} currentKg={weight} kg={goalWeightValue} onChange={setGoalWeight} />
+        <GoalWeightStep
+          goal={goalType}
+          currentKg={weightKnown ? weight : null}
+          kg={goalWeightValue}
+          onChange={setGoalWeight}
+        />
       ) : null}
 
       {current === "pace" && goalType && isWeightGoal(goalType) && activity ? (
         <Options>
+          {goalAdjusted ? (
+            <T variant="label" tone="plum">
+              {goalType === "lose" ? "That goal is above" : "That goal is below"} your weight today, so Kimbo set it to{" "}
+              {formatWeight(goalWeightValue, weightUnit)}. You can change it in Edit goal.
+            </T>
+          ) : null}
           {PACES[goalType].map((pace) => {
             const n = computeGoal({
               ...body,
@@ -610,14 +628,14 @@ function GoalWeightStep({
   onChange,
 }: {
   goal: "lose" | "build_muscle";
-  currentKg: number;
+  /** null when today's weight hasn't been asked yet: then any weight is allowed and no difference is shown */
+  currentKg: number | null;
   kg: number;
   onChange: (kg: number) => void;
 }) {
   const unit = useUnits((u) => u.weight);
-  const diff = Math.abs(kg - currentKg);
-  const min = goal === "lose" ? 30 : gainFloor(currentKg);
-  const max = goal === "lose" ? loseCeiling(currentKg) : Math.ceil(currentKg + 30);
+  const min = currentKg === null ? 30 : goal === "lose" ? 30 : gainFloor(currentKg);
+  const max = currentKg === null ? 200 : goal === "lose" ? loseCeiling(currentKg) : Math.ceil(currentKg + 30);
   return (
     <View style={{ gap: space.lg }}>
       {unit === "kg" ? (
@@ -643,10 +661,17 @@ function GoalWeightStep({
           unit="lb"
         />
       )}
-      <T variant="label" align="center">
-        That's {formatWeight(Math.round(diff * 10) / 10, unit)} {goal === "lose" ? "to lose" : "to gain"} from{" "}
-        {formatWeight(currentKg, unit)}.
-      </T>
+      {currentKg === null ? (
+        <T variant="label" align="center">
+          {goal === "lose" ? "Where you'd like to get to." : "Where you'd like to build up to."} You can change it any
+          time.
+        </T>
+      ) : (
+        <T variant="label" align="center">
+          That's {formatWeight(Math.round(Math.abs(kg - currentKg) * 10) / 10, unit)}{" "}
+          {goal === "lose" ? "to lose" : "to gain"} from {formatWeight(currentKg, unit)}.
+        </T>
+      )}
     </View>
   );
 }
@@ -784,29 +809,31 @@ function Reveal({
         </Animated.View>
       )}
 
-      <View style={styles.disclosures}>
-        <Disclosure title="See the breakdown">
-          {[
-            { value: `${goal.targets.protein} g protein`, why: PROTEIN_WHY[goal.goal], color: macroColors.protein },
-            { value: `${goal.targets.carbs} g carbs`, why: "Energy for your day", color: macroColors.carbs },
-            { value: `${goal.targets.fat} g fat`, why: "Keeps meals satisfying", color: macroColors.fat },
-            {
-              value: `${goal.targets.fibre} g fibre or more`,
-              why: "Keeps you full, helps cholesterol",
-              color: macroColors.fibre,
-            },
-            { value: `Under ${goal.targets.satFat} g saturated fat`, why: "A limit, not a goal", color: colors.plum },
-          ].map((r) => (
-            // Value on one line, what it's for on the next: no maths needed.
-            <View key={r.value} style={styles.breakdownRow}>
-              <View style={[styles.macroDot, { backgroundColor: r.color, marginBottom: 0, marginTop: 7 }]} />
-              <View style={{ flex: 1 }}>
-                <T variant="bodyStrong">{r.value}</T>
-                <T variant="caption">{r.why}</T>
-              </View>
+      {/* Always open, in its own box: what the day looks like, value first and what it's for under it. */}
+      <View style={styles.breakdownBox}>
+        <T variant="overline" tone="soft">
+          YOUR DAY
+        </T>
+        {[
+          { value: `${goal.targets.protein} g protein`, why: PROTEIN_WHY[goal.goal], color: macroColors.protein },
+          { value: `${goal.targets.carbs} g carbs`, why: "Energy for your day", color: macroColors.carbs },
+          { value: `${goal.targets.fat} g fat`, why: "Keeps meals satisfying", color: macroColors.fat },
+          {
+            value: `${goal.targets.fibre} g fibre or more`,
+            why: "Keeps you full, helps cholesterol",
+            color: macroColors.fibre,
+          },
+          { value: `Under ${goal.targets.satFat} g saturated fat`, why: "A limit, not a goal", color: colors.plum },
+        ].map((r) => (
+          // Value on one line, what it's for on the next: no maths needed.
+          <View key={r.value} style={styles.breakdownRow}>
+            <View style={[styles.macroDot, { backgroundColor: r.color, marginBottom: 0, marginTop: 7 }]} />
+            <View style={{ flex: 1 }}>
+              <T variant="bodyStrong">{r.value}</T>
+              <T variant="caption">{r.why}</T>
             </View>
-          ))}
-        </Disclosure>
+          </View>
+        ))}
       </View>
     </Screen>
   );
@@ -843,27 +870,6 @@ const PROTEIN_WHY: Record<GoalType, string> = {
   build_muscle: "Builds muscle with your training",
   recomp: "Builds muscle while weight stays put",
 };
-
-/** A closed-by-default row: detail for anyone who wants it, nothing to read for anyone who doesn't. */
-function Disclosure({ title, children }: { title: string; children: ReactNode }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
-        onPress={() => setOpen(!open)}
-        style={styles.disclosureRow}
-      >
-        <T variant="bodyStrong" style={{ flex: 1 }}>
-          {title}
-        </T>
-        <Icon name={open ? "chevron-up" : "chevron-down"} size={18} color={colors.inkSoft} />
-      </Pressable>
-      {open ? <View style={styles.disclosureBody}>{children}</View> : null}
-    </View>
-  );
-}
 
 /**
  * Height in cm or feet/inches. State stays in cm (what the API stores); the ruler
@@ -1059,15 +1065,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     backgroundColor: colors.leafSoft,
   },
-  disclosures: { borderRadius: radius.lg, backgroundColor: colors.surface, overflow: "hidden" },
-  disclosureRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: space.lg,
-    paddingVertical: space.md,
-    minHeight: 52,
+  breakdownBox: {
+    gap: space.md,
+    padding: space.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
   },
-  disclosureBody: { paddingHorizontal: space.lg, paddingBottom: space.lg, gap: space.md },
   breakdownRow: { flexDirection: "row", gap: space.md, alignItems: "flex-start" },
   bigNumber: { fontSize: 48, lineHeight: 54, fontVariant: ["tabular-nums"] },
   pace: {
