@@ -10,6 +10,10 @@ import { colors, fonts, radius, shadow, space } from "@/lib/theme";
 import { Kimbo } from "./Kimbo";
 import { T } from "./Text";
 
+/** Pill height; everything else is sized from it. */
+const PILL_H = 44;
+const FACE = 36;
+
 const LINE = "I track food, not personal boundaries. 😭";
 
 /**
@@ -30,7 +34,7 @@ export function AskKimboPill() {
   const [labelW, setLabelW] = useState(84);
   const open = useRef(new Animated.Value(1)).current;
   const spin = useRef(new Animated.Value(0)).current;
-  const H = 38;
+  const H = PILL_H;
   const W = H + labelW;
   // How far each cap travels to meet in the middle when collapsed.
   const shift = open.interpolate({ inputRange: [0, 1], outputRange: [(W - H) / 2, 0] });
@@ -154,7 +158,7 @@ export function AskKimboPill() {
               },
             ]}
           >
-            <Kimbo mood={speaking ? "thanks" : mood} size={24} leaves={1 + helped} />
+            <Kimbo mood={speaking ? "thanks" : mood} size={28} leaves={1 + helped} />
           </Animated.View>
           {/* Measured once off-screen, so the open width fits the text exactly. */}
           <View style={styles.measure} onLayout={(e) => setLabelW(e.nativeEvent.layout.width)}>
@@ -173,7 +177,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: "100%",
-    marginBottom: space.xxl,
+    marginBottom: space.xxxl,
     alignItems: "center",
     // Drawn above the page's cards without looking lifted off it: order by zIndex,
     // and only a soft shadow (elevation also casts a heavy shadow on Android).
@@ -187,30 +191,30 @@ const styles = StyleSheet.create({
   cap: {
     position: "absolute",
     top: 0,
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: colors.ink,
+    width: PILL_H,
+    height: PILL_H,
+    borderRadius: PILL_H / 2,
+    backgroundColor: colors.leaf,
   },
-  middle: { position: "absolute", top: 0, height: 38, backgroundColor: colors.ink },
-  // Sized like SuperKalam's pill: 38 tall, 14-point label.
+  middle: { position: "absolute", top: 0, height: PILL_H, backgroundColor: colors.leaf },
+  // Kimbo's face, inset 4 from the pill's edge.
   face: {
     position: "absolute",
     left: 4,
     top: 4,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: FACE,
+    height: FACE,
+    borderRadius: FACE / 2,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.turmericSoft,
   },
-  label: { position: "absolute", top: 0, height: 38, justifyContent: "center" },
+  label: { position: "absolute", top: 0, height: PILL_H, justifyContent: "center" },
   labelText: {
     color: colors.white,
     fontFamily: fonts.semibold,
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: 15,
+    lineHeight: 20,
     paddingLeft: 4,
     paddingRight: 14,
   },
