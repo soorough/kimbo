@@ -75,7 +75,7 @@ describe("Ask Kimbo", () => {
 
     const home = await api.get("/assistant", id);
     expect(home.json.greeting.mood).toBe("proud");
-    expect(home.json.greeting.text).toMatch(/^One meal today already helped your focus\. For a snack, your usual sprouts salad \(~\d+ kcal\) fits the [\d,]+ left\.$/);
+    expect(home.json.greeting.text).toMatch(/^Nice one! That helped your focus\. Snack idea: sprouts salad \(~\d+ kcal\)\.$/);
 
     const res = await ask(id, { question: "what_to_eat" });
     expect(res.json.reply.text).toMatch(/^For a snack, your usual sprouts salad works/);
@@ -88,7 +88,7 @@ describe("Ask Kimbo", () => {
     await addReport(id);
     await lunch(id);
     const home = await api.get("/assistant", id);
-    expect(home.json.greeting.text).toMatch(/already helped your focus\. For a snack, try .+ \(~\d+ kcal of the [\d,]+ left\)\.$/);
+    expect(home.json.greeting.text).toMatch(/^Nice one! That helped your focus\. Snack idea: [a-z ]+ \(~\d+ kcal\)\.$/);
   });
 
   it("explains the focus from the real report value, or asks for a report", async () => {

@@ -44,6 +44,8 @@ export interface AssistantContext {
 /** A meal the user has already eaten at this time of day, as they logged it. */
 export interface PastMeal {
   label: string;
+  /** at most two dishes, for a one-glance line: "rajma + steamed rice" */
+  short: string;
   kcal: number;
   times: number;
   supportsFocus: boolean | null;
@@ -67,6 +69,7 @@ export function pastMealsFor(meals: StoredMeal[], mealType: MealType, today: str
     .sort((a, b) => b.times - a.times || b.latest.eatenAt.localeCompare(a.latest.eatenAt))
     .map(({ latest, times }) => ({
       label: list(latest.items.map((i) => i.name.toLowerCase())),
+      short: shortName(latest.items.map((i) => i.name)),
       kcal: Math.round(latest.totals.calories),
       times,
       supportsFocus: focus ? mealSupportsFocus(latest, focus).supports : null,
@@ -86,19 +89,24 @@ function pastMealPhrase(m: PastMeal): string {
   return m.times > 1 ? `your usual ${m.label}` : `${m.label} again`;
 }
 
-/** One short line on what to eat next, from history first and the catalogue second. */
-function nextMealLine(ctx: AssistantContext): string {
-  const left = ctx.targets ? Math.round(ctx.targets.calories - ctx.totals.calories) : null;
-  if (left !== null && left <= 0) return `You're at today's target, so keep ${MEAL_WORD[ctx.nextMeal]} light.`;
-  const leftText = left === null ? null : `the ${left.toLocaleString("en-IN")} left`;
+/** "Dal (toor/arhar)" reads as "dal"; more than two dishes keep only the first two. */
+function shortName(names: string[]): string {
+  return names
+    .slice(0, 2)
+    .map((n) => n.replace(/\s*\(.*?\)/g, "").toLowerCase())
+    .join(" + ");
+}
+
+const MEAL_TITLE: Record<MealType, string> = { breakfast: "Breakfast", lunch: "Lunch", snack: "Snack", dinner: "Dinner" };
+
+/** One glanceable idea for the next meal: something they've eaten before, else one catalogue dish. */
+function nextMealIdea(ctx: AssistantContext): string {
+  const left = ctx.targets ? ctx.targets.calories - ctx.totals.calories : null;
+  if (left !== null && left <= 0) return `Keep ${MEAL_WORD[ctx.nextMeal]} light today.`;
   const past = suggestFromHistory(ctx);
-  if (past)
-    return `For ${MEAL_WORD[ctx.nextMeal]}, ${pastMealPhrase(past)} (~${past.kcal} kcal) fits${leftText ? ` ${leftText}` : " well"}.`;
-  const ofLeft = leftText ? ` of ${leftText}` : "";
-  const dishes = suggestDishes(ctx).slice(0, 2);
-  if (!dishes.length) return "What's next?";
-  const kcal = dishes.reduce((s, d) => s + d.kcal, 0);
-  return `For ${MEAL_WORD[ctx.nextMeal]}, try ${list(dishes.map((d) => d.name.toLowerCase()))} (~${kcal} kcal${ofLeft}).`;
+  const idea = past ? { name: past.short, kcal: past.kcal } : suggestDishes(ctx)[0];
+  if (!idea) return "";
+  return `${MEAL_TITLE[ctx.nextMeal]} idea: ${idea.name.replace(/\s*\(.*?\)/g, "").toLowerCase()} (~${idea.kcal} kcal).`;
 }
 
 const MEAL_WORD: Record<MealType, string> = { breakfast: "breakfast", lunch: "lunch", snack: "a snack", dinner: "dinner" };
@@ -173,7 +181,7 @@ export function greeting(ctx: AssistantContext): AssistantReply {
   if (helped > 0) {
     return {
       mood: "proud",
-      text: `${helped === 1 ? "One meal" : `${helped} meals`} today already helped your focus${hi}. ${nextMealLine(ctx)}`,
+      text: `Nice one${hi}! That helped your focus. ${nextMealIdea(ctx)}`.trim(),
       points: [],
       actions: [logAction(ctx.nextMeal)],
     };
