@@ -195,53 +195,42 @@ function PastWeek({
   return q.data ? (
     <WeekRow week={q.data} selected={selected} todayIso={todayIso} onPick={onPick} />
   ) : (
-    <WeekRow week={{ days: placeholder, goal: null }} selected={selected} todayIso={todayIso} onPick={onPick} />
+    <WeekRow week={{ days: placeholder }} selected={selected} todayIso={todayIso} onPick={onPick} />
   );
 }
 
-/** One week: dashed for nothing logged, a ring for logged, filled for on target; today is raised. */
+/** One week, Cal AI-style: past days dashed, today a solid ring, days ahead faded. The picked day is raised. */
 function WeekRow({
   week,
   selected,
   todayIso,
   onPick,
 }: {
-  week: Pick<ProgressResponse, "days" | "goal">;
+  week: Pick<ProgressResponse, "days">;
   selected: string;
   todayIso: string;
   onPick: (date: string, isToday: boolean) => void;
 }) {
-  const band = week.goal ? (week.goal.targetCalories * week.goal.bandPct) / 100 : null;
   return (
     <View style={styles.week}>
       {week.days.map((d, i) => {
-        const future = d.calories === null;
-        const logged = (d.calories ?? 0) > 0;
-        const onTarget =
-          logged && week.goal && band !== null && Math.abs(d.calories! - week.goal.targetCalories) <= band;
+        const future = d.date > todayIso;
+        const isToday = d.date === todayIso;
         const isSel = d.date === selected;
         return (
           <Pressable
             key={d.date}
             disabled={future}
             accessibilityRole="button"
-            accessibilityLabel={`${WEEKDAY[i]} ${Number(d.date.slice(8))}${logged ? ", logged" : ""}`}
-            onPress={() => onPick(d.date, d.date === todayIso)}
+            accessibilityLabel={`${WEEKDAY[i]} ${Number(d.date.slice(8))}`}
+            onPress={() => onPick(d.date, isToday)}
             style={[styles.day, isSel && styles.daySel]}
           >
             <T variant="caption" tone={future ? "faint" : undefined}>
               {WEEKDAY[i]}
             </T>
-            <View
-              style={[
-                styles.dayDot,
-                !logged && !future && styles.dayEmpty,
-                logged && styles.dayLogged,
-                onTarget && styles.dayOnTarget,
-                future && { opacity: 0.4 },
-              ]}
-            >
-              <T style={[styles.dayNum, onTarget && { color: colors.white }]}>{Number(d.date.slice(8))}</T>
+            <View style={[styles.dayDot, isToday ? styles.dayToday : future ? styles.dayFuture : styles.dayPast]}>
+              <T style={[styles.dayNum, future && { color: colors.inkFaint }]}>{Number(d.date.slice(8))}</T>
             </View>
           </Pressable>
         );
@@ -543,9 +532,9 @@ const styles = StyleSheet.create({
   },
   daySel: { backgroundColor: colors.surface, ...shadow.card },
   dayDot: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
-  dayEmpty: { borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.lineStrong },
-  dayLogged: { borderWidth: 2, borderColor: colors.leaf },
-  dayOnTarget: { backgroundColor: colors.leaf },
+  dayPast: { borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.lineStrong },
+  dayToday: { borderWidth: 2, borderColor: colors.ink },
+  dayFuture: { borderWidth: 1.5, borderColor: colors.line },
   dayNum: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink },
   kimboLine: {
     flexDirection: "row",
