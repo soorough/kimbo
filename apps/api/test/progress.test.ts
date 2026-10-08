@@ -72,6 +72,15 @@ describe("weekly progress", () => {
     expect((await api.get("/progress", id)).json.streak).toBe(4);
   });
 
+  it("reports the longest run of days in a row and every meal logged", async () => {
+    const id = await onboarded();
+    for (const d of ["2026-10-01", "2026-10-02", "2026-10-03", "2026-10-06", "2026-10-09"]) await log(id, d);
+    await log(id, "2026-10-09");
+    const p = (await api.get("/progress", id)).json;
+    expect(p.longestStreak).toBe(3);
+    expect(p.mealsLogged).toBe(6);
+  });
+
   it("ends the streak after two missed days in a row", async () => {
     const id = await onboarded();
     for (const d of ["2026-10-05", "2026-10-06", "2026-10-09"]) await log(id, d);

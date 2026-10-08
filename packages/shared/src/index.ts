@@ -533,6 +533,10 @@ export const ProgressResponse = z.object({
   /** Mon–Sun kcal: 0 for a past day with nothing logged, null for days still ahead */
   days: z.array(z.object({ date: LocalDate, calories: z.number().nullable() })),
   streak: z.number(),
+  /** longest run of days in a row with a meal logged, ever */
+  longestStreak: z.number(),
+  /** every meal logged, ever */
+  mealsLogged: z.number(),
   goal: z
     .object({ daysMet: z.number(), daysTracked: z.number(), bandPct: z.number(), targetCalories: z.number() })
     .nullable(),

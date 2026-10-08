@@ -4,7 +4,14 @@ import type { Deps } from "../app.js";
 import { welcomeBackCandidate } from "../domain/achievements.js";
 import { GOAL_BAND_PCT } from "../domain/config.js";
 import { FOCI } from "../domain/health.js";
-import { consistencyStreak, focusComparable, insights, trackedDateSet, weekStats } from "../domain/progress.js";
+import {
+  consistencyStreak,
+  focusComparable,
+  insights,
+  longestRun,
+  trackedDateSet,
+  weekStats,
+} from "../domain/progress.js";
 import { addDays, localDate } from "../domain/time.js";
 import { parse, requireProfile } from "../http.js";
 import { loadProgressInput } from "../progress-input.js";
@@ -28,6 +35,8 @@ export function progressRoutes(app: FastifyInstance, deps: Deps) {
       trackedDates: week.trackedDates,
       days: week.days,
       streak: consistencyStreak(trackedDateSet(input.meals), input.today, earliest),
+      longestStreak: longestRun(trackedDateSet(input.meals)),
+      mealsLogged: input.meals.length,
       goal:
         week.goalDaysMet === null
           ? null

@@ -98,10 +98,15 @@ export default function Today() {
 
 function StreakPill({ days }: { days: number }) {
   return (
-    <View style={styles.streak} accessibilityLabel={`${days} day streak`}>
+    <Pressable
+      style={styles.streak}
+      accessibilityRole="button"
+      accessibilityLabel={`${days} day streak. Open milestones`}
+      onPress={() => router.push("/milestones")}
+    >
       <T style={styles.streakFire}>🔥</T>
       <T style={styles.streakText}>{days}</T>
-    </View>
+    </Pressable>
   );
 }
 

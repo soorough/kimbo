@@ -84,6 +84,7 @@ export default function RootLayout() {
             <Stack.Screen name="review" options={{ animation: "slide_from_bottom" }} />
             <Stack.Screen name="report-review" options={{ animation: "slide_from_right" }} />
             <Stack.Screen name="assistant" options={{ animation: "slide_from_bottom" }} />
+            <Stack.Screen name="milestones" options={{ animation: "slide_from_right" }} />
           </Stack>
           <MomentToast />
           <Celebration />
