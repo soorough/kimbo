@@ -320,22 +320,20 @@ function MealNudge({
   const label = MEAL_LABEL[mealType];
   return (
     <View style={styles.kimboLine}>
-      <View style={styles.kimboRow}>
-        <Kimbo mood={typed ? mood : "thinking"} size={40} />
-        <View style={{ flex: 1, gap: space.sm }}>
-          <T variant="overline" tone="leaf">
-            {`${label} time ${MEAL_EMOJI[mealType]}`.toUpperCase()}
-          </T>
-          {/* Kimbo starts talking once the launch intro is out of the way. */}
-          {introDone || seen ? (
-            <TypeOut text={text} variant="bodyStrong" numberOfLines={4} instant={seen} onDone={() => setTyped(true)} />
-          ) : (
-            <T variant="bodyStrong" numberOfLines={4} style={{ opacity: 0 }}>
-              {text}
-            </T>
-          )}
-        </View>
+      <View style={styles.kimboHead}>
+        <Kimbo mood={typed ? mood : "thinking"} size={30} />
+        <T variant="overline" tone="leaf">
+          {`${label} time ${MEAL_EMOJI[mealType]}`.toUpperCase()}
+        </T>
       </View>
+      {/* Kimbo starts talking once the launch intro is out of the way. */}
+      {introDone || seen ? (
+        <TypeOut text={text} variant="bodyStrong" numberOfLines={4} instant={seen} onDone={() => setTyped(true)} />
+      ) : (
+        <T variant="bodyStrong" numberOfLines={4} style={{ opacity: 0 }}>
+          {text}
+        </T>
+      )}
       <Animated.View
         style={[
           styles.kimboActions,
@@ -652,11 +650,12 @@ const styles = StyleSheet.create({
   dayNum: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink },
   kimboLine: {
     gap: space.md,
-    padding: space.md,
+    padding: space.lg,
     borderRadius: radius.lg,
     backgroundColor: colors.leafSoft,
   },
   kimboRow: { flexDirection: "row", alignItems: "center", gap: space.md },
+  kimboHead: { flexDirection: "row", alignItems: "center", gap: space.sm },
   kimboActions: { flexDirection: "row", alignItems: "center", gap: space.md },
   calRow: { flexDirection: "row", alignItems: "center", gap: space.lg },
   ringNum: { fontFamily: fonts.bold, fontSize: 18, color: colors.ink },
