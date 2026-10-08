@@ -145,6 +145,22 @@ export const Goal = GoalFields.omit({ targetOverride: true, weeklyKg: true, targ
 });
 export type Goal = z.infer<typeof Goal>;
 
+export const Diet = z.enum(["vegetarian", "eggetarian", "non_vegetarian", "vegan", "jain"]);
+export type Diet = z.infer<typeof Diet>;
+/** What gets in the way; the assistant shapes its suggestions around it. */
+export const Barrier = z.enum(["busy", "ideas", "consistency", "eating_out", "cravings"]);
+export type Barrier = z.infer<typeof Barrier>;
+
+export const PreferencesRequest = z.object({
+  diet: Diet.nullable(),
+  // Duplicates mean nothing, so they're dropped before the limit is checked.
+  barriers: z
+    .array(Barrier)
+    .transform((b) => [...new Set(b)])
+    .pipe(z.array(Barrier).max(2, "Pick up to two")),
+});
+export type PreferencesRequest = z.infer<typeof PreferencesRequest>;
+
 /** First name, or null to stop using one. Blank counts as null. */
 export const NameRequest = z.object({
   name: z
@@ -159,6 +175,8 @@ export type NameRequest = z.infer<typeof NameRequest>;
 export const Profile = z.object({
   id: z.string(),
   name: z.string().nullable(),
+  diet: Diet.nullable(),
+  barriers: z.array(Barrier),
   isDemo: z.boolean(),
   timezone: z.string(),
   createdAt: z.string(),
@@ -453,6 +471,45 @@ export const TodayResponse = z.object({
   repeatableMealTypes: z.array(MealType),
 });
 export type TodayResponse = z.infer<typeof TodayResponse>;
+
+// ---------- Assistant ----------
+
+/** Kimbo's moods; the app draws one face per mood. */
+export const KimboMood = z.enum(["idle", "thinking", "happy", "proud", "cheer", "thanks", "wave", "focus", "sleepy"]);
+export type KimboMood = z.infer<typeof KimboMood>;
+
+/** The starter questions "Ask Kimbo" answers. Answers are built by rules from the user's own data. */
+export const AssistantQuestion = z.enum(["what_to_eat", "why_focus", "how_am_i_doing"]);
+export type AssistantQuestion = z.infer<typeof AssistantQuestion>;
+
+export const AssistantAction = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("log_meal"), label: z.string(), mealType: MealType }),
+  z.object({ kind: z.literal("open"), label: z.string(), screen: z.enum(["report", "progress", "nutrition"]) }),
+]);
+export type AssistantAction = z.infer<typeof AssistantAction>;
+
+/** One thing Kimbo says: a sentence, up to three short points, up to two actions. */
+export const AssistantReply = z.object({
+  mood: KimboMood,
+  text: z.string(),
+  points: z.array(z.string()),
+  actions: z.array(AssistantAction),
+});
+export type AssistantReply = z.infer<typeof AssistantReply>;
+
+export const AssistantSuggestion = z.object({ question: AssistantQuestion, label: z.string() });
+export type AssistantSuggestion = z.infer<typeof AssistantSuggestion>;
+
+export const AssistantHomeResponse = z.object({
+  greeting: AssistantReply,
+  suggestions: z.array(AssistantSuggestion),
+});
+export type AssistantHomeResponse = z.infer<typeof AssistantHomeResponse>;
+
+export const AskRequest = z.object({ question: AssistantQuestion });
+export type AskRequest = z.infer<typeof AskRequest>;
+export const AskResponse = z.object({ reply: AssistantReply });
+export type AskResponse = z.infer<typeof AskResponse>;
 
 // ---------- Progress ----------
 

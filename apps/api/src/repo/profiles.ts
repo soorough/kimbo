@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Goal, GoalRequest, Profile } from "@kimbo/shared";
+import type { Barrier, Diet, Goal, GoalRequest, Profile } from "@kimbo/shared";
 import type { Db } from "../db/index.js";
 import { buildGoal } from "../domain/goal.js";
 
@@ -8,6 +8,8 @@ export interface ProfileRow {
   created_at: Date;
   is_demo: boolean;
   name: string | null;
+  diet: Diet | null;
+  barriers: Barrier[];
   timezone: string;
   age: number | null;
   sex: GoalRequest["sex"] | null;
@@ -67,6 +69,19 @@ export async function saveName(db: Db, id: string, name: string | null): Promise
   return res.rows[0]!;
 }
 
+export async function savePreferences(
+  db: Db,
+  id: string,
+  input: { diet: Diet | null; barriers: Barrier[] },
+): Promise<ProfileRow> {
+  const res = await db.query<ProfileRow>("UPDATE profiles SET diet = $2, barriers = $3 WHERE id = $1 RETURNING *", [
+    id,
+    input.diet,
+    input.barriers,
+  ]);
+  return res.rows[0]!;
+}
+
 export function goalOf(row: ProfileRow): Goal | null {
   if (row.age == null || !row.sex || row.height_cm == null || row.weight_kg == null || !row.activity || !row.goal) {
     return null;
@@ -91,6 +106,8 @@ export function toProfile(row: ProfileRow): Profile {
   return {
     id: row.id,
     name: row.name,
+    diet: row.diet,
+    barriers: row.barriers ?? [],
     isDemo: row.is_demo,
     timezone: row.timezone,
     createdAt: row.created_at.toISOString(),

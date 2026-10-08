@@ -1,4 +1,4 @@
-import { CreateProfileRequest, GoalRequest, NameRequest } from "@kimbo/shared";
+import { CreateProfileRequest, GoalRequest, NameRequest, PreferencesRequest } from "@kimbo/shared";
 import type { FastifyInstance } from "fastify";
 import type { Deps } from "../app.js";
 import { TARGET_BOUNDS_KCAL } from "@kimbo/shared";
@@ -7,7 +7,7 @@ import { computeTarget, isTargetInBounds } from "../domain/goal.js";
 import { seedDemoProfile } from "../domain/demo.js";
 import { HttpError } from "../errors.js";
 import { parse, requireProfile } from "../http.js";
-import { insertProfile, saveGoal, saveName, toProfile } from "../repo/profiles.js";
+import { insertProfile, saveGoal, saveName, savePreferences, toProfile } from "../repo/profiles.js";
 
 export function profileRoutes(app: FastifyInstance, deps: Deps) {
   app.post("/profiles", async (req, reply) => {
@@ -43,6 +43,12 @@ export function profileRoutes(app: FastifyInstance, deps: Deps) {
     const row = await requireOwnProfile(deps, req);
     const { name } = parse(NameRequest, req.body);
     return { profile: toProfile(await saveName(deps.db, row.id, name)) };
+  });
+
+  app.put<{ Params: { id: string } }>("/profiles/:id/preferences", async (req) => {
+    const row = await requireOwnProfile(deps, req);
+    const body = parse(PreferencesRequest, req.body);
+    return { profile: toProfile(await savePreferences(deps.db, row.id, body)) };
   });
 }
 

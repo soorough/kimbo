@@ -84,6 +84,8 @@ CREATE TABLE IF NOT EXISTS achievements (
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS weekly_kg numeric;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS target_weight_kg numeric;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS name text;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS diet text;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS barriers text[] NOT NULL DEFAULT '{}';
 
 CREATE TABLE IF NOT EXISTS weigh_ins (
   profile_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,

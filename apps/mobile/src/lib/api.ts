@@ -23,6 +23,7 @@ import {
   type ExtractReportRequest,
   type GoalRequest,
   type NameRequest,
+  type PreferencesRequest,
   type ParseMealRequest,
   type SaveMealRequest,
 } from "@kimbo/shared";
@@ -84,6 +85,8 @@ export const api = {
   getProfile: (id: string) => request(ProfileEnvelope, "GET", `/profiles/${id}`),
   saveGoal: (id: string, body: GoalRequest) => request(ProfileEnvelope, "PUT", `/profiles/${id}/goal`, body),
   saveName: (id: string, body: NameRequest) => request(ProfileEnvelope, "PUT", `/profiles/${id}/name`, body),
+  savePreferences: (id: string, body: PreferencesRequest) =>
+    request(ProfileEnvelope, "PUT", `/profiles/${id}/preferences`, body),
 
   parseMeal: (body: ParseMealRequest) => request(MealDraft, "POST", "/meals/parse", body),
   confirmMeal: (body: ConfirmMealRequest) => request(ConfirmMealResponse, "POST", "/meals", body),

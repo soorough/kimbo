@@ -36,6 +36,23 @@ describe("onboarding & goal", () => {
     expect((await api.put(`/profiles/${id}/name`, { name: "Asha" }, other)).status).toBe(404);
   });
 
+  it("remembers diet and up to two barriers, and starts with none", async () => {
+    const id = await freshProfile();
+    const fresh = (await api.get(`/profiles/${id}`, id)).json.profile;
+    expect(fresh).toMatchObject({ diet: null, barriers: [] });
+    const saved = await api.put(`/profiles/${id}/preferences`, { diet: "eggetarian", barriers: ["busy", "busy", "ideas"] }, id);
+    expect(saved.status).toBe(200);
+    expect(saved.json.profile).toMatchObject({ diet: "eggetarian", barriers: ["busy", "ideas"] });
+    expect((await api.get(`/profiles/${id}`, id)).json.profile.diet).toBe("eggetarian");
+  });
+
+  it("rejects an unknown diet and more than two barriers", async () => {
+    const id = await freshProfile();
+    expect((await api.put(`/profiles/${id}/preferences`, { diet: "keto", barriers: [] }, id)).status).toBe(400);
+    const three = await api.put(`/profiles/${id}/preferences`, { diet: null, barriers: ["busy", "ideas", "cravings"] }, id);
+    expect(three.status).toBe(400);
+  });
+
   it("calculates a calorie target with Mifflin–St Jeor and explains it", async () => {
     const id = await freshProfile();
     // 10*70 + 6.25*175 - 5*30 + 5 = 1648.75 BMR; ×1.2 sedentary = 1978.5 → 1980
