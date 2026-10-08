@@ -2,6 +2,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import {
   AiUnavailableError,
+  type Coach,
+  type CoachReply,
   type ExtractedReport,
   type MealRecognizer,
   type RecognizedItem,
@@ -92,7 +94,41 @@ Copy the patient's result values and units exactly as printed — never referenc
 Include lipid profile and diabetes markers you find (LDL, HDL, total cholesterol, triglycerides, HbA1c, fasting glucose).
 If a value is unreadable, leave it out.`;
 
-export class ClaudeAdapters implements MealRecognizer, ReportExtractor {
+const CoachOutput = z.object({
+  text: z.string(),
+  // The schema can't cap the count, so extra points are dropped rather than rejected.
+  points: z.array(z.string()).transform((p) => p.slice(0, 4)),
+  mood: z.string(),
+});
+
+/** Structured-output schema for the assistant's answer. */
+const COACH_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["text", "points", "mood"],
+  properties: {
+    text: { type: "string", description: "The answer: 1–3 short, warm sentences" },
+    points: {
+      type: "array",
+      items: { type: "string" },
+      description: "0–4 short bullet points (dishes, swaps, numbers from the facts). Empty if not needed.",
+    },
+    mood: {
+      type: "string",
+      enum: ["happy", "proud", "focus", "thinking", "wave", "cheer"],
+      description: "Kimbo's face for this answer",
+    },
+  },
+};
+
+const COACH_SYSTEM = `You are Kimbo, a friendly food companion in an Indian meal-tracking app. You talk like a warm, practical friend, not a doctor.
+Answer the user's question using ONLY the facts provided about them. Never invent numbers: every calorie, gram, date or blood value you mention must appear in the facts.
+Keep it short: 1–3 sentences, plus up to 4 short points only when they help (dishes, swaps). Use everyday Indian food names (dal, roti, sabzi, katori).
+Respect their diet. Suggest dishes from the "Dishes Kimbo can suggest" list when recommending food.
+You do not diagnose, treat, or adjust medicines. For symptoms, medicines or anything medical, kindly suggest they talk to their doctor.
+If the question isn't about food, their goal, their report or their progress, say briefly what you can help with.`;
+
+export class ClaudeAdapters implements MealRecognizer, ReportExtractor, Coach {
   private client: Anthropic;
   private mealSystem: string;
 
@@ -131,6 +167,20 @@ export class ClaudeAdapters implements MealRecognizer, ReportExtractor {
       { type: "text", text: "Record the results." },
     ]);
     return checked(() => ExtractedMarkers.parse(input));
+  }
+
+  async reply(input: {
+    question: string;
+    facts: string;
+    history: { role: "user" | "kimbo"; text: string }[];
+  }): Promise<CoachReply> {
+    const history = input.history.length
+      ? `Conversation so far:\n${input.history.map((t) => `${t.role === "user" ? "User" : "Kimbo"}: ${t.text}`).join("\n")}\n\n`
+      : "";
+    const out = await this.callJson(COACH_SYSTEM, COACH_SCHEMA, [
+      { type: "text", text: `Facts about the user:\n${input.facts}\n\n${history}Question: ${input.question}` },
+    ]);
+    return checked(() => CoachOutput.parse(out));
   }
 
   /** One request with a JSON-schema constrained answer; any failure is a provider failure. */

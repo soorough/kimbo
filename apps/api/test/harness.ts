@@ -1,5 +1,13 @@
 import { afterAll, beforeEach } from "vitest";
-import type { ExtractedReport, MealRecognizer, RecognizedItem, ReportExtractor } from "../src/ai/types.js";
+import type {
+  Coach,
+  CoachReply,
+  ExtractedReport,
+  MealRecognizer,
+  RecognizedItem,
+  ReportExtractor,
+  Voice,
+} from "../src/ai/types.js";
 import { createApp } from "../src/app.js";
 import { createDb } from "../src/db/index.js";
 import { TEST_DATABASE_URL } from "./db-url.js";
@@ -31,6 +39,29 @@ export class FakeExtractor implements ReportExtractor {
   }
 }
 
+/** Scripted stand-in for the assistant's language model; records what it was given. */
+export class FakeCoach implements Coach {
+  next: CoachReply = { text: "Try dal with roti.", points: [], mood: "happy" };
+  lastInput: Parameters<Coach["reply"]>[0] | null = null;
+  async reply(input: Parameters<Coach["reply"]>[0]) {
+    this.lastInput = input;
+    return this.next;
+  }
+}
+
+/** Stand-in for ElevenLabs. */
+export class FakeVoice implements Voice {
+  spoken: string[] = [];
+  heard = "what should I eat for dinner";
+  async speak(text: string) {
+    this.spoken.push(text);
+    return Buffer.from("ID3-fake-mp3");
+  }
+  async transcribe() {
+    return this.heard;
+  }
+}
+
 /** Settable clock; defaults to Tue 6 Oct 2026, 13:00 IST. */
 export class TestClock {
   now = new Date("2026-10-06T07:30:00Z");
@@ -56,6 +87,8 @@ export function useTestApp() {
     clock: TestClock;
     recognizer: FakeRecognizer;
     extractor: FakeExtractor;
+    coach: FakeCoach;
+    voice: FakeVoice;
   };
 
   beforeEach(async () => {
@@ -65,11 +98,15 @@ export function useTestApp() {
     ctx.clock = new TestClock();
     ctx.recognizer = new FakeRecognizer();
     ctx.extractor = new FakeExtractor();
+    ctx.coach = new FakeCoach();
+    ctx.voice = new FakeVoice();
     ctx.app = await createApp({
       db,
       clock: ctx.clock.read,
       recognizer: ctx.recognizer,
       extractor: ctx.extractor,
+      coach: ctx.coach,
+      voice: ctx.voice,
     });
     return async () => {
       await ctx.app.close();

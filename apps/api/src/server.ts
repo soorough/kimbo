@@ -1,5 +1,6 @@
 import { ClaudeAdapters } from "./ai/claude.js";
 import { DemoAdapters } from "./ai/demo.js";
+import { ElevenLabsVoice } from "./ai/elevenlabs.js";
 import { createApp } from "./app.js";
 import { systemClock } from "./clock.js";
 import { CATALOGUE } from "./domain/catalogue-data.js";
@@ -20,7 +21,20 @@ const ai = apiKey
       CATALOGUE.map((f) => f.name),
     )
   : new DemoAdapters();
-const app = await createApp({ db, clock: systemClock, recognizer: ai, extractor: ai }, { logger: true });
+const voiceKey = process.env.ELEVENLABS_API_KEY;
+const voice = voiceKey ? new ElevenLabsVoice(voiceKey, process.env.KIMBO_VOICE_ID) : undefined;
+const app = await createApp(
+  {
+    db,
+    clock: systemClock,
+    recognizer: ai,
+    extractor: ai,
+    coach: ai instanceof ClaudeAdapters ? ai : undefined,
+    voice,
+  },
+  { logger: true },
+);
+if (!voiceKey) app.log.warn("ELEVENLABS_API_KEY not set — Ask Kimbo works without voice");
 if (!apiKey) app.log.warn("ANTHROPIC_API_KEY not set — using offline demo AI adapters");
 
 await app.listen({ port, host: "0.0.0.0" });

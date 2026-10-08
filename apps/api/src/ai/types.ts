@@ -30,6 +30,23 @@ export interface ReportExtractor {
   extract(file: { base64: string; mimeType: string }): Promise<ExtractedReport>;
 }
 
+export interface CoachReply {
+  text: string;
+  points: string[];
+  mood: string;
+}
+
+/** Answers free-form questions using only the facts Kimbo hands it. */
+export interface Coach {
+  reply(input: { question: string; facts: string; history: { role: "user" | "kimbo"; text: string }[] }): Promise<CoachReply>;
+}
+
+/** Kimbo's voice: speech out and in. Optional, so the app works without it. */
+export interface Voice {
+  speak(text: string): Promise<Buffer>;
+  transcribe(audio: { base64: string; mimeType: string }): Promise<string>;
+}
+
 /** Thrown by adapters when the provider fails; surfaced to clients as a retryable error. */
 export class AiUnavailableError extends Error {
   constructor(message = "Kimbo couldn't reach its analysis service", options?: { cause?: unknown }) {

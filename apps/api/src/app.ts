@@ -1,9 +1,10 @@
 import Fastify from "fastify";
 import { ZodError } from "zod";
-import { AiUnavailableError, type MealRecognizer, type ReportExtractor } from "./ai/types.js";
+import { AiUnavailableError, type Coach, type MealRecognizer, type ReportExtractor, type Voice } from "./ai/types.js";
 import type { Clock } from "./clock.js";
 import type { Db } from "./db/index.js";
 import { HttpError } from "./errors.js";
+import { assistantRoutes } from "./routes/assistant.js";
 import { journeyRoutes } from "./routes/journey.js";
 import { mealRoutes } from "./routes/meals.js";
 import { profileRoutes } from "./routes/profiles.js";
@@ -17,6 +18,10 @@ export interface Deps {
   clock: Clock;
   recognizer: MealRecognizer;
   extractor: ReportExtractor;
+  /** answers typed questions from the user's facts; without it they map to the starter answers */
+  coach?: Coach;
+  /** Kimbo's spoken voice and listening; optional */
+  voice?: Voice;
 }
 
 export async function createApp(deps: Deps, opts: { logger?: boolean } = {}) {
@@ -56,5 +61,6 @@ export async function createApp(deps: Deps, opts: { logger?: boolean } = {}) {
   todayRoutes(app, deps);
   progressRoutes(app, deps);
   journeyRoutes(app, deps);
+  assistantRoutes(app, deps);
   return app;
 }

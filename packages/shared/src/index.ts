@@ -506,7 +506,18 @@ export const AssistantHomeResponse = z.object({
 });
 export type AssistantHomeResponse = z.infer<typeof AssistantHomeResponse>;
 
-export const AskRequest = z.object({ question: AssistantQuestion });
+/** One earlier turn, so a follow-up ("and for dinner?") has context. */
+export const AssistantTurn = z.object({ role: z.enum(["user", "kimbo"]), text: z.string().max(1200) });
+export type AssistantTurn = z.infer<typeof AssistantTurn>;
+
+/** A starter question (answered by rules) or anything typed (answered from the user's own facts). */
+export const AskRequest = z.union([
+  z.object({ question: AssistantQuestion }),
+  z.object({
+    text: z.string().trim().min(1, "Ask Kimbo something").max(300, "Keep it under 300 characters"),
+    history: z.array(AssistantTurn).max(6).optional(),
+  }),
+]);
 export type AskRequest = z.infer<typeof AskRequest>;
 export const AskResponse = z.object({ reply: AssistantReply });
 export type AskResponse = z.infer<typeof AskResponse>;
