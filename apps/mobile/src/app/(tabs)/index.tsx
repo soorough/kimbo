@@ -284,19 +284,12 @@ function KimboLine() {
         </T>
       </View>
       <View style={styles.kimboActions}>
-        <Button
-          label={`Log ${MEAL_LABEL[log.mealType].toLowerCase()}`}
-          onPress={() => {
-            startFromAi(draft, "repeat", log.mealType);
-            router.push("/review");
-          }}
-        />
         <Pressable
           accessibilityRole="button"
           accessibilityHint="Opens Ask Kimbo"
           hitSlop={8}
           onPress={() => router.push({ pathname: "/assistant", params: { intent: "else" } })}
-          style={({ pressed }) => [styles.kimboElse, pressed && { opacity: 0.6 }]}
+          style={({ pressed }) => [{ flex: 1 }, pressed && { opacity: 0.6 }]}
         >
           <T variant="label" tone="soft">
             Something else?{" "}
@@ -305,6 +298,14 @@ function KimboLine() {
             </T>
           </T>
         </Pressable>
+        <Button
+          label={`Log ${MEAL_LABEL[log.mealType].toLowerCase()}`}
+          compact
+          onPress={() => {
+            startFromAi(draft, "repeat", log.mealType);
+            router.push("/review");
+          }}
+        />
       </View>
     </View>
   );
@@ -594,8 +595,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.leafSoft,
   },
   kimboRow: { flexDirection: "row", alignItems: "center", gap: space.md },
-  kimboActions: { gap: space.xs },
-  kimboElse: { alignSelf: "center", paddingVertical: space.xs },
+  kimboActions: { flexDirection: "row", alignItems: "center", gap: space.md },
   calRow: { flexDirection: "row", alignItems: "center", gap: space.lg },
   ringNum: { fontFamily: fonts.bold, fontSize: 18, color: colors.ink },
   ringPct: { fontFamily: fonts.bold, fontSize: 13 },
