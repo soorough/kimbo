@@ -9,7 +9,7 @@ import {
 } from "expo-audio";
 import { readAsStringAsync } from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -183,7 +183,12 @@ export default function Assistant() {
     else router.navigate(a.screen === "report" ? "/(tabs)/report" : "/(tabs)/progress");
   };
 
-  const greeting = home.data?.greeting;
+  // Arriving from "Something else?" on Today: don't repeat the suggestion they just passed on.
+  const { intent } = useLocalSearchParams<{ intent?: string }>();
+  const greeting =
+    intent === "else" && home.data
+      ? { ...home.data.greeting, mood: "happy" as const, text: "Sure! What are you in the mood for?" }
+      : home.data?.greeting;
   const empty = messages.length === 0;
 
   return (

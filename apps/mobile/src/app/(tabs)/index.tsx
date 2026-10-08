@@ -4,6 +4,7 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { AppState, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
+import { Button } from "@/components/Button";
 import { Kimbo } from "@/components/Kimbo";
 import { useMoments } from "@/components/Moments";
 import { TodaySkeleton } from "@/components/Skeleton";
@@ -253,33 +254,59 @@ function KimboLine() {
   const line = home.data?.greeting;
   if (!line) return null;
   const log = line.actions.find((a) => a.kind === "log_meal" && a.draft);
-  const onPress = () => {
-    if (log?.kind === "log_meal" && log.draft) {
-      startFromAi(log.draft, "repeat", log.mealType);
-      router.push("/review");
-    } else router.push("/assistant");
-  };
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityHint={log ? "Opens this meal, ready to log" : "Opens Ask Kimbo"}
-      onPress={onPress}
-      style={({ pressed }) => [styles.kimboLine, pressed && { opacity: 0.85 }]}
-    >
-      <Kimbo mood={line.mood} size={36} />
-      <T variant="bodyStrong" style={{ flex: 1 }} numberOfLines={4}>
-        {line.text}
-      </T>
-      {log ? (
-        <View style={styles.logPill}>
-          <T variant="label" style={{ color: colors.white }}>
-            Log it
-          </T>
-        </View>
-      ) : (
+  const chat = () => router.push("/assistant");
+
+  // No meal to suggest: the whole line opens Ask Kimbo.
+  if (log?.kind !== "log_meal" || !log.draft) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityHint="Opens Ask Kimbo"
+        onPress={chat}
+        style={({ pressed }) => [styles.kimboLine, styles.kimboRow, pressed && { opacity: 0.85 }]}
+      >
+        <Kimbo mood={line.mood} size={36} />
+        <T variant="bodyStrong" style={{ flex: 1 }} numberOfLines={4}>
+          {line.text}
+        </T>
         <Icon name="chevron-right" size={18} color={colors.leafDeep} />
-      )}
-    </Pressable>
+      </Pressable>
+    );
+  }
+
+  const draft = log.draft;
+  return (
+    <View style={styles.kimboLine}>
+      <View style={styles.kimboRow}>
+        <Kimbo mood={line.mood} size={36} />
+        <T variant="bodyStrong" style={{ flex: 1 }} numberOfLines={4}>
+          {line.text}
+        </T>
+      </View>
+      <View style={styles.kimboActions}>
+        <Button
+          label={`Log ${MEAL_LABEL[log.mealType].toLowerCase()}`}
+          onPress={() => {
+            startFromAi(draft, "repeat", log.mealType);
+            router.push("/review");
+          }}
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityHint="Opens Ask Kimbo"
+          hitSlop={8}
+          onPress={() => router.push({ pathname: "/assistant", params: { intent: "else" } })}
+          style={({ pressed }) => [styles.kimboElse, pressed && { opacity: 0.6 }]}
+        >
+          <T variant="label" tone="soft">
+            Something else?{" "}
+            <T variant="label" tone="leaf" style={{ fontFamily: fonts.bold }}>
+              Ask Kimbo
+            </T>
+          </T>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
@@ -561,19 +588,14 @@ const styles = StyleSheet.create({
   dayFuture: { borderWidth: 1.5, borderColor: colors.line },
   dayNum: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink },
   kimboLine: {
-    flexDirection: "row",
-    alignItems: "center",
     gap: space.md,
     padding: space.md,
     borderRadius: radius.lg,
     backgroundColor: colors.leafSoft,
   },
-  logPill: {
-    backgroundColor: colors.leaf,
-    borderRadius: radius.pill,
-    paddingHorizontal: space.md,
-    paddingVertical: 6,
-  },
+  kimboRow: { flexDirection: "row", alignItems: "center", gap: space.md },
+  kimboActions: { gap: space.xs },
+  kimboElse: { alignSelf: "center", paddingVertical: space.xs },
   calRow: { flexDirection: "row", alignItems: "center", gap: space.lg },
   ringNum: { fontFamily: fonts.bold, fontSize: 18, color: colors.ink },
   ringPct: { fontFamily: fonts.bold, fontSize: 13 },
