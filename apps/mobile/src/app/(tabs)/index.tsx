@@ -5,11 +5,12 @@ import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Animated, AppState, Easing, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { Button } from "@/components/Button";
+import { DayNumbers } from "@/components/DayNumbers";
 import { Kimbo } from "@/components/Kimbo";
 import { TypeOut } from "@/components/TypeOut";
 import { useMoments } from "@/components/Moments";
 import { TodaySkeleton } from "@/components/Skeleton";
-import { ErrorState, Icon, Ring, Screen, Surface, T, type IconName } from "@/components/ui";
+import { ErrorState, Icon, Screen, Surface, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useDraft } from "@/lib/draft";
 import { MEAL_LABEL } from "@/lib/format";
@@ -17,7 +18,7 @@ import { useAfterWrite } from "@/lib/mutations";
 import { useIntro } from "@/lib/intro";
 import { useReduceMotion } from "@/lib/motion";
 import { useSession } from "@/lib/session";
-import { colors, fonts, macroColors, radius, shadow, space } from "@/lib/theme";
+import { colors, fonts, radius, shadow, space } from "@/lib/theme";
 
 const MEAL_ICON: Record<TodayMeal["mealType"], IconName> = {
   breakfast: "sunrise",
@@ -62,6 +63,7 @@ export default function Today() {
     );
   }
   const data = today.data;
+  const diet = profile.data?.profile.diet ?? null;
   const isToday = date === null;
 
   return (
@@ -84,8 +86,7 @@ export default function Today() {
 
       {isToday ? <KimboLine /> : null}
 
-      <CaloriesCard data={data} />
-      <MacroCarousel data={data} />
+      <DayNumbers data={data} diet={diet} />
 
       <View style={{ gap: space.md }}>
         <T variant="heading">{isToday ? "Today's meals" : "Meals"}</T>
@@ -371,128 +372,6 @@ function MealNudge({
   );
 }
 
-/** One number for the day, Cal AI-style. Tapping opens the full nutrition view. */
-function CaloriesCard({ data }: { data: TodayResponse }) {
-  const target = data.targets?.calories ?? 0;
-  const eaten = Math.round(data.totals.calories);
-  return (
-    <Surface onPress={() => router.push("/nutrition")} accessibilityLabel={`${eaten} of ${target} kilocalories eaten`}>
-      <View style={styles.calRow}>
-        <View style={{ flex: 1, gap: 2 }}>
-          <View style={{ flexDirection: "row", alignItems: "baseline" }}>
-            <T style={styles.calBig}>{eaten.toLocaleString("en-IN")}</T>
-            <T variant="title" tone="soft">
-              /{target.toLocaleString("en-IN")}
-            </T>
-          </View>
-          <T variant="label">kcal eaten</T>
-        </View>
-        <Ring value={eaten} max={target || 1} size={96} stroke={9}>
-          <T style={styles.ringNum}>{Math.abs(target - eaten).toLocaleString("en-IN")}</T>
-          <T variant="caption">{eaten > target ? "over" : "left"}</T>
-        </Ring>
-      </View>
-    </Surface>
-  );
-}
-
-/** Small cards that swipe: the macros first, then fibre, sat fat and the focus. */
-function MacroCarousel({ data }: { data: TodayResponse }) {
-  const { width } = useWindowDimensions();
-  const pageW = width;
-  const [page, setPage] = useState(0);
-  const t = data.targets;
-  const pages: {
-    label: string;
-    value: number;
-    max: number;
-    unit: string;
-    color: string;
-    limit?: boolean;
-  }[][] = [
-    [
-      {
-        label: "Protein",
-        value: data.totals.protein,
-        max: t?.protein ?? 0,
-        unit: "g",
-        color: macroColors.protein,
-      },
-      {
-        label: "Carbs",
-        value: data.totals.carbs,
-        max: t?.carbs ?? 0,
-        unit: "g",
-        color: macroColors.carbs,
-      },
-      { label: "Fat", value: data.totals.fat, max: t?.fat ?? 0, unit: "g", color: macroColors.fat },
-    ],
-    [
-      {
-        label: "Fibre",
-        value: data.totals.fibre,
-        max: t?.fibre ?? 0,
-        unit: "g",
-        color: macroColors.fibre,
-      },
-      {
-        label: "Sat fat",
-        value: data.totals.satFat,
-        max: t?.satFat ?? 0,
-        unit: "g",
-        color: colors.plum,
-        limit: true,
-      },
-      {
-        label: "Helped focus",
-        value: data.focusSummary?.supported ?? 0,
-        max: Math.max(1, data.focusSummary?.total ?? 0),
-        unit: "",
-        color: colors.leaf,
-      },
-    ],
-  ];
-  return (
-    <View style={{ gap: space.sm }}>
-      <ScrollView
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / pageW))}
-        style={{ marginHorizontal: -space.xl }}
-      >
-        {pages.map((cards, p) => (
-          <View key={p} style={[styles.page, { width: pageW, paddingHorizontal: space.xl }]}>
-            {cards.map((c) => (
-              <View key={c.label} style={styles.mini}>
-                <T style={styles.miniValue}>
-                  {Math.round(c.value)}
-                  <T variant="caption">
-                    {" "}
-                    /{Math.round(c.max)}
-                    {c.unit}
-                  </T>
-                </T>
-                <T variant="caption" numberOfLines={1}>
-                  {c.limit ? `${c.label} limit` : c.label}
-                </T>
-                <Ring value={c.value} max={c.max || 1} size={58} stroke={6} color={c.color}>
-                  <T style={[styles.ringPct, { color: c.color }]}>{c.max ? Math.round((c.value / c.max) * 100) : 0}%</T>
-                </Ring>
-              </View>
-            ))}
-          </View>
-        ))}
-      </ScrollView>
-      <View style={styles.pager}>
-        {pages.map((_, i) => (
-          <View key={i} style={[styles.pagerDot, i === page && styles.pagerDotOn]} />
-        ))}
-      </View>
-    </View>
-  );
-}
-
 /** Sketch-like empty state, with "same as yesterday" when there is something to repeat. */
 function EmptyMeals({ canRepeat }: { canRepeat: TodayMeal["mealType"][] }) {
   const afterWrite = useAfterWrite();
@@ -657,24 +536,6 @@ const styles = StyleSheet.create({
   kimboRow: { flexDirection: "row", alignItems: "center", gap: space.md },
   kimboHead: { flexDirection: "row", alignItems: "center", gap: space.sm },
   kimboActions: { flexDirection: "row", alignItems: "center", gap: space.md },
-  calRow: { flexDirection: "row", alignItems: "center", gap: space.lg },
-  ringNum: { fontFamily: fonts.bold, fontSize: 18, color: colors.ink },
-  ringPct: { fontFamily: fonts.bold, fontSize: 13 },
-  calBig: { fontFamily: fonts.display, fontSize: 48, lineHeight: 54, color: colors.ink },
-  page: { flexDirection: "row", gap: space.sm },
-  mini: {
-    flex: 1,
-    gap: 4,
-    padding: space.md,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-    alignItems: "flex-start",
-    ...shadow.card,
-  },
-  miniValue: { fontFamily: fonts.bold, fontSize: 18, color: colors.ink },
-  pager: { flexDirection: "row", justifyContent: "center", gap: 6 },
-  pagerDot: { width: 7, height: 7, borderRadius: 4, borderWidth: 1.5, borderColor: colors.inkFaint },
-  pagerDotOn: { backgroundColor: colors.ink, borderColor: colors.ink },
   empty: {
     alignItems: "center",
     gap: space.md,
