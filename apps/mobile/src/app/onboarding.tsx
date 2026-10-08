@@ -12,7 +12,7 @@ import {
 } from "@kimbo/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
-import { router } from "expo-router";
+import { router, useIsFocused } from "expo-router";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
@@ -20,9 +20,10 @@ import { KimboScene } from "@/components/KimboScene";
 import { NameField } from "@/components/NameField";
 import { BuildingPlan } from "@/components/BuildingPlan";
 import { GoalPath } from "@/components/GoalPath";
+import { ReportOptions } from "@/components/ReportOptions";
 import { PacePlanner } from "@/components/PacePlanner";
 import { RulerPicker } from "@/components/RulerPicker";
-import { Button, Chip, Icon, Screen, Segmented, SegmentRing, T, type IconName } from "@/components/ui";
+import { Button, Icon, Screen, Segmented, SegmentRing, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { colors, macroColors, radius, space } from "@/lib/theme";
@@ -91,7 +92,18 @@ const ACTIVITY: { key: Activity; label: string; hint: string }[] = [
 ];
 
 type Step =
-  "name" | "goal" | "diet" | "barriers" | "sex" | "age" | "height" | "weight" | "activity" | "goalWeight" | "pace";
+  | "name"
+  | "goal"
+  | "diet"
+  | "barriers"
+  | "sex"
+  | "age"
+  | "height"
+  | "weight"
+  | "activity"
+  | "goalWeight"
+  | "pace"
+  | "report";
 
 const QUESTIONS: Record<Step, string> = {
   name: "Hi, I'm Kimbo. What should I call you?",
@@ -105,12 +117,14 @@ const QUESTIONS: Record<Step, string> = {
   activity: "What's a normal day like?",
   goalWeight: "What's your goal weight?",
   pace: "How fast?",
+  report: "Got a recent blood report?",
 };
 
 /** Maintaining has no goal weight or pace to choose. */
 function stepsFor(goal: GoalType | null): Step[] {
   const base: Step[] = ["name", "goal", "diet", "barriers", "sex", "age", "height", "weight", "activity"];
-  return goal && isWeightGoal(goal) ? [...base, "goalWeight", "pace"] : base;
+  // The report comes last, before the plan is built, so its focus is part of the plan from day one.
+  return goal && isWeightGoal(goal) ? [...base, "goalWeight", "pace", "report"] : [...base, "report"];
 }
 
 /**
@@ -200,17 +214,30 @@ export default function Onboarding() {
       api.saveGoal(profileId, target !== result!.computedTarget ? request({ targetOverride: target }) : request()),
     onSuccess: async () => {
       await queryClient.invalidateQueries();
-      // First-time setup ends with the optional report step, unless a report already exists.
-      if (firstSetup.current) {
-        const { reports } = await api.reports().catch(() => ({ reports: [] as unknown[] }));
-        if (reports.length === 0) return router.replace("/report-offer");
-      }
       if (router.canGoBack()) router.back();
       else router.replace("/(tabs)");
     },
   });
 
   const next = () => setStep((s) => Math.min(s + 1, steps.length - 1));
+
+  // Refetched after a report is confirmed (every write invalidates queries), so the step shows it was added.
+  const reports = useQuery({ queryKey: ["reports"], queryFn: api.reports, enabled: steps[step] === "report" });
+  const latestReport = reports.data?.reports[0] ?? null;
+  const buildPlan = () => calculate.mutate(request());
+  // A report confirmed from this step already ended on "Build my plan", so don't ask twice: build straight
+  // away, but only once we're back on screen, so the plan-building moment is actually seen.
+  const focused = useIsFocused();
+  const awaitingReport = useRef(false);
+  useEffect(() => {
+    if (steps[step] !== "report" || !reports.data) return;
+    if (!latestReport) awaitingReport.current = true;
+    else if (focused && awaitingReport.current && !calculate.isPending && !result) {
+      awaitingReport.current = false;
+      buildPlan();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reports.data, step, focused]);
 
   const saveName = useMutation({
     mutationFn: () => api.saveName(profileId, { name: name.trim() || null }),
@@ -248,7 +275,14 @@ export default function Onboarding() {
   };
 
   if (building) {
-    return <BuildingPlan name={name.trim() || null} ready={result !== null} onDone={finishBuilding} />;
+    return (
+      <BuildingPlan
+        name={name.trim() || null}
+        ready={result !== null}
+        hasReport={latestReport !== null}
+        onDone={finishBuilding}
+      />
+    );
   }
 
   if (result) {
@@ -256,7 +290,6 @@ export default function Onboarding() {
       <Reveal
         goal={result}
         target={target}
-        onAdjust={setTarget}
         onConfirm={() => confirm.mutate()}
         confirming={confirm.isPending}
         error={confirm.error ? errorMessage(confirm.error) : null}
@@ -283,6 +316,19 @@ export default function Onboarding() {
         ) : null}
         <Button label={name.trim() ? "Continue" : "Skip"} loading={saveName.isPending} onPress={submitName} />
       </View>
+    ) : current === "report" ? (
+      calculate.error ? (
+        <T variant="label" tone="plum" align="center">
+          {errorMessage(calculate.error)}
+        </T>
+      ) : (
+        <Button
+          label={latestReport ? "Build my plan" : "Skip for now"}
+          kind={latestReport ? "primary" : "ghost"}
+          loading={calculate.isPending}
+          onPress={buildPlan}
+        />
+      )
     ) : current === "diet" ? (
       <Button label="Skip" kind="ghost" onPress={() => chooseDiet(null)} />
     ) : current === "barriers" ? (
@@ -376,6 +422,25 @@ export default function Onboarding() {
         </Options>
       ) : null}
 
+      {current === "report" ? (
+        latestReport ? (
+          <View style={styles.reportDone}>
+            <Icon name="check-circle" size={22} color={colors.leaf} />
+            <View style={{ flex: 1 }}>
+              <T variant="bodyStrong">Report added</T>
+              <T variant="caption">Kimbo will build your plan around it.</T>
+            </View>
+          </View>
+        ) : (
+          <View style={{ gap: space.md }}>
+            <T variant="body" tone="soft">
+              Kimbo reads your LDL, HbA1c and triglycerides and picks one thing to eat more of.
+            </T>
+            <ReportOptions from="onboarding" />
+          </View>
+        )
+      ) : null}
+
       {current === "diet" ? (
         <Options>
           {DIETS.map((d) => (
@@ -434,11 +499,7 @@ export default function Onboarding() {
             <Card
               key={a.key}
               selected={activity === a.key}
-              onPress={() =>
-                choose(setActivity, a.key, () =>
-                  goalType && !isWeightGoal(goalType) ? calculate.mutate(request({ activity: a.key })) : next(),
-                )
-              }
+              onPress={() => choose(setActivity, a.key, next)}
               label={a.label}
               hint={a.hint}
               trailing={<Kcal value={Math.round(maintenanceFor({ ...body, activity: a.key }) / 10) * 10} />}
@@ -468,9 +529,10 @@ export default function Onboarding() {
                 key={pace}
                 selected={weeklyKg === pace}
                 onPress={() =>
-                  choose(setWeeklyKg, pace, () =>
-                    calculate.mutate(request({ weeklyKg: pace, targetWeightKg: goalWeightValue })),
-                  )
+                  choose(setWeeklyKg, pace, () => {
+                    setGoalWeight(goalWeightValue);
+                    next();
+                  })
                 }
                 label={`${formatPace(pace, weightUnit)} a week`}
                 hint={[
@@ -493,7 +555,8 @@ export default function Onboarding() {
             targetWeightKg={goalWeightValue}
             onUsePace={(pace) => {
               setWeeklyKg(pace);
-              calculate.mutate(request({ weeklyKg: pace, targetWeightKg: goalWeightValue }));
+              setGoalWeight(goalWeightValue);
+              next();
             }}
             onUseGoalWeight={(kg) => setGoalWeight(kg)}
           />
@@ -581,14 +644,13 @@ function GoalWeightStep({
 function dateInWeeks(weeks: number): string {
   const d = new Date();
   d.setDate(d.getDate() + weeks * 7);
-  const sameYear = d.getFullYear() === new Date().getFullYear();
-  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) });
+  // Always with the year: "24 Dec" alone could be any December.
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
 function Reveal({
   goal,
   target,
-  onAdjust,
   onConfirm,
   confirming,
   error,
@@ -596,7 +658,6 @@ function Reveal({
 }: {
   goal: Goal;
   target: number;
-  onAdjust: (v: number) => void;
   onConfirm: () => void;
   confirming: boolean;
   error: string | null;
@@ -694,9 +755,7 @@ function Reveal({
           {showPath ? `${target.toLocaleString("en-IN")} kcal a day gets you there.` : "Your daily target"}
         </T>
         <T variant="caption" align="center">
-          {target === goal.computedTarget
-            ? "Set from your age, height, weight and activity. Kimbo adjusts it as you log."
-            : `You set this. Kimbo suggested ${goal.computedTarget.toLocaleString("en-IN")}.`}
+          Set from your age, height, weight and activity. You can change it any time in Edit goal.
         </T>
       </View>
 
@@ -722,43 +781,6 @@ function Reveal({
               </View>
             </View>
           ))}
-        </Disclosure>
-        <Disclosure title="Adjust the number">
-          <View style={styles.adjust}>
-            <Chip label="−50" disabled={target <= 1200} onPress={() => onAdjust(Math.max(1200, target - 50))} />
-            <View style={{ flex: 1, alignItems: "center" }}>
-              <T variant="heading">{target.toLocaleString("en-IN")} kcal</T>
-              <T variant="caption" align="center">
-                Doctor gave you a different number? Set it here.
-              </T>
-            </View>
-            <Chip label="+50" disabled={target >= 4000} onPress={() => onAdjust(Math.min(4000, target + 50))} />
-          </View>
-        </Disclosure>
-        <Disclosure title="How we calculated this">
-          <View style={styles.equation}>
-            <Term value={b.bmr} label="at rest" />
-            <T variant="heading" tone="soft">
-              ×{b.activityFactor}
-            </T>
-            <Term value={b.maintenance} label="your day" />
-            {b.adjustment !== 0 ? (
-              <>
-                <T variant="heading" tone="soft">
-                  {b.adjustment > 0 ? "+" : "−"}
-                  {Math.abs(b.adjustment)}
-                </T>
-                <Term value={goal.computedTarget} label="target" highlight />
-              </>
-            ) : null}
-          </View>
-          <View style={styles.whyText}>
-            {goal.explanation.map((line) => (
-              <T key={line} variant="caption">
-                {line}
-              </T>
-            ))}
-          </View>
         </Disclosure>
       </View>
     </Screen>
@@ -909,15 +931,6 @@ function Card({
   );
 }
 
-function Term({ value, label, highlight }: { value: number; label: string; highlight?: boolean }) {
-  return (
-    <View style={[styles.term, highlight && { backgroundColor: colors.leafSoft }]}>
-      <T variant="heading">{value}</T>
-      <T variant="caption">{label}</T>
-    </View>
-  );
-}
-
 /** Counts up to the target the first time it appears, so the number lands with a little weight. */
 function useCountUp(to: number, ms = 700) {
   const [n, setN] = useState(0);
@@ -977,6 +990,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   revealTop: { alignItems: "center", gap: space.md, marginTop: space.xl },
+  reportDone: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    padding: space.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.leafSoft,
+  },
   disclosures: { borderRadius: radius.lg, backgroundColor: colors.surface, overflow: "hidden" },
   disclosureRow: {
     flexDirection: "row",
@@ -998,20 +1019,4 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   macroDot: { width: 10, height: 10, borderRadius: 5, marginBottom: 4 },
-  adjust: { flexDirection: "row", alignItems: "center", gap: space.sm },
-  whyText: { gap: 4, paddingHorizontal: space.sm },
-  equation: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: space.sm,
-  },
-  term: {
-    alignItems: "center",
-    paddingHorizontal: space.md,
-    paddingVertical: space.sm,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-  },
 });

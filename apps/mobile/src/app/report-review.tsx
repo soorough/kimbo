@@ -1,6 +1,6 @@
 import type { ConfirmReportResponse, MarkerKey } from "@kimbo/shared";
 import { useMutation } from "@tanstack/react-query";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, TextInput, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
@@ -26,6 +26,7 @@ const todayIso = () => {
 /** Every extracted value is shown for confirmation; nothing reaches the focus rules unchecked. */
 export default function ReportReview() {
   const { draft, source } = useReportDraft();
+  const fromSetup = useLocalSearchParams<{ from?: string }>().from === "onboarding";
   const afterWrite = useAfterWrite();
   const [reportDate, setReportDate] = useState(draft?.reportDate ?? todayIso());
   const [values, setValues] = useState<Record<MarkerKey, { value: string; unit: string }>>(() => {
@@ -59,7 +60,16 @@ export default function ReportReview() {
 
   if (result) {
     return (
-      <Screen footer={<Button label="Go to today" onPress={() => router.dismissTo("/(tabs)")} />}>
+      <Screen
+        footer={
+          fromSetup ? (
+            // During setup the report feeds the plan, so hand back to it rather than leaving for Today.
+            <Button label="Build my plan" onPress={() => router.dismissTo("/onboarding")} />
+          ) : (
+            <Button label="Go to today" onPress={() => router.dismissTo("/(tabs)")} />
+          )
+        }
+      >
         <View style={styles.reveal}>
           <View style={styles.revealGlow} />
           <Kimbo mood="focus" size={130} leaves={3} />

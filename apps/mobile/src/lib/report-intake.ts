@@ -10,9 +10,10 @@ import { useReportDraft } from "./report-draft";
 
 /**
  * Every way into a report (file, camera, sample, typing) ends on the same review
- * screen. Used by the Report tab and the optional onboarding step.
+ * screen. Used by the Report tab and the optional onboarding step, which passes
+ * from: "onboarding" so the review hands back to setup instead of going to Today.
  */
-export function useReportIntake() {
+export function useReportIntake(opts: { from?: "onboarding" } = {}) {
   const setDraft = useReportDraft((s) => s.set);
 
   const extract = useMutation({
@@ -21,7 +22,7 @@ export function useReportIntake() {
       api.extractReport(await load()),
     onSuccess: (draft, { source }) => {
       setDraft(draft, source);
-      router.push("/report-review");
+      router.push({ pathname: "/report-review", params: opts.from ? { from: opts.from } : {} });
     },
   });
 
@@ -66,7 +67,7 @@ export function useReportIntake() {
 
   function enterManually() {
     setDraft({ markers: [], reportDate: null, ignored: [], supportedMarkers: [], disclaimer: DISCLAIMER }, "manual");
-    router.push("/report-review");
+    router.push({ pathname: "/report-review", params: opts.from ? { from: opts.from } : {} });
   }
 
   return {

@@ -7,7 +7,7 @@ import { colors, fonts, radius } from "@/lib/theme";
 import { Kimbo, type KimboMood } from "./Kimbo";
 import { T } from "./Text";
 
-export type SceneStep = "name" | "goal" | "diet" | "barriers" | "sex" | "age" | "height" | "weight" | "activity" | "goalWeight" | "pace";
+export type SceneStep = "name" | "goal" | "diet" | "barriers" | "report" | "sex" | "age" | "height" | "weight" | "activity" | "goalWeight" | "pace";
 
 type Activity = GoalRequest["activity"];
 
@@ -55,6 +55,7 @@ export function KimboScene({
       {step === "name" ? <Solo mood="wave" /> : null}
       {step === "diet" ? <Solo mood="happy" /> : null}
       {step === "barriers" ? <Solo mood="focus" /> : null}
+      {step === "report" ? <Solo mood="focus" /> : null}
       {step === "goal" ? <SignpostScene still={still} /> : null}
       {step === "sex" ? <Solo mood="wave" /> : null}
       {step === "age" ? <CakeScene still={still} /> : null}

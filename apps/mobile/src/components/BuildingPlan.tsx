@@ -24,15 +24,27 @@ const MIN_MS = 2400;
  * happens (BMR, activity, pace, macros, date), ticking off in order while the API saves the goal.
  * Calls onDone once the steps have played *and* the plan is ready, whichever is later.
  */
-export function BuildingPlan({ name, ready, onDone }: { name: string | null; ready: boolean; onDone: () => void }) {
+export function BuildingPlan({
+  name,
+  ready,
+  hasReport,
+  onDone,
+}: {
+  name: string | null;
+  ready: boolean;
+  /** adds the step where the report's focus joins the plan */
+  hasReport: boolean;
+  onDone: () => void;
+}) {
   const still = useReduceMotion();
+  const [steps] = useState(() => (hasReport ? [...STEPS, "Your food focus from the report"] : STEPS));
   const [doneCount, setDoneCount] = useState(0);
   const bar = useRef(new Animated.Value(0)).current;
-  const played = doneCount >= STEPS.length;
+  const played = doneCount >= steps.length;
 
   useEffect(() => {
     if (still) {
-      setDoneCount(STEPS.length);
+      setDoneCount(steps.length);
       bar.setValue(1);
       return;
     }
@@ -42,8 +54,8 @@ export function BuildingPlan({ name, ready, onDone }: { name: string | null; rea
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
-    const per = MIN_MS / STEPS.length;
-    const timers = STEPS.map((_, i) =>
+    const per = MIN_MS / steps.length;
+    const timers = steps.map((_, i) =>
       setTimeout(
         () => {
           setDoneCount(i + 1);
@@ -53,7 +65,7 @@ export function BuildingPlan({ name, ready, onDone }: { name: string | null; rea
       ),
     );
     return () => timers.forEach(clearTimeout);
-  }, [still, bar]);
+  }, [still, bar, steps]);
 
   const finished = useRef(false);
   useEffect(() => {
@@ -79,7 +91,7 @@ export function BuildingPlan({ name, ready, onDone }: { name: string | null; rea
         />
       </View>
       <View style={styles.list}>
-        {STEPS.map((s, i) => {
+        {steps.map((s, i) => {
           const done = i < doneCount;
           const active = i === doneCount;
           return (
