@@ -1,9 +1,17 @@
-import type { ReactNode } from "react";
-import { View } from "react-native";
+import { useEffect, useRef, type ReactNode } from "react";
+import { Animated, Easing, View } from "react-native";
+import { useIntro } from "@/lib/intro";
+import { useReduceMotion } from "@/lib/motion";
 import Svg, { Circle } from "react-native-svg";
 import { colors, radius } from "@/lib/theme";
 
-/** Circular progress. Values past the max wrap into a calm second colour rather than turning red. */
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+/**
+ * Circular progress. Values past the max wrap into a calm second colour rather than turning red.
+ * The arc draws itself in when it first appears (once the launch intro is out of the way) and
+ * glides to new values, so logging a meal visibly fills it.
+ */
 export function Ring({
   value,
   max,
@@ -26,37 +34,53 @@ export function Ring({
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const ratio = max > 0 ? value / max : 0;
-  const main = Math.min(1, ratio);
-  const over = Math.min(1, Math.max(0, ratio - 1));
+  const still = useReduceMotion();
+  const introDone = useIntro((s) => s.done);
+  // Animated in "fraction of a lap" (0..2): the first lap is the main colour, the second the overflow.
+  const shown = useRef(new Animated.Value(still ? Math.min(2, ratio) : 0)).current;
+  useEffect(() => {
+    const to = Math.min(2, Math.max(0, ratio));
+    if (still) {
+      shown.setValue(to);
+      return;
+    }
+    if (!introDone) return;
+    Animated.timing(shown, { toValue: to, duration: 900, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
+  }, [ratio, still, introDone, shown]);
+
+  const main = shown.interpolate({ inputRange: [0, 1, 2], outputRange: [c, 0, 0], extrapolate: "clamp" });
+  const over = shown.interpolate({ inputRange: [0, 1, 2], outputRange: [c, c, 0], extrapolate: "clamp" });
+  // A zero-length arc with round caps would still draw a dot, so each arc fades in as it starts.
+  const mainOn = shown.interpolate({ inputRange: [0, 0.01], outputRange: [0, 1], extrapolate: "clamp" });
+  const overOn = shown.interpolate({ inputRange: [1, 1.01], outputRange: [0, 1], extrapolate: "clamp" });
   return (
     <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
       <Svg width={size} height={size} style={{ position: "absolute", transform: [{ rotate: "-90deg" }] }}>
         <Circle cx={size / 2} cy={size / 2} r={r} stroke={track} strokeWidth={stroke} fill="none" />
-        {/* A zero-length arc with round caps would still draw a dot. */}
-        {main > 0 ? (
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={r}
-            stroke={color}
-            strokeWidth={stroke}
-            fill="none"
-            strokeLinecap="round"
-            strokeDasharray={`${c * main} ${c}`}
-          />
-        ) : null}
-        {over > 0 ? (
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={r}
-            stroke={overColor}
-            strokeWidth={stroke}
-            fill="none"
-            strokeLinecap="round"
-            strokeDasharray={`${c * over} ${c}`}
-          />
-        ) : null}
+        <AnimatedCircle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          stroke={color}
+          strokeWidth={stroke}
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray={`${c} ${c}`}
+          strokeDashoffset={main}
+          opacity={mainOn}
+        />
+        <AnimatedCircle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          stroke={overColor}
+          strokeWidth={stroke}
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray={`${c} ${c}`}
+          strokeDashoffset={over}
+          opacity={overOn}
+        />
       </Svg>
       {children}
     </View>

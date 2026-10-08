@@ -67,7 +67,15 @@
         }
       ],
       "expo-audio",
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Kimbo uses the camera so you can scan your meals.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ]
     ],
     "scheme": "kimbo",
     "experiments": {

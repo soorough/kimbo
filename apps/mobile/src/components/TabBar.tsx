@@ -69,7 +69,7 @@ const OPTIONS: { label: string; icon: IconName; href: Href }[] = [
   { label: "Log exercise", icon: "activity", href: "/exercise" },
   { label: "My meals", icon: "bookmark", href: "/my-meals" },
   { label: "Search food", icon: "search", href: "/food-search" },
-  { label: "Snap or say", icon: "camera", href: "/log" },
+  { label: "Scan food", icon: "camera", href: "/scan" },
 ];
 
 /**

@@ -1,12 +1,11 @@
 import { router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Pressable, StyleSheet, TextInput, View } from "react-native";
+import { useState } from "react";
+import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import { Button } from "@/components/Button";
 import { Icon, Ring, Screen, T } from "@/components/ui";
 import { errorMessage } from "@/lib/api";
 import { useExerciseDraft } from "@/lib/exercise-draft";
 import { useLogExercise } from "@/lib/log-exercise";
-import { useReduceMotion } from "@/lib/motion";
 import { colors, fonts, space } from "@/lib/theme";
 
 /** Cal AI's result screen: the ring fills, the number is Kimbo's estimate, the pencil lets you correct it. */
@@ -15,15 +14,6 @@ export default function ExerciseBurned() {
   const [calories, setCalories] = useState(draft?.calories ?? 0);
   const [editing, setEditing] = useState(false);
   const save = useLogExercise();
-  const still = useReduceMotion();
-  const fill = useRef(new Animated.Value(still ? 1 : 0)).current;
-  const [shown, setShown] = useState(still ? 1 : 0);
-  useEffect(() => {
-    if (still) return;
-    const id = fill.addListener(({ value }) => setShown(value));
-    Animated.timing(fill, { toValue: 1, duration: 900, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
-    return () => fill.removeListener(id);
-  }, [fill, still]);
 
   if (!draft) {
     router.back();
@@ -44,7 +34,7 @@ export default function ExerciseBurned() {
       }
     >
       <View style={styles.center}>
-        <Ring value={shown * 0.7} max={1} size={150} stroke={12} color={colors.ink}>
+        <Ring value={0.7} max={1} size={150} stroke={12} color={colors.ink}>
           <View style={styles.flame}>
             <Icon name="zap" size={26} color={colors.ink} />
           </View>
