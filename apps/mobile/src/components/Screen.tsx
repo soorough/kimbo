@@ -27,7 +27,7 @@ export function Screen({
   padded?: boolean;
 }) {
   const insets = useSafeAreaInsets();
-  const body = [padded && styles.padded, { paddingBottom: footer ? space.xl : space.xxxl * 3 }];
+  const body = [padded && styles.padded, { paddingBottom: footer ? space.xl : insets.bottom + BOTTOM_CLEARANCE }];
   return (
     <SafeAreaView style={styles.root} edges={["top", "left", "right"]}>
       {/* Keeps the sticky footer above the keyboard (edge-to-edge Android no longer resizes for it). */}
@@ -65,6 +65,12 @@ export function Screen({
     </SafeAreaView>
   );
 }
+
+/**
+ * Room under the last card so it scrolls clear of what floats at the bottom of the tabs:
+ * the 64 tab bar, the Ask Kimbo pill (44 tall, 32 above the bar) and a little breathing space.
+ */
+const BOTTOM_CLEARANCE = 64 + space.xxxl + 44 + space.xl;
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.paper },
