@@ -124,6 +124,7 @@ export const api = {
   reportInsights: () => request(ReportInsightsResponse, "GET", "/reports/insights"),
 
   today: () => request(TodayResponse, "GET", "/today"),
+  todayFor: (date: string) => request(TodayResponse, "GET", `/today?date=${date}`),
   progress: () => request(ProgressResponse, "GET", "/progress"),
   checkin: () => request(CheckinResponse, "POST", "/checkins", {}),
 

@@ -1,26 +1,37 @@
-import type { MealType, TodayMeal, TodayResponse } from "@kimbo/shared";
+import type { ProgressResponse, TodayMeal, TodayResponse } from "@kimbo/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { useEffect } from "react";
-import { AppState, Pressable, StyleSheet, View } from "react-native";
-import { JourneyCard } from "@/components/JourneyCard";
-import { KimboBuddy } from "@/components/KimboBuddy";
-import { TodaySkeleton } from "@/components/Skeleton";
+import { useEffect, useState } from "react";
+import { AppState, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
+import { KimboBuddy } from "@/components/KimboBuddy";
 import { useMoments } from "@/components/Moments";
-import { Bar, ErrorState, Icon, Ring, Screen, Surface, T, type IconName } from "@/components/ui";
+import { TodaySkeleton } from "@/components/Skeleton";
+import { ErrorState, Icon, Ring, Screen, Surface, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useDraft } from "@/lib/draft";
-import { MEAL_LABEL, MEAL_ORDER, addName, nextMealPrompt } from "@/lib/format";
+import { MEAL_LABEL } from "@/lib/format";
 import { useAfterWrite } from "@/lib/mutations";
 import { useSession } from "@/lib/session";
-import { colors, macroColors, radius, space } from "@/lib/theme";
+import { colors, fonts, macroColors, radius, shadow, space } from "@/lib/theme";
 
-const MEAL_ICON: Record<MealType, IconName> = { breakfast: "sunrise", lunch: "sun", snack: "coffee", dinner: "moon" };
+const MEAL_ICON: Record<TodayMeal["mealType"], IconName> = {
+  breakfast: "sunrise",
+  lunch: "sun",
+  snack: "coffee",
+  dinner: "moon",
+};
+const WEEKDAY = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+/**
+ * Today, Cal AI-style: the week at a glance, one number for the day, small macro cards
+ * that swipe, and the meals. Kimbo speaks first in one line, which opens Ask Kimbo.
+ */
 export default function Today() {
   const profileId = useSession((s) => s.profileId);
-  const today = useQuery({ queryKey: ["today"], queryFn: api.today });
+  const [date, setDate] = useState<string | null>(null);
+  const today = useQuery({ queryKey: ["today", date], queryFn: () => (date ? api.todayFor(date) : api.today()) });
+  const week = useQuery({ queryKey: ["progress"], queryFn: api.progress });
   const profile = useQuery({
     queryKey: ["profile", profileId],
     queryFn: () => api.getProfile(profileId!),
@@ -28,7 +39,7 @@ export default function Today() {
   });
   useWelcomeBack();
 
-  if (today.isLoading)
+  if (today.isLoading && !today.data)
     return (
       <Screen>
         <TodaySkeleton />
@@ -42,187 +53,292 @@ export default function Today() {
     );
   }
   const data = today.data;
+  const isToday = date === null;
   const supported = data.focusSummary?.supported ?? 0;
 
   return (
     <Screen>
       <View style={styles.header}>
-        <View style={{ flex: 1, gap: 2 }}>
-          <T variant="overline" tone="faint">
-            {new Date(`${data.date}T12:00:00`)
-              .toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" })
-              .toUpperCase()}
-          </T>
-          <T variant="display">{addName(nextMealPrompt(data.meals.map((m) => m.mealType)), profile.data?.profile.name)}</T>
-        </View>
+        <T variant="display" style={styles.wordmark}>
+          kimbo
+        </T>
+        <View style={{ flex: 1 }} />
+        <StreakPill days={week.data?.streak ?? 0} />
         <KimboBuddy mood={data.meals.length ? "happy" : "idle"} leaves={1 + supported} />
       </View>
 
+      {week.data ? (
+        <WeekStrip week={week.data} selected={data.date} onPick={(d, isNow) => setDate(isNow ? null : d)} />
+      ) : null}
+
       {profile.data?.profile.isDemo ? <DemoBanner /> : null}
 
-      <EnergyCard data={data} />
-      {data.targets ? <JourneyCard /> : null}
-      <FocusCard data={data} />
+      {isToday ? <KimboLine /> : null}
+
+      <CaloriesCard data={data} />
+      <MacroCarousel data={data} />
 
       <View style={{ gap: space.md }}>
-        <T variant="heading">Meals</T>
-        {MEAL_ORDER.map((type) => (
-          <MealSlot
-            key={type}
-            type={type}
-            meals={data.meals.filter((m) => m.mealType === type)}
-            repeatable={data.repeatableMealTypes.includes(type)}
-          />
-        ))}
+        <T variant="heading">{isToday ? "Today's meals" : "Meals"}</T>
+        {data.meals.length ? (
+          data.meals.map((m) => <MealCard key={m.id} meal={m} />)
+        ) : (
+          <EmptyMeals canRepeat={isToday ? data.repeatableMealTypes : []} />
+        )}
       </View>
     </Screen>
   );
 }
 
-function EnergyCard({ data }: { data: TodayResponse }) {
-  const t = data.targets;
-  if (!t) return null;
-  const eaten = data.totals.calories;
-  const left = t.calories - eaten;
+function StreakPill({ days }: { days: number }) {
   return (
-    <Surface
-      style={styles.energy}
-      onPress={() => router.push("/nutrition")}
-      accessibilityLabel={`${eaten} of ${t.calories} kilocalories. Open nutrition details`}
+    <View style={styles.streak} accessibilityLabel={`${days} day streak`}>
+      <Icon name="zap" size={14} color={colors.turmericDeep} />
+      <T style={styles.streakText}>{days}</T>
+    </View>
+  );
+}
+
+/** Mon–Sun: dashed for nothing logged, a ring for logged, filled for on target; today is raised. */
+function WeekStrip({
+  week,
+  selected,
+  onPick,
+}: {
+  week: ProgressResponse;
+  selected: string;
+  onPick: (date: string, isToday: boolean) => void;
+}) {
+  // The last day that isn't still ahead is today.
+  const todayIso = [...week.days].reverse().find((d) => d.calories !== null)?.date ?? selected;
+  const band = week.goal ? (week.goal.targetCalories * week.goal.bandPct) / 100 : null;
+  return (
+    <View style={styles.week}>
+      {week.days.map((d, i) => {
+        const future = d.calories === null;
+        const logged = (d.calories ?? 0) > 0;
+        const onTarget =
+          logged && week.goal && band !== null && Math.abs(d.calories! - week.goal.targetCalories) <= band;
+        const isSel = d.date === selected;
+        return (
+          <Pressable
+            key={d.date}
+            disabled={future}
+            accessibilityRole="button"
+            accessibilityLabel={`${WEEKDAY[i]} ${Number(d.date.slice(8))}${logged ? ", logged" : ""}`}
+            onPress={() => onPick(d.date, d.date === todayIso)}
+            style={[styles.day, isSel && styles.daySel]}
+          >
+            <T variant="caption" tone={future ? "faint" : undefined}>
+              {WEEKDAY[i]}
+            </T>
+            <View
+              style={[
+                styles.dayDot,
+                !logged && !future && styles.dayEmpty,
+                logged && styles.dayLogged,
+                onTarget && styles.dayOnTarget,
+                future && { opacity: 0.4 },
+              ]}
+            >
+              <T style={[styles.dayNum, onTarget && { color: colors.white }]}>{Number(d.date.slice(8))}</T>
+            </View>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/** Kimbo speaks first: one line for right now. Tapping it opens Ask Kimbo. */
+function KimboLine() {
+  const home = useQuery({ queryKey: ["assistant"], queryFn: api.assistantHome, staleTime: 60_000 });
+  const line = home.data?.greeting;
+  if (!line) return null;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityHint="Opens Ask Kimbo"
+      onPress={() => router.push("/assistant")}
+      style={({ pressed }) => [styles.kimboLine, pressed && { opacity: 0.85 }]}
     >
-      <Ring value={eaten} max={t.calories} size={132} stroke={12}>
-        {/* Over target is stated plainly, in a calm colour — never an alarm. */}
-        <T variant="number">{Math.abs(left)}</T>
-        <T variant="caption">{left >= 0 ? "kcal left" : "kcal over"}</T>
-      </Ring>
-      <View style={styles.macros}>
-        <T variant="label">
-          {eaten} of {t.calories} kcal
-        </T>
-        <Macro label="Protein" value={data.totals.protein} target={t.protein} color={macroColors.protein} />
-        <Macro label="Carbs" value={data.totals.carbs} target={t.carbs} color={macroColors.carbs} />
-        <Macro label="Fat" value={data.totals.fat} target={t.fat} color={macroColors.fat} />
-        <Macro label="Fibre" value={data.totals.fibre} target={t.fibre} color={macroColors.fibre} />
-        <T variant="caption" tone="leaf">
-          All nutrients ›
-        </T>
+      <Kimbo mood={line.mood} size={36} />
+      <T variant="bodyStrong" style={{ flex: 1 }} numberOfLines={3}>
+        {line.text}
+      </T>
+      <Icon name="chevron-right" size={18} color={colors.leafDeep} />
+    </Pressable>
+  );
+}
+
+/** One number for the day, Cal AI-style. Tapping opens the full nutrition view. */
+function CaloriesCard({ data }: { data: TodayResponse }) {
+  const target = data.targets?.calories ?? 0;
+  const eaten = Math.round(data.totals.calories);
+  return (
+    <Surface onPress={() => router.push("/nutrition")} accessibilityLabel={`${eaten} of ${target} kilocalories eaten`}>
+      <View style={styles.calRow}>
+        <View style={{ flex: 1, gap: 2 }}>
+          <View style={{ flexDirection: "row", alignItems: "baseline" }}>
+            <T style={styles.calBig}>{eaten.toLocaleString("en-IN")}</T>
+            <T variant="title" tone="soft">
+              /{target.toLocaleString("en-IN")}
+            </T>
+          </View>
+          <T variant="label">kcal eaten</T>
+        </View>
+        <Ring value={eaten} max={target || 1} size={96} stroke={9}>
+          <Icon name="sun" size={22} color={colors.ink} />
+        </Ring>
       </View>
     </Surface>
   );
 }
 
-function Macro({ label, value, target, color }: { label: string; value: number; target: number; color: string }) {
+/** Small cards that swipe: the macros first, then fibre, sat fat and the focus. */
+function MacroCarousel({ data }: { data: TodayResponse }) {
+  const { width } = useWindowDimensions();
+  const pageW = width;
+  const [page, setPage] = useState(0);
+  const t = data.targets;
+  const pages: {
+    label: string;
+    value: number;
+    max: number;
+    unit: string;
+    color: string;
+    icon: IconName;
+    limit?: boolean;
+  }[][] = [
+    [
+      {
+        label: "Protein",
+        value: data.totals.protein,
+        max: t?.protein ?? 0,
+        unit: "g",
+        color: macroColors.protein,
+        icon: "zap",
+      },
+      {
+        label: "Carbs",
+        value: data.totals.carbs,
+        max: t?.carbs ?? 0,
+        unit: "g",
+        color: macroColors.carbs,
+        icon: "sun",
+      },
+      { label: "Fat", value: data.totals.fat, max: t?.fat ?? 0, unit: "g", color: macroColors.fat, icon: "droplet" },
+    ],
+    [
+      {
+        label: "Fibre",
+        value: data.totals.fibre,
+        max: t?.fibre ?? 0,
+        unit: "g",
+        color: macroColors.fibre,
+        icon: "feather",
+      },
+      {
+        label: "Sat fat",
+        value: data.totals.satFat,
+        max: t?.satFat ?? 0,
+        unit: "g",
+        color: colors.plum,
+        icon: "alert-circle",
+        limit: true,
+      },
+      {
+        label: "Helped focus",
+        value: data.focusSummary?.supported ?? 0,
+        max: Math.max(1, data.focusSummary?.total ?? 0),
+        unit: "",
+        color: colors.leaf,
+        icon: "target",
+      },
+    ],
+  ];
   return (
-    <View style={{ gap: 4 }}>
-      <View style={styles.rowBetween}>
-        <T variant="caption" tone="soft">
-          {label}
-        </T>
-        <T variant="caption" tone="soft">
-          {Math.round(value)}/{target} g
-        </T>
-      </View>
-      <Bar value={value} max={target} color={color} height={6} />
-    </View>
-  );
-}
-
-function FocusCard({ data }: { data: TodayResponse }) {
-  if (!data.focus) {
-    return (
-      <Surface tint="leaf" onPress={() => router.push("/(tabs)/report")} accessibilityLabel="Add a blood report">
-        <View style={styles.rowCenter}>
-          <View style={{ flex: 1, gap: 4 }}>
-            <T variant="overline">FOOD FOCUS</T>
-            <T variant="heading">Add your blood report</T>
-            <T variant="label">Kimbo reads LDL, HbA1c and triglycerides and tells you what to eat more of.</T>
-          </View>
-          <Icon name="chevron-right" color={colors.leaf} />
-        </View>
-      </Surface>
-    );
-  }
-  const s = data.focusSummary!;
-  return (
-    <Surface
-      tint="leaf"
-      onPress={() => router.push("/(tabs)/report")}
-      accessibilityLabel={`Focus: ${data.focus.title}. Open report insights`}
-    >
-      <View style={styles.rowCenter}>
-        <Kimbo mood={s.supported ? "proud" : "focus"} size={64} leaves={1 + s.supported} />
-        <View style={{ flex: 1, gap: 4 }}>
-          <T variant="overline">TODAY'S FOCUS</T>
-          <T variant="heading">{data.focus.title}</T>
-          <View style={styles.dots}>
-            {data.meals.map((m) => (
-              <View key={m.id} style={[styles.dot, m.supportsFocus ? styles.dotOn : styles.dotOff]} />
+    <View style={{ gap: space.sm }}>
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / pageW))}
+        style={{ marginHorizontal: -space.xl }}
+      >
+        {pages.map((cards, p) => (
+          <View key={p} style={[styles.page, { width: pageW, paddingHorizontal: space.xl }]}>
+            {cards.map((c) => (
+              <View key={c.label} style={styles.mini}>
+                <T style={styles.miniValue}>
+                  {Math.round(c.value)}
+                  <T variant="caption">
+                    {" "}
+                    /{Math.round(c.max)}
+                    {c.unit}
+                  </T>
+                </T>
+                <T variant="caption" numberOfLines={1}>
+                  {c.limit ? `${c.label} limit` : c.label}
+                </T>
+                <Ring value={c.value} max={c.max || 1} size={58} stroke={6} color={c.color}>
+                  <Icon name={c.icon} size={16} color={c.color} />
+                </Ring>
+              </View>
             ))}
           </View>
-          <T variant="label">
-            {s.total === 0
-              ? "Log a meal to see how it fits."
-              : `${s.supported} of ${s.total} meal${s.total === 1 ? "" : "s"} helped today`}
-          </T>
-        </View>
+        ))}
+      </ScrollView>
+      <View style={styles.pager}>
+        {pages.map((_, i) => (
+          <View key={i} style={[styles.pagerDot, i === page && styles.pagerDotOn]} />
+        ))}
       </View>
-      <T variant="caption" tone="leaf">
-        One leaf on Kimbo for each meal that helped.
-      </T>
-    </Surface>
+    </View>
   );
 }
 
-function MealSlot({ type, meals, repeatable }: { type: MealType; meals: TodayMeal[]; repeatable: boolean }) {
+/** Sketch-like empty state, with "same as yesterday" when there is something to repeat. */
+function EmptyMeals({ canRepeat }: { canRepeat: TodayMeal["mealType"][] }) {
   const afterWrite = useAfterWrite();
   const repeat = useMutation({
-    mutationFn: () => api.repeatYesterday(type),
+    mutationFn: (type: TodayMeal["mealType"]) => api.repeatYesterday(type),
     onSuccess: (res) => afterWrite(res.events),
   });
-
-  if (meals.length)
-    return (
-      <>
-        {meals.map((m) => (
-          <MealCard key={m.id} meal={m} />
-        ))}
-      </>
-    );
   return (
-    <View style={styles.emptySlot}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Add ${MEAL_LABEL[type]}`}
-        onPress={() => router.push({ pathname: "/log", params: { mealType: type } })}
-        style={styles.emptyMain}
-      >
-        <View style={styles.mealIconMuted}>
-          <Icon name={MEAL_ICON[type]} size={18} color={colors.inkFaint} />
+    <Pressable accessibilityRole="button" onPress={() => router.push("/log")} style={styles.empty}>
+      <View style={styles.sketch}>
+        <View style={styles.sketchCard}>
+          <Kimbo mood="sleepy" size={34} />
+          <View style={{ flex: 1, gap: 6 }}>
+            <View style={[styles.sketchLine, { width: "70%" }]} />
+            <View style={[styles.sketchLine, { width: "45%" }]} />
+          </View>
         </View>
-        <T variant="bodyStrong" tone="soft" style={{ flex: 1 }}>
-          Add {MEAL_LABEL[type].toLowerCase()}
-        </T>
-        <Icon name="plus" size={18} color={colors.leaf} />
-      </Pressable>
-      {repeatable ? (
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => repeat.mutate()}
-          disabled={repeat.isPending}
-          style={[styles.repeat, repeat.isPending && { opacity: 0.5 }]}
-        >
-          <Icon name="rotate-ccw" size={14} color={colors.leaf} />
-          <T variant="label" tone="leaf">
-            {repeat.isPending ? "Adding…" : "Same as yesterday"}
-          </T>
-        </Pressable>
+        <View style={styles.sketchShadow} />
+      </View>
+      <T variant="label" align="center">
+        Tap + to add your first meal of the day
+      </T>
+      {canRepeat.length ? (
+        <View style={styles.repeatRow}>
+          {canRepeat.map((type) => (
+            <Pressable
+              key={type}
+              accessibilityRole="button"
+              disabled={repeat.isPending}
+              onPress={() => repeat.mutate(type)}
+              style={styles.repeatChip}
+            >
+              <Icon name="rotate-ccw" size={13} color={colors.leaf} />
+              <T variant="caption" tone="leaf">
+                {MEAL_LABEL[type]} like yesterday
+              </T>
+            </Pressable>
+          ))}
+        </View>
       ) : null}
-      {repeat.error ? (
-        <T variant="caption" style={{ paddingHorizontal: space.md, paddingBottom: space.sm }}>
-          {errorMessage(repeat.error)}
-        </T>
-      ) : null}
-    </View>
+    </Pressable>
   );
 }
 
@@ -308,15 +424,96 @@ function useWelcomeBack() {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "flex-end", gap: space.md, marginTop: space.sm, zIndex: 10 },
-  rowBetween: { flexDirection: "row", justifyContent: "space-between" },
+  header: { flexDirection: "row", alignItems: "center", gap: space.sm, marginTop: space.sm, zIndex: 10 },
+  wordmark: { fontSize: 30, lineHeight: 36 },
+  streak: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: space.md,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    ...shadow.card,
+  },
+  streakText: { fontFamily: fonts.bold, fontSize: 15, color: colors.ink },
+  week: { flexDirection: "row", justifyContent: "space-between" },
+  day: {
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: space.sm,
+    paddingHorizontal: 4,
+    borderRadius: radius.md,
+    minWidth: 42,
+  },
+  daySel: { backgroundColor: colors.surface, ...shadow.card },
+  dayDot: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
+  dayEmpty: { borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.lineStrong },
+  dayLogged: { borderWidth: 2, borderColor: colors.leaf },
+  dayOnTarget: { backgroundColor: colors.leaf },
+  dayNum: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink },
+  kimboLine: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    padding: space.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.leafSoft,
+  },
+  calRow: { flexDirection: "row", alignItems: "center", gap: space.lg },
+  calBig: { fontFamily: fonts.display, fontSize: 48, lineHeight: 54, color: colors.ink },
+  page: { flexDirection: "row", gap: space.sm },
+  mini: {
+    flex: 1,
+    gap: 4,
+    padding: space.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    alignItems: "flex-start",
+    ...shadow.card,
+  },
+  miniValue: { fontFamily: fonts.bold, fontSize: 18, color: colors.ink },
+  pager: { flexDirection: "row", justifyContent: "center", gap: 6 },
+  pagerDot: { width: 7, height: 7, borderRadius: 4, borderWidth: 1.5, borderColor: colors.inkFaint },
+  pagerDotOn: { backgroundColor: colors.ink, borderColor: colors.ink },
+  empty: {
+    alignItems: "center",
+    gap: space.md,
+    padding: space.xl,
+    borderRadius: radius.lg,
+    backgroundColor: colors.sunk,
+  },
+  sketch: { width: "80%", alignItems: "center" },
+  sketchCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    width: "100%",
+    padding: space.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    ...shadow.card,
+  },
+  sketchShadow: {
+    width: "92%",
+    height: 8,
+    borderBottomLeftRadius: radius.md,
+    borderBottomRightRadius: radius.md,
+    backgroundColor: colors.surface,
+    opacity: 0.6,
+  },
+  sketchLine: { height: 8, borderRadius: 4, backgroundColor: colors.sunk },
+  repeatRow: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: space.sm },
+  repeatChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: space.md,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+  },
   rowCenter: { flexDirection: "row", alignItems: "center", gap: space.md },
-  energy: { flexDirection: "row", alignItems: "center", gap: space.xl },
-  macros: { flex: 1, gap: space.sm },
-  dots: { flexDirection: "row", gap: 6, marginVertical: 2 },
-  dot: { width: 10, height: 10, borderRadius: 5 },
-  dotOn: { backgroundColor: colors.leaf },
-  dotOff: { borderWidth: 1.5, borderColor: colors.leaf, opacity: 0.5 },
   mealIcon: {
     width: 38,
     height: 38,
@@ -324,24 +521,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.leafSoft,
     alignItems: "center",
     justifyContent: "center",
-  },
-  mealIconMuted: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: colors.sunk,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emptySlot: { borderRadius: radius.lg, borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.line },
-  emptyMain: { flexDirection: "row", alignItems: "center", gap: space.md, padding: space.md },
-  repeat: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: space.md,
-    paddingBottom: space.md,
-    marginLeft: 50,
   },
   helped: {
     flexDirection: "row",

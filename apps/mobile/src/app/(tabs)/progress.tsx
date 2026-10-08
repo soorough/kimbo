@@ -1,6 +1,7 @@
 import type { Achievement, KimboEventType, ProgressResponse } from "@kimbo/shared";
 import { useQuery } from "@tanstack/react-query";
 import { StyleSheet, View } from "react-native";
+import { JourneyCard } from "@/components/JourneyCard";
 import { CaloriesWeek, FocusRing } from "@/components/ProgressCharts";
 import { RoadToGoal } from "@/components/RoadToGoal";
 import { ProgressSkeleton } from "@/components/Skeleton";
@@ -51,6 +52,8 @@ export default function Progress() {
         <T variant="display">This week</T>
       </View>
 
+      {/* The goal and "Log weight" live here now that Today follows the day, not the journey. */}
+      {journey.data ? <JourneyCard /> : null}
       {journey.data ? <RoadToGoal journey={journey.data} /> : null}
       <CaloriesWeek p={p} />
       {p.focus ? <FocusRing focus={p.focus} /> : null}
