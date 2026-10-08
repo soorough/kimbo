@@ -10,7 +10,8 @@ import { create } from "zustand";
 import { api } from "@/lib/api";
 import { useReduceMotion } from "@/lib/motion";
 import { colors, fonts, macroColors, radius, shadow, space } from "@/lib/theme";
-import { Icon } from "./Icon";
+import { EXERCISE_ICON } from "./ActivityCards";
+import { Icon, type IconName } from "./Icon";
 import { Ring } from "./Meter";
 import { RollingNumber } from "./RollingNumber";
 import { T } from "./Text";
@@ -90,7 +91,7 @@ export function DayNumbers({ data, diet }: { data: TodayResponse; diet: Diet | n
       <HealthScoreCard score={data.healthScore} />
     </View>,
     <View key="health" style={styles.pageBody}>
-      <HealthSoon burned={data.exercise.burned} />
+      <HealthSoon burned={data.exercise.burned} workouts={data.exercise.entries} />
       <WaterRow ml={data.water.ml} />
     </View>,
   ];
@@ -277,6 +278,20 @@ function HealthScoreCard({ score: h }: { score: TodayResponse["healthScore"] }) 
   );
 }
 
+function BurnRow({ icon, label, calories }: { icon: IconName; label: string; calories: number }) {
+  return (
+    <View style={styles.burnRow}>
+      <Icon name={icon} size={16} color={colors.ink} />
+      <View style={{ flex: 1 }}>
+        <T variant="bodyStrong" numberOfLines={1}>
+          {label}
+        </T>
+        <T variant="caption">{calories} cal</T>
+      </View>
+    </View>
+  );
+}
+
 /** A health-app style tile: white rounded square, filled pink-to-red heart. */
 function HeartTile() {
   return (
@@ -323,7 +338,13 @@ function WaterRow({ ml }: { ml: number }) {
 }
 
 /** Steps and calories burned are on the way; shown as a promise, not a broken button. */
-function HealthSoon({ burned }: { burned: number }) {
+function HealthSoon({ burned, workouts }: { burned: number; workouts: TodayResponse["exercise"]["entries"] }) {
+  // One row per kind of workout, like Cal AI: "Weight lifting 397 cal", "Run 204 cal".
+  const byLabel = new Map<string, { kind: (typeof workouts)[number]["kind"]; calories: number }>();
+  for (const w of workouts) {
+    const row = byLabel.get(w.label);
+    byLabel.set(w.label, { kind: w.kind, calories: (row?.calories ?? 0) + w.calories });
+  }
   const app = Platform.OS === "ios" ? "Apple Health" : "Health Connect";
   return (
     <View style={styles.row}>
@@ -341,23 +362,17 @@ function HealthSoon({ burned }: { burned: number }) {
           </T>
         </View>
       </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityHint="Log exercise"
-        onPress={() => router.push("/exercise")}
-        style={({ pressed }) => [styles.card, styles.healthCard, { alignItems: "flex-start" }, pressed && styles.pressed]}
-      >
+      <View style={[styles.card, styles.burnCard]} accessible accessibilityLabel={`${burned} calories burned today`}>
         <T variant="label">Calories burned</T>
-        <RollingNumber text={`${burned}`} style={styles.miniValue} lineHeight={24} />
-        <View style={[styles.labelRow, { marginTop: space.md }]}>
-          <T style={{ fontSize: 18 }}>🚶</T>
-          <T variant="bodyStrong">Steps</T>
+        <View style={styles.burnTotal}>
+          <RollingNumber text={`${burned}`} style={styles.burnBig} lineHeight={34} />
+          <T variant="label"> cal</T>
         </View>
-        <T variant="caption">Coming soon</T>
-        <T variant="label" tone="leaf" style={{ marginTop: space.sm, fontFamily: fonts.bold }}>
-          + Log exercise
-        </T>
-      </Pressable>
+        <BurnRow icon="navigation" label="Steps" calories={0} />
+        {[...byLabel.entries()].slice(0, 3).map(([label, r]) => (
+          <BurnRow key={label} icon={EXERCISE_ICON[r.kind]} label={label} calories={r.calories} />
+        ))}
+      </View>
     </View>
   );
 }
@@ -398,6 +413,10 @@ const styles = StyleSheet.create({
     paddingVertical: space.xs,
   },
   water: { flexDirection: "row", alignItems: "center", padding: space.lg, gap: space.md },
+  burnCard: { flex: 1, padding: space.lg, gap: space.sm },
+  burnTotal: { flexDirection: "row", alignItems: "baseline", marginBottom: space.xs },
+  burnBig: { fontFamily: fonts.bold, fontSize: 28, lineHeight: 34, color: colors.ink, fontVariant: ["tabular-nums"] },
+  burnRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
   outlineBtn: {
     borderWidth: 1.5,
     borderColor: colors.line,

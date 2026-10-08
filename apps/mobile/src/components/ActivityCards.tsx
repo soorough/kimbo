@@ -12,7 +12,7 @@ import { WATER_BLUE, WaterSheet } from "./WaterSheet";
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
-const EXERCISE_ICON: Record<ExerciseEntry["kind"], IconName> = {
+export const EXERCISE_ICON: Record<ExerciseEntry["kind"], IconName> = {
   run: "wind",
   weights: "anchor",
   walk: "navigation",
@@ -41,16 +41,36 @@ export function WaterEntryCard({ entry }: { entry: WaterEntry }) {
   );
 }
 
-/** A workout in Recently logged: what, how long, how much it burned. */
+/** A workout in Recently logged, Cal AI-style: "204 Calories burned", then intensity and minutes. */
 export function ExerciseEntryCard({ entry }: { entry: ExerciseEntry }) {
-  const detail = [`${entry.calories} cal`, entry.minutes ? `${entry.minutes} min` : null, entry.intensity]
-    .filter(Boolean)
-    .join(" · ");
   return (
     <EntryCard
-      icon={<Icon name={EXERCISE_ICON[entry.kind]} size={20} color={colors.leafDeep} />}
+      icon={<Icon name={EXERCISE_ICON[entry.kind]} size={20} color={colors.ink} />}
       title={entry.label}
-      detail={detail}
+      detail={
+        <View style={{ gap: 4 }}>
+          <T variant="body">
+            <T variant="heading">{entry.calories} Calories</T>
+            <T variant="label"> burned</T>
+          </T>
+          {entry.intensity || entry.minutes ? (
+            <View style={styles.meta}>
+              {entry.intensity ? (
+                <View style={styles.metaItem}>
+                  <Icon name="sun" size={13} color={colors.terracotta} />
+                  <T variant="caption">Intensity: {entry.intensity[0]!.toUpperCase() + entry.intensity.slice(1)}</T>
+                </View>
+              ) : null}
+              {entry.minutes ? (
+                <View style={styles.metaItem}>
+                  <Icon name="clock" size={13} color={WATER_BLUE} />
+                  <T variant="caption">{entry.minutes} Mins</T>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+        </View>
+      }
       at={entry.loggedAt}
       menu={[]}
       remove={() => api.deleteExercise(entry.id)}
@@ -68,7 +88,7 @@ function EntryCard({
 }: {
   icon: React.ReactNode;
   title: string;
-  detail: string;
+  detail: React.ReactNode;
   at: string;
   menu: { label: string; icon: IconName; run: () => void }[];
   remove: () => Promise<unknown>;
@@ -88,7 +108,7 @@ function EntryCard({
       <View style={styles.icon}>{icon}</View>
       <View style={{ flex: 1, gap: 2 }}>
         <T variant="heading">{title}</T>
-        <T variant="label">{detail}</T>
+        {typeof detail === "string" ? <T variant="label">{detail}</T> : detail}
       </View>
       <View style={{ alignItems: "flex-end", gap: 2 }}>
         <Pressable accessibilityRole="button" accessibilityLabel={`More for ${title}`} hitSlop={12} onPress={() => setOpen(true)}>
@@ -134,5 +154,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   icon: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: colors.paper },
+  meta: { flexDirection: "row", flexWrap: "wrap", gap: space.md },
+  metaItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   option: { flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.md },
 });
