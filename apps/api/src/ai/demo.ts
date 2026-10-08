@@ -1,4 +1,5 @@
-import type { ExtractedReport, MealRecognizer, RecognizedItem, ReportExtractor } from "./types.js";
+import { readExerciseByRules } from "../domain/exercise.js";
+import type { ExerciseReader, ExtractedReport, MealRecognizer, ReadExercise, RecognizedItem, ReportExtractor } from "./types.js";
 
 /**
  * Offline adapters for local development and demos without an AI key.
@@ -64,7 +65,11 @@ export function parseMealText(text: string): RecognizedItem[] {
     .filter((item) => item.name.length > 0);
 }
 
-export class DemoAdapters implements MealRecognizer, ReportExtractor {
+export class DemoAdapters implements MealRecognizer, ReportExtractor, ExerciseReader {
+  async readExercise(text: string): Promise<ReadExercise> {
+    return readExerciseByRules(text);
+  }
+
   async fromText(text: string): Promise<RecognizedItem[]> {
     return parseMealText(text);
   }

@@ -460,6 +460,45 @@ export const TodayMeal = Meal.extend({
 });
 export type TodayMeal = z.infer<typeof TodayMeal>;
 
+// ---------- Water and exercise ----------
+
+export const WaterRequest = z.object({
+  ml: z.number().int().min(1, "Add some water").max(5000, "That's a lot of water at once"),
+  loggedAt: z.iso.datetime({ offset: true }).optional(),
+});
+export type WaterRequest = z.infer<typeof WaterRequest>;
+export const WaterEntry = z.object({ id: z.string(), ml: z.number(), loggedAt: z.string() });
+export type WaterEntry = z.infer<typeof WaterEntry>;
+
+export const ExerciseKind = z.enum(["run", "weights", "walk", "cycle", "yoga", "sport", "other", "manual"]);
+export type ExerciseKind = z.infer<typeof ExerciseKind>;
+export const Intensity = z.enum(["low", "medium", "high"]);
+export type Intensity = z.infer<typeof Intensity>;
+
+/** Run / weights: Kimbo works out calories from intensity and minutes. Describe: the text is read first. */
+export const ExerciseEstimateRequest = z.union([
+  z.object({
+    kind: z.enum(["run", "weights"]),
+    intensity: Intensity,
+    minutes: z.number().int().min(1, "At least a minute").max(600, "That's over ten hours"),
+  }),
+  z.object({ text: z.string().trim().min(3, "Describe your workout").max(300, "Keep it under 300 characters") }),
+]);
+export type ExerciseEstimateRequest = z.infer<typeof ExerciseEstimateRequest>;
+
+/** A workout ready to log; calories may be edited by the user before saving. */
+export const ExerciseDraft = z.object({
+  kind: ExerciseKind,
+  label: z.string().min(1).max(60),
+  intensity: Intensity.nullable(),
+  minutes: z.number().int().min(1).max(600).nullable(),
+  calories: z.number().int().min(1, "Burned calories must be at least 1").max(5000, "That's more than a day's burn"),
+  loggedAt: z.iso.datetime({ offset: true }).optional(),
+});
+export type ExerciseDraft = z.infer<typeof ExerciseDraft>;
+export const ExerciseEntry = ExerciseDraft.omit({ loggedAt: true }).extend({ id: z.string(), loggedAt: z.string() });
+export type ExerciseEntry = z.infer<typeof ExerciseEntry>;
+
 /** Today's score out of 10, worked out by Kimbo's rules; null until a meal is logged. */
 export const HealthScore = z.object({
   score: z.number().nullable(),
@@ -485,16 +524,14 @@ export const TodayResponse = z.object({
   focusSummary: z.object({ supported: z.number(), total: z.number() }).nullable(),
   /** Meal types logged yesterday, i.e. what "same as yesterday" can repeat. */
   repeatableMealTypes: z.array(MealType),
-  water: z.object({ glasses: z.number(), goal: z.number() }),
+  water: z.object({ ml: z.number(), goalMl: z.number(), entries: z.array(WaterEntry) }),
+  /** calories burned by logged exercise; added to the day's calorie budget */
+  exercise: z.object({ burned: z.number(), entries: z.array(ExerciseEntry) }),
   healthScore: HealthScore,
 });
 export type TodayResponse = z.infer<typeof TodayResponse>;
 
-export const WaterRequest = z.object({
-  glasses: z.number().int().min(0, "Glasses can't be negative").max(20, "That's a lot of water for one day"),
-  date: LocalDate.optional(),
-});
-export type WaterRequest = z.infer<typeof WaterRequest>;
+
 
 // ---------- Assistant ----------
 
@@ -510,6 +547,9 @@ export const AssistantAction = z.discriminatedUnion("kind", [
   /** with a draft, the meal Kimbo suggested opens ready to save; without, logging starts empty */
   z.object({ kind: z.literal("log_meal"), label: z.string(), mealType: MealType, draft: MealDraft.optional() }),
   z.object({ kind: z.literal("open"), label: z.string(), screen: z.enum(["report", "progress", "nutrition"]) }),
+  /** logs water straight from the chat, after the user taps it */
+  z.object({ kind: z.literal("log_water"), label: z.string(), ml: z.number() }),
+  z.object({ kind: z.literal("log_exercise"), label: z.string(), draft: ExerciseDraft }),
 ]);
 export type AssistantAction = z.infer<typeof AssistantAction>;
 

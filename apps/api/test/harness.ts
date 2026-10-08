@@ -4,13 +4,16 @@ import {
   type Coach,
   type CoachGreeting,
   type CoachReply,
+  type ExerciseReader,
   type ExtractedReport,
+  type ReadExercise,
   type MealRecognizer,
   type RecognizedItem,
   type ReportExtractor,
   type Voice,
 } from "../src/ai/types.js";
 import { createApp } from "../src/app.js";
+import { readExerciseByRules } from "../src/domain/exercise.js";
 import { createDb } from "../src/db/index.js";
 import { TEST_DATABASE_URL } from "./db-url.js";
 
@@ -59,6 +62,16 @@ export class FakeCoach implements Coach {
   }
 }
 
+/** Reads workouts by Kimbo's rules unless a test scripts the model's answer; records what it read. */
+export class FakeExerciseReader implements ExerciseReader {
+  next: ReadExercise | null = null;
+  read: string[] = [];
+  async readExercise(text: string) {
+    this.read.push(text);
+    return this.next ?? readExerciseByRules(text);
+  }
+}
+
 /** Stand-in for ElevenLabs. */
 export class FakeVoice implements Voice {
   spoken: string[] = [];
@@ -99,6 +112,7 @@ export function useTestApp() {
     extractor: FakeExtractor;
     coach: FakeCoach;
     voice: FakeVoice;
+    exerciseReader: FakeExerciseReader;
   };
 
   beforeEach(async () => {
@@ -110,6 +124,7 @@ export function useTestApp() {
     ctx.extractor = new FakeExtractor();
     ctx.coach = new FakeCoach();
     ctx.voice = new FakeVoice();
+    ctx.exerciseReader = new FakeExerciseReader();
     ctx.app = await createApp({
       db,
       clock: ctx.clock.read,
@@ -117,6 +132,7 @@ export function useTestApp() {
       extractor: ctx.extractor,
       coach: ctx.coach,
       voice: ctx.voice,
+      exerciseReader: ctx.exerciseReader,
     });
     return async () => {
       await ctx.app.close();

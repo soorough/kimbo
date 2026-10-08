@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
+import { WATER_BLUE, WaterSheet } from "./WaterSheet";
 import { create } from "zustand";
 import { api } from "@/lib/api";
 import { useReduceMotion } from "@/lib/motion";
@@ -55,7 +56,8 @@ export function DayNumbers({ data, diet }: { data: TodayResponse; diet: Diet | n
     name: "Calories",
     icon: "",
     eaten: n.calories,
-    target: t?.calories ?? 0,
+    // Exercise earns calories back, so the budget grows by what was burned.
+    target: t ? t.calories + data.exercise.burned : 0,
     unit: "",
     color: colors.ink,
   };
@@ -71,7 +73,7 @@ export function DayNumbers({ data, diet }: { data: TodayResponse; diet: Diet | n
 
   const pages = [
     <View key="today" style={styles.pageBody}>
-      <CalorieCard stat={calories} />
+      <CalorieCard stat={calories} burned={data.exercise.burned} />
       <View style={styles.row}>
         {macros.map((s) => (
           <MiniCard key={s.key} stat={s} />
@@ -88,8 +90,8 @@ export function DayNumbers({ data, diet }: { data: TodayResponse; diet: Diet | n
       <HealthScoreCard score={data.healthScore} />
     </View>,
     <View key="health" style={styles.pageBody}>
-      <HealthSoon />
-      <WaterCard date={data.date} glasses={data.water.glasses} goal={data.water.goal} />
+      <HealthSoon burned={data.exercise.burned} />
+      <WaterRow ml={data.water.ml} />
     </View>,
   ];
 
@@ -158,7 +160,7 @@ function FadeLabel({ text, tone }: { text: string; tone?: "plum" }) {
   );
 }
 
-function CalorieCard({ stat }: { stat: Stat }) {
+function CalorieCard({ stat, burned }: { stat: Stat; burned: number }) {
   const mode = useMode((m) => m.mode);
   const flip = useFlip();
   const r = readout(stat, mode);
@@ -175,6 +177,14 @@ function CalorieCard({ stat }: { stat: Stat }) {
         <View style={styles.labelRow}>
           <FadeLabel text={r.label} tone={r.over ? "plum" : undefined} />
           <Icon name="repeat" size={12} color={colors.inkFaint} />
+          {burned > 0 ? (
+            <View style={styles.burnChip} accessibilityLabel={`${burned} calories earned from exercise`}>
+              <Icon name="activity" size={11} color={colors.leafDeep} />
+              <T variant="caption" tone="leaf" style={{ fontFamily: fonts.bold }}>
+                +{burned}
+              </T>
+            </View>
+          ) : null}
         </View>
       </View>
       <Ring value={stat.eaten} max={stat.target || 1} size={100} stroke={9} color={colors.leaf}>
@@ -287,95 +297,33 @@ function HeartTile() {
   );
 }
 
-/**
- * Water in glasses, not millilitres: droplets fill as the day goes, one number, and − / +.
- * The count updates on screen at once and saves behind it.
- */
-function WaterCard({ date, glasses, goal }: { date: string; glasses: number; goal: number }) {
-  const queryClient = useQueryClient();
-  const [count, setCount] = useState(glasses);
-  useEffect(() => setCount(glasses), [glasses, date]);
-  const save = useMutation({
-    mutationFn: (n: number) => api.setWater(n, date),
-    onError: () => setCount(glasses),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["today"] }),
-  });
-  const change = (d: number) => {
-    const n = Math.max(0, Math.min(20, count + d));
-    if (n === count) return;
-    Haptics.impactAsync(d > 0 ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Soft).catch(() => {});
-    setCount(n);
-    save.mutate(n);
-  };
-  const done = count >= goal;
+/** Cal AI's water row: today's total and a Log water button that opens the sheet. */
+function WaterRow({ ml }: { ml: number }) {
+  const [open, setOpen] = useState(false);
   return (
     <View style={[styles.card, styles.water]}>
-      <View style={{ flex: 1, gap: space.sm }}>
-        <View style={styles.labelRow}>
-          <RollingNumber text={String(count)} style={styles.miniValue} lineHeight={24} />
-          <T variant="label">{done ? (count === 1 ? "glass · goal met" : "glasses · goal met") : count === 1 ? "glass of water" : "glasses of water"}</T>
-        </View>
-        <View style={styles.drops} accessible accessibilityLabel={`${count} of ${goal} glasses`}>
-          {Array.from({ length: goal }, (_, i) => (
-            <Droplet key={i} full={i < count} />
-          ))}
-        </View>
+      <Svg width={26} height={30} viewBox="0 0 24 28">
+        <Path d="M3 2h18l-2.2 23a2 2 0 0 1-2 1.8H7.2a2 2 0 0 1-2-1.8L3 2z" fill="#EAF3FA" stroke={WATER_BLUE} strokeWidth={1.6} />
+        <Path d="M5.2 11h13.6l-1.4 14H6.6z" fill={WATER_BLUE} opacity={0.55} />
+      </Svg>
+      <View style={{ flex: 1 }}>
+        <T variant="label">Water</T>
+        <RollingNumber text={`${ml.toLocaleString("en-IN")} ml`} style={styles.miniValue} lineHeight={24} />
       </View>
-      <View style={styles.waterButtons}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="One glass less"
-          disabled={count === 0}
-          hitSlop={6}
-          onPress={() => change(-1)}
-          style={({ pressed }) => [styles.round, styles.roundGhost, count === 0 && { opacity: 0.35 }, pressed && styles.pressed]}
-        >
-          <Icon name="minus" size={18} color={colors.ink} />
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Add a glass of water"
-          hitSlop={6}
-          onPress={() => change(1)}
-          style={({ pressed }) => [styles.round, styles.roundOn, pressed && styles.pressed]}
-        >
-          <Icon name="plus" size={18} color={colors.white} />
-        </Pressable>
-      </View>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => setOpen(true)}
+        style={({ pressed }) => [styles.outlineBtn, pressed && styles.pressed]}
+      >
+        <T variant="bodyStrong">Log water</T>
+      </Pressable>
+      <WaterSheet visible={open} onClose={() => setOpen(false)} />
     </View>
   );
 }
 
-const WATER = "#4A90C2";
-
-/** One glass as a droplet that pops a little when it fills. */
-function Droplet({ full }: { full: boolean }) {
-  const still = useReduceMotion();
-  const s = useRef(new Animated.Value(1)).current;
-  const was = useRef(full);
-  useEffect(() => {
-    if (full && !was.current && !still) {
-      s.setValue(0.6);
-      Animated.spring(s, { toValue: 1, damping: 8, stiffness: 260, useNativeDriver: true }).start();
-    }
-    was.current = full;
-  }, [full, still, s]);
-  return (
-    <Animated.View style={{ transform: [{ scale: s }] }}>
-      <Svg width={16} height={20} viewBox="0 0 16 20">
-        <Path
-          d="M8 1C8 1 1.5 8.4 1.5 12.6A6.5 6.5 0 0 0 14.5 12.6C14.5 8.4 8 1 8 1Z"
-          fill={full ? WATER : "none"}
-          stroke={full ? WATER : colors.lineStrong}
-          strokeWidth={1.5}
-        />
-      </Svg>
-    </Animated.View>
-  );
-}
-
 /** Steps and calories burned are on the way; shown as a promise, not a broken button. */
-function HealthSoon() {
+function HealthSoon({ burned }: { burned: number }) {
   const app = Platform.OS === "ios" ? "Apple Health" : "Health Connect";
   return (
     <View style={styles.row}>
@@ -393,15 +341,23 @@ function HealthSoon() {
           </T>
         </View>
       </View>
-      <View style={[styles.card, styles.healthCard, { alignItems: "flex-start", opacity: 0.55 }]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityHint="Log exercise"
+        onPress={() => router.push("/exercise")}
+        style={({ pressed }) => [styles.card, styles.healthCard, { alignItems: "flex-start" }, pressed && styles.pressed]}
+      >
         <T variant="label">Calories burned</T>
-        <T style={styles.miniValue}>—</T>
+        <RollingNumber text={`${burned}`} style={styles.miniValue} lineHeight={24} />
         <View style={[styles.labelRow, { marginTop: space.md }]}>
           <T style={{ fontSize: 18 }}>🚶</T>
           <T variant="bodyStrong">Steps</T>
         </View>
-        <T variant="caption">—</T>
-      </View>
+        <T variant="caption">Coming soon</T>
+        <T variant="label" tone="leaf" style={{ marginTop: space.sm, fontFamily: fonts.bold }}>
+          + Log exercise
+        </T>
+      </Pressable>
     </View>
   );
 }
@@ -442,11 +398,23 @@ const styles = StyleSheet.create({
     paddingVertical: space.xs,
   },
   water: { flexDirection: "row", alignItems: "center", padding: space.lg, gap: space.md },
-  drops: { flexDirection: "row", gap: 6 },
-  waterButtons: { flexDirection: "row", gap: space.sm },
-  round: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
-  roundGhost: { borderWidth: 1.5, borderColor: colors.lineStrong },
-  roundOn: { backgroundColor: WATER },
+  outlineBtn: {
+    borderWidth: 1.5,
+    borderColor: colors.line,
+    borderRadius: radius.pill,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.sm,
+  },
+  burnChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    marginLeft: space.xs,
+    backgroundColor: colors.leafSoft,
+    borderRadius: radius.pill,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
   pager: { flexDirection: "row", justifyContent: "center", gap: 6 },
   dot: { width: 7, height: 7, borderRadius: 4, borderWidth: 1.5, borderColor: colors.inkFaint },
   dotOn: { backgroundColor: colors.ink, borderColor: colors.ink },

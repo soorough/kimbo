@@ -76,11 +76,11 @@ export default function DailyBreakdown() {
           <View style={{ flex: 1, gap: 2 }}>
             <T variant="label">Water</T>
             <T style={styles.big}>
-              {data.water.glasses}
-              <T style={styles.of}>{` / ${data.water.goal} glasses`}</T>
+              {data.water.ml.toLocaleString("en-IN")}
+              <T style={styles.of}>{` / ${data.water.goalMl.toLocaleString("en-IN")} ml`}</T>
             </T>
           </View>
-          <Ring value={data.water.glasses} max={data.water.goal} size={64} stroke={6} color="#4A90C2" overColor="#4A90C2">
+          <Ring value={data.water.ml} max={data.water.goalMl} size={64} stroke={6} color="#4A90C2" overColor="#4A90C2">
             <Icon name="droplet" size={20} color="#4A90C2" />
           </Ring>
         </View>

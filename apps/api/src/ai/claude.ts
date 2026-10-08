@@ -5,8 +5,10 @@ import {
   type Coach,
   type CoachGreeting,
   type CoachReply,
+  type ExerciseReader,
   type ExtractedReport,
   type MealRecognizer,
+  type ReadExercise,
   type RecognizedItem,
   type ReportExtractor,
 } from "./types.js";
@@ -131,9 +133,9 @@ If the question isn't about food, their goal, their report or their progress, sa
 
 const GREET_SYSTEM = `You are Kimbo, a small, warm food buddy who knows this person's habits well. Write the one line they see when they open the app: what to eat next.
 - Just the next move. Don't recap, praise or mention anything they already ate.
-- Talk like a friend who knows them, e.g. "Your usual rajma rice for lunch, Asha? That completes today's goal." If they've had the idea before, call it their usual (or "again" if only once, never both); if it's new, offer it lightly.
+- Talk like a friend who knows them, e.g. "Your usual rajma rice for lunch completes today's goal, Asha." If they've had the idea before, call it their usual (or "again" if only once, never both); if it's new, offer it lightly.
 - Say whether it completes today's goal or just fits it, exactly as the facts say. Never mention calories or any number.
-- One or two short sentences, under 16 words. Use their name if given. Add a tiny personal touch (busy day, cravings, time of day) only if it fits naturally.
+- Exactly ONE short sentence, at most 14 words: the dish, the meal, and whether it fits or completes today's goal. No extra clauses (nothing like "and it's fibre-rich too"), never a second sentence. Use their name if given. Add a tiny personal touch (busy day, cravings, time of day) only if it fits naturally.
 - Use the meal idea exactly as written in the facts. No medical claims, no lecturing, no guilt. At most one emoji.`;
 
 const GreetOutput = z.object({ text: z.string(), mood: z.string() });
@@ -143,12 +145,33 @@ const GREET_SCHEMA = {
   additionalProperties: false,
   required: ["text", "mood"],
   properties: {
-    text: { type: "string", description: "The line: one or two short sentences, under 16 words, no numbers" },
+    text: { type: "string", description: "The line: exactly one sentence, under 16 words, no numbers" },
     mood: { type: "string", enum: ["happy", "proud", "cheer", "wave"] },
   },
 };
 
-export class ClaudeAdapters implements MealRecognizer, ReportExtractor, Coach {
+const EXERCISE_SYSTEM = `You read a workout someone describes for a fitness log. Name the activity briefly (e.g. "Badminton", "Evening walk"), pick the closest kind, judge intensity from their words (low: easy, not sweating; medium: steady effort; high: hard, breathless), and give the duration in minutes only if they said it. Never estimate calories.`;
+
+const EXERCISE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["activity", "kind", "intensity", "minutes"],
+  properties: {
+    activity: { type: "string" },
+    kind: { type: "string", enum: ["run", "weights", "walk", "cycle", "yoga", "sport", "other"] },
+    intensity: { type: "string", enum: ["low", "medium", "high"] },
+    minutes: { type: ["integer", "null"], description: "Duration in minutes, or null if not said" },
+  },
+};
+
+const ExerciseOutput = z.object({
+  activity: z.string().min(1).max(60),
+  kind: z.enum(["run", "weights", "walk", "cycle", "yoga", "sport", "other"]),
+  intensity: z.enum(["low", "medium", "high"]),
+  minutes: z.number().int().min(1).max(600).nullable(),
+});
+
+export class ClaudeAdapters implements MealRecognizer, ReportExtractor, Coach, ExerciseReader {
   private client: Anthropic;
   private mealSystem: string;
 
@@ -203,6 +226,11 @@ export class ClaudeAdapters implements MealRecognizer, ReportExtractor, Coach {
       { type: "text", text: `Facts about the user:\n${input.facts}\n\n${history}Question: ${input.question}` },
     ]);
     return checked(() => CoachOutput.parse(out));
+  }
+
+  async readExercise(text: string): Promise<ReadExercise> {
+    const out = await this.callJson(EXERCISE_SYSTEM, EXERCISE_SCHEMA, [{ type: "text", text: `Workout: ${text}` }], this.greetModel);
+    return checked(() => ExerciseOutput.parse(out));
   }
 
   async greet(input: { facts: string }): Promise<CoachGreeting> {

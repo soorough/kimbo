@@ -1,10 +1,11 @@
 import Fastify from "fastify";
 import { ZodError } from "zod";
-import { AiUnavailableError, type Coach, type MealRecognizer, type ReportExtractor, type Voice } from "./ai/types.js";
+import { AiUnavailableError, type Coach, type ExerciseReader, type MealRecognizer, type ReportExtractor, type Voice } from "./ai/types.js";
 import type { Clock } from "./clock.js";
 import type { Db } from "./db/index.js";
 import { HttpError } from "./errors.js";
 import { assistantRoutes } from "./routes/assistant.js";
+import { activityRoutes } from "./routes/activity.js";
 import { journeyRoutes } from "./routes/journey.js";
 import { mealRoutes } from "./routes/meals.js";
 import { profileRoutes } from "./routes/profiles.js";
@@ -20,6 +21,8 @@ export interface Deps {
   extractor: ReportExtractor;
   /** answers typed questions from the user's facts; without it they map to the starter answers */
   coach?: Coach;
+  /** reads described workouts; calories always come from Kimbo's rules */
+  exerciseReader: ExerciseReader;
   /** Kimbo's spoken voice and listening; optional */
   voice?: Voice;
 }
@@ -59,6 +62,7 @@ export async function createApp(deps: Deps, opts: { logger?: boolean } = {}) {
   savedMealRoutes(app, deps);
   reportRoutes(app, deps);
   todayRoutes(app, deps);
+  activityRoutes(app, deps);
   progressRoutes(app, deps);
   journeyRoutes(app, deps);
   assistantRoutes(app, deps);

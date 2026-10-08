@@ -113,12 +113,25 @@ CREATE TABLE IF NOT EXISTS saved_meals (
 );
 CREATE INDEX IF NOT EXISTS saved_meals_profile_idx ON saved_meals (profile_id, created_at);
 
--- Glasses of water per day; setting the count replaces it.
-CREATE TABLE IF NOT EXISTS water_days (
+-- Each water log ("+1 glass", "500 ml") is its own entry, so it can be deleted.
+CREATE TABLE IF NOT EXISTS water_logs (
+  id uuid PRIMARY KEY,
   profile_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  day date NOT NULL,
-  glasses integer NOT NULL,
-  updated_at timestamptz NOT NULL,
-  PRIMARY KEY (profile_id, day)
+  ml integer NOT NULL,
+  logged_at timestamptz NOT NULL
 );
+CREATE INDEX IF NOT EXISTS water_logs_profile_idx ON water_logs (profile_id, logged_at);
+
+-- Workouts; calories come from Kimbo's MET rules or the user's own number.
+CREATE TABLE IF NOT EXISTS exercise_logs (
+  id uuid PRIMARY KEY,
+  profile_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  kind text NOT NULL,
+  label text NOT NULL,
+  intensity text,
+  minutes integer,
+  calories integer NOT NULL,
+  logged_at timestamptz NOT NULL
+);
+CREATE INDEX IF NOT EXISTS exercise_logs_profile_idx ON exercise_logs (profile_id, logged_at);
 `;

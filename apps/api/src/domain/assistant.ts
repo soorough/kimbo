@@ -42,6 +42,10 @@ export interface AssistantContext {
   goal: { label: string; targetKg: number | null; currentKg: number | null; startKg: number | null } | null;
   /** days in a row with something logged */
   streak: number;
+  waterMl: number;
+  waterGoalMl: number;
+  /** today's logged workouts; their calories are already added to targets.calories */
+  workouts: { label: string; minutes: number | null; calories: number }[];
   /** distinct meals eaten before today at the next meal's time, most often first */
   pastMeals: PastMeal[];
 }
@@ -158,17 +162,13 @@ export function mealIdea(ctx: AssistantContext): MealIdea | null {
 function nextMealOffer(ctx: AssistantContext, hi: string): string {
   const meal = MEAL_WORD[ctx.nextMeal];
   const idea = mealIdea(ctx);
-  if (!idea) return ctx.targets ? `You're done for today${hi}. Keep ${meal} light.` : `What's for ${meal}${hi}?`;
-  const offer =
-    idea.times > 1
-      ? `Your usual ${idea.name} for ${meal}${hi}?`
-      : idea.times === 1
-        ? `${capitalise(idea.name)} again for ${meal}${hi}?`
-        : `How about ${idea.name} for ${meal}${hi}?`;
-  return idea.goal ? `${offer} ${GOAL_TEXT[idea.goal]}` : offer;
+  if (!idea) return ctx.targets ? `You're done for today${hi}, keep ${meal} light.` : `What's for ${meal}${hi}?`;
+  // One sentence, always: the dish, the meal, and whether it fits or completes today's goal.
+  const goal = idea.goal === "completes" ? " completes today's goal" : idea.goal === "fits" ? " fits today's goal" : "";
+  const dish =
+    idea.times > 1 ? `Your usual ${idea.name}` : idea.times === 1 ? `${capitalise(idea.name)} again` : capitalise(idea.name);
+  return goal ? `${dish} for ${meal}${goal}${hi}.` : `${dish} for ${meal}${hi}?`;
 }
-
-const GOAL_TEXT = { completes: "That completes today's goal.", fits: "It fits today's goal." } as const;
 
 function capitalise(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -219,6 +219,9 @@ export function greetingIsSafe(text: string, idea: MealIdea, facts: string): boo
   if (t.length < 10 || t.length > 160) return false;
   if (!t.toLowerCase().includes(idea.name.split(" + ")[0]!)) return false;
   if (/complet/i.test(t) && idea.goal !== "completes") return false;
+  // Exactly one short sentence on Today, with no tacked-on extra clause.
+  if (t.split(/[.!?]+(?:\s+|$)/).filter((p) => p.trim()).length > 1) return false;
+  if (t.split(/\s+/).length > 14 || /,\s*and\b/i.test(t)) return false;
   const known = new Set(facts.match(/\d+(\.\d+)?/g) ?? []);
   return (t.match(/\d+(\.\d+)?/g) ?? []).every((n) => known.has(n));
 }
@@ -416,6 +419,10 @@ export function factSheet(ctx: AssistantContext): string {
       ? `Daily target: ${ctx.targets.calories} kcal; protein ${ctx.targets.protein} g, carbs ${ctx.targets.carbs} g, fat ${ctx.targets.fat} g, fibre ${ctx.targets.fibre} g or more, saturated fat under ${ctx.targets.satFat} g.`
       : "No calorie target set yet.",
     `Eaten today: ${Math.round(ctx.totals.calories)} kcal, protein ${Math.round(ctx.totals.protein)} g, fibre ${Math.round(ctx.totals.fibre)} g.`,
+    `Water today: ${ctx.waterMl} ml of a ${ctx.waterGoalMl} ml goal.`,
+    ctx.workouts.length
+      ? `Exercise today: ${ctx.workouts.map((w) => `${w.label}${w.minutes ? ` ${w.minutes} min` : ""} (${w.calories} kcal burned)`).join("; ")}. Burned calories are already added to the daily target above.`
+      : "No exercise logged today.",
     ctx.todayMeals.length
       ? `Meals today: ${ctx.todayMeals.map((m) => `${m.mealType}: ${m.dishes.join(", ")}${m.supportsFocus ? " (helped the focus)" : ""}`).join("; ")}.`
       : "No meals logged today.",

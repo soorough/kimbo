@@ -1,6 +1,8 @@
-import { router, type Tabs } from "expo-router";
-import type { ComponentProps } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import * as Haptics from "expo-haptics";
+import { router, type Href, type Tabs } from "expo-router";
+import { useEffect, useRef, useState, type ComponentProps } from "react";
+import { Animated, Easing, Modal, Pressable, StyleSheet, View } from "react-native";
+import { useReduceMotion } from "@/lib/motion";
 import { colors, fonts, radius, shadow, space } from "@/lib/theme";
 import { AskKimboPill } from "./AskKimboPill";
 import { Icon, type IconName } from "./Icon";
@@ -15,6 +17,8 @@ const ICONS: Record<string, IconName> = { index: "home", progress: "trending-up"
  * most, so it sits in the thumb's natural spot instead of competing as a tab.
  */
 export function TabBar({ state, descriptors, navigation, insets }: TabBarProps) {
+  const [menu, setMenu] = useState(false);
+  const bottom = Math.max(insets.bottom - space.xs, space.sm);
   const tabs = state.routes.map((route, index) => {
     const focused = state.index === index;
     const label = descriptors[route.key]?.options.title ?? route.name;
@@ -40,20 +44,96 @@ export function TabBar({ state, descriptors, navigation, insets }: TabBarProps) 
   });
 
   return (
-    <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom - space.xs, space.sm) }]}>
+    <View style={[styles.bar, { paddingBottom: bottom }]}>
       {/* Kimbo sits fixed at the bottom centre of every tab, one tap from the assistant. */}
       <AskKimboPill />
       {/* A floating pill of tabs, with logging as its own round button beside it. */}
       <View style={styles.pill}>{tabs}</View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Log a meal"
-        onPress={() => router.push("/log")}
+        accessibilityLabel="Log something"
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+          setMenu(true);
+        }}
         style={({ pressed }) => [styles.logButton, pressed && { transform: [{ scale: 0.94 }] }]}
       >
         <Icon name="plus" size={28} color={colors.white} />
       </Pressable>
+      <PlusMenu visible={menu} bottom={bottom} onClose={() => setMenu(false)} />
     </View>
+  );
+}
+
+const OPTIONS: { label: string; icon: IconName; href: Href }[] = [
+  { label: "Log exercise", icon: "activity", href: "/exercise" },
+  { label: "My meals", icon: "bookmark", href: "/my-meals" },
+  { label: "Search food", icon: "search", href: "/food-search" },
+  { label: "Snap or say", icon: "camera", href: "/log" },
+];
+
+/**
+ * Cal AI's + menu: the screen dims, the + turns into an ✕ in the same spot, and four
+ * tiles pop up above it. Tapping outside or the ✕ closes it.
+ */
+function PlusMenu({ visible, bottom, onClose }: { visible: boolean; bottom: number; onClose: () => void }) {
+  const still = useReduceMotion();
+  const v = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!visible) return;
+    v.setValue(still ? 1 : 0);
+    if (!still) Animated.spring(v, { toValue: 1, damping: 16, stiffness: 220, useNativeDriver: true }).start();
+  }, [visible, still, v]);
+  const close = (then?: () => void) =>
+    Animated.timing(v, { toValue: 0, duration: still ? 0 : 140, easing: Easing.in(Easing.quad), useNativeDriver: true }).start(() => {
+      onClose();
+      then?.();
+    });
+  const go = (href: Href) => close(() => router.push(href));
+  // The ✕ sits exactly where the + was: the bar's padding plus half the pill/button height difference.
+  const buttonBottom = bottom + 4;
+  return (
+    <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={() => close()}>
+      <Animated.View style={[StyleSheet.absoluteFill, styles.scrim, { opacity: v }]}>
+        <Pressable style={StyleSheet.absoluteFill} accessibilityLabel="Close menu" onPress={() => close()} />
+      </Animated.View>
+      <View style={[styles.grid, { bottom: buttonBottom + 56 + space.xl }]} pointerEvents="box-none">
+        {OPTIONS.map((o, i) => (
+          <Animated.View
+            key={o.label}
+            style={{
+              width: "48%",
+              opacity: v,
+              transform: [
+                { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [24 + i * 6, 0] }) },
+                { scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) },
+              ],
+            }}
+          >
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => go(o.href)}
+              style={({ pressed }) => [styles.tile, pressed && { transform: [{ scale: 0.96 }] }]}
+            >
+              <Icon name={o.icon} size={24} color={colors.ink} />
+              <T variant="bodyStrong">{o.label}</T>
+            </Pressable>
+          </Animated.View>
+        ))}
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Close menu"
+        onPress={() => close()}
+        style={[styles.logButton, styles.closeButton, { bottom: buttonBottom }]}
+      >
+        <Animated.View
+          style={{ transform: [{ rotate: v.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "135deg"] }) }] }}
+        >
+          <Icon name="plus" size={28} color={colors.white} />
+        </Animated.View>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -91,6 +171,26 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   tabOn: { backgroundColor: colors.leafSoft },
+  scrim: { backgroundColor: "rgba(35, 32, 27, 0.35)" },
+  grid: {
+    position: "absolute",
+    left: space.xl,
+    right: space.xl,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: space.md,
+  },
+  tile: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: space.sm,
+    paddingVertical: space.xl,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    ...shadow.raised,
+  },
+  closeButton: { position: "absolute", right: space.xl },
   logButton: {
     width: 56,
     height: 56,

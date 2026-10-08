@@ -5,6 +5,7 @@ import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Animated, AppState, Easing, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { Button } from "@/components/Button";
+import { ExerciseEntryCard, WaterEntryCard } from "@/components/ActivityCards";
 import { DayNumbers } from "@/components/DayNumbers";
 import { Kimbo } from "@/components/Kimbo";
 import { TypeOut } from "@/components/TypeOut";
@@ -89,15 +90,34 @@ export default function Today() {
       <DayNumbers data={data} diet={diet} />
 
       <View style={{ gap: space.md }}>
-        <T variant="heading">{isToday ? "Today's meals" : "Meals"}</T>
-        {data.meals.length ? (
-          data.meals.map((m) => <MealCard key={m.id} meal={m} />)
-        ) : (
-          <EmptyMeals canRepeat={isToday ? data.repeatableMealTypes : []} />
+        <T variant="heading">{isToday ? "Recently logged" : "Logged"}</T>
+        {/* Meals, water and workouts together, newest first (Cal AI's "Recently uploaded"). */}
+        {recent(data).map((r) =>
+          r.kind === "meal" ? (
+            <MealCard key={r.item.id} meal={r.item} />
+          ) : r.kind === "water" ? (
+            <WaterEntryCard key={r.item.id} entry={r.item} />
+          ) : (
+            <ExerciseEntryCard key={r.item.id} entry={r.item} />
+          ),
         )}
+        {data.meals.length ? null : <EmptyMeals canRepeat={isToday ? data.repeatableMealTypes : []} />}
       </View>
     </Screen>
   );
+}
+
+type Recent =
+  | { kind: "meal"; at: string; item: TodayResponse["meals"][number] }
+  | { kind: "water"; at: string; item: TodayResponse["water"]["entries"][number] }
+  | { kind: "exercise"; at: string; item: TodayResponse["exercise"]["entries"][number] };
+
+function recent(data: TodayResponse): Recent[] {
+  return [
+    ...data.meals.map((item): Recent => ({ kind: "meal", at: item.eatenAt, item })),
+    ...data.water.entries.map((item): Recent => ({ kind: "water", at: item.loggedAt, item })),
+    ...data.exercise.entries.map((item): Recent => ({ kind: "exercise", at: item.loggedAt, item })),
+  ].sort((a, b) => b.at.localeCompare(a.at));
 }
 
 function StreakPill({ days }: { days: number }) {
@@ -281,8 +301,6 @@ function KimboLine() {
 }
 
 const MEAL_EMOJI: Record<MealType, string> = { breakfast: "☕", lunch: "🍛", snack: "🍎", dinner: "🌙" };
-/** The last line Kimbo said out loud, so coming back to Today doesn't replay it. */
-let lastSpoken: string | null = null;
 
 /**
  * Kimbo's meal suggestion, said like a little moment: Kimbo thinks while the words type in,
@@ -302,14 +320,14 @@ function MealNudge({
   const startFromAi = useDraft((s) => s.startFromAi);
   const still = useReduceMotion();
   const introDone = useIntro((s) => s.done);
-  const seen = still || lastSpoken === text;
+  // Types in every time Today opens; only reduced motion shows it at once.
+  const seen = still;
   const [typed, setTyped] = useState(seen);
   const footer = useRef(new Animated.Value(seen ? 1 : 0)).current;
   const breathe = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (!typed || seen) return;
-    lastSpoken = text;
     Animated.sequence([
       Animated.spring(footer, { toValue: 1, damping: 14, stiffness: 160, useNativeDriver: true }),
       Animated.delay(250),

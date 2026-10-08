@@ -26,7 +26,13 @@ import { focusForDay } from "../domain/focus-history.js";
 import { mealSupportsFocus } from "../domain/focus-match.js";
 import { MARKER_FOCUS } from "../domain/health.js";
 import { consistencyStreak, trackedDateSet, weekStats } from "../domain/progress.js";
-import { localHour, suggestMealType } from "../domain/time.js";
+import { WATER_GOAL_ML } from "../domain/config.js";
+import { looksLikeExercise } from "../domain/exercise.js";
+import { addDays, localDate, localHour, startOfLocalDay, suggestMealType } from "../domain/time.js";
+import { readWater, WATER_SIZES } from "../domain/water.js";
+import { listExercise } from "../repo/exercise.js";
+import { listWater } from "../repo/water.js";
+import { describeExercise } from "./activity.js";
 import { HttpError } from "../errors.js";
 import { parse, requireProfile } from "../http.js";
 import { loadProgressInput } from "../progress-input.js";
@@ -39,11 +45,17 @@ const GOAL_LABEL = { lose: "lose weight", maintain: "stay where I am", build_mus
 /** Gathers what Kimbo knows about the user. Every number is Kimbo's own (catalogue + rules). */
 async function contextFor(deps: Deps, profile: ProfileRow): Promise<AssistantContext> {
   const now = deps.clock();
-  const [input, reports, weighIns] = await Promise.all([
+  const today = localDate(now, profile.timezone);
+  const dayStart = startOfLocalDay(today, profile.timezone);
+  const dayEnd = startOfLocalDay(addDays(today, 1), profile.timezone);
+  const [input, reports, weighIns, water, workouts] = await Promise.all([
     loadProgressInput(deps, profile),
     listReports(deps.db, profile.id),
     listWeighIns(deps.db, profile.id),
+    listWater(deps.db, profile.id, dayStart, dayEnd),
+    listExercise(deps.db, profile.id, dayStart, dayEnd),
   ]);
+  const burned = workouts.reduce((s, w) => s + w.calories, 0);
   const todays = input.meals.filter((m) => m.localDate === input.today);
   const focus = focusForDay(input.focusHistory, input.today, input.timezone);
   const goal = goalOf(profile);
@@ -54,7 +66,8 @@ async function contextFor(deps: Deps, profile: ProfileRow): Promise<AssistantCon
     name: profile.name,
     hour: localHour(now, profile.timezone),
     nextMeal,
-    targets: goal?.targets ?? null,
+    // Exercise earns back calories, so what's "left" today includes what was burned.
+    targets: goal ? { ...goal.targets, calories: goal.targets.calories + burned } : null,
     totals: sumNutrition(todays.map((m) => m.totals)),
     todayMeals: todays.map((m) => ({
       mealType: m.mealType,
@@ -80,6 +93,9 @@ async function contextFor(deps: Deps, profile: ProfileRow): Promise<AssistantCon
           startKg: goal.weightKg,
         }
       : null,
+    waterMl: water.reduce((s, w) => s + w.ml, 0),
+    waterGoalMl: WATER_GOAL_ML,
+    workouts: workouts.map((w) => ({ label: w.label, minutes: w.minutes, calories: w.calories })),
     streak: consistencyStreak(trackedDateSet(input.meals), input.today, input.meals[0]?.localDate ?? input.today),
     pastMeals: pastMealsFor(input.meals, nextMeal, input.today, focus),
   };
@@ -136,6 +152,37 @@ function nextMealType(suggested: AssistantContext["nextMeal"], logged: Assistant
   return order.slice(from).find((m) => !logged.includes(m)) ?? suggested;
 }
 
+/**
+ * "I drank 2 glasses of water", "went for a 30 min jog": Kimbo offers to log it, with the amount
+ * or calories worked out by its own rules. Nothing is saved until the user taps the action.
+ */
+async function chatLog(deps: Deps, profile: ProfileRow, ctx: AssistantContext, text: string): Promise<AssistantReply | null> {
+  if (/\?\s*$/.test(text) && /\b(how|what|should|can|is|did)\b/i.test(text)) return null; // a question, not a log
+  const water = readWater(text);
+  if (water.mentioned) {
+    const ml = water.ml ?? WATER_SIZES.glass;
+    const after = ctx.waterMl + ml;
+    return {
+      mood: "happy",
+      text: water.ml
+        ? `${ml.toLocaleString("en-IN")} ml of water, nice.${after >= ctx.waterGoalMl ? " That gets you to today's water goal!" : ""}`
+        : "How much was it? A glass is about 250 ml.",
+      points: [],
+      actions: [{ kind: "log_water", label: water.ml ? `Log ${ml.toLocaleString("en-IN")} ml` : "Log a glass", ml }],
+    };
+  }
+  if (looksLikeExercise(text)) {
+    const draft = await describeExercise(deps, profile, text);
+    return {
+      mood: "cheer",
+      text: `${draft.label}${draft.minutes ? `, ${draft.minutes} min` : ""}: about ${draft.calories} kcal burned. I'll add that to today's calorie budget.`,
+      points: [],
+      actions: [{ kind: "log_exercise", label: "Log it", draft }],
+    };
+  }
+  return null;
+}
+
 /** Without a language model, typed questions are matched to the closest starter answer. */
 function closestQuestion(text: string): AssistantQuestion {
   const t = text.toLowerCase();
@@ -163,6 +210,8 @@ export function assistantRoutes(app: FastifyInstance, deps: Deps) {
     const body = parse(AskRequest, req.body);
     const ctx = await contextFor(deps, profile);
     if ("question" in body) return { reply: answer(body.question, ctx) };
+    const logged = await chatLog(deps, profile, ctx, body.text);
+    if (logged) return { reply: logged };
     if (!deps.coach) return { reply: answer(closestQuestion(body.text), ctx) };
     const out = await deps.coach.reply({ question: body.text, facts: factSheet(ctx), history: body.history ?? [] });
     // Actions stay rule-made: logging is offered only when the question is about eating.

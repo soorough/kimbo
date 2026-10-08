@@ -17,6 +17,10 @@ import {
   ReportInsightsResponse,
   ReportsResponse,
   TodayResponse,
+  WaterEntry,
+  ExerciseDraft,
+  ExerciseEntry,
+  type ExerciseEstimateRequest,
   type ConfirmMealRequest,
   type ConfirmReportRequest,
   type CreateProfileRequest,
@@ -125,8 +129,12 @@ export const api = {
 
   today: () => request(TodayResponse, "GET", "/today"),
   todayFor: (date: string) => request(TodayResponse, "GET", `/today?date=${date}`),
-  setWater: (glasses: number, date: string) =>
-    request(z.object({ water: TodayResponse.shape.water }), "PUT", "/water", { glasses, date }),
+  addWater: (ml: number) => request(z.object({ entry: WaterEntry }), "POST", "/water", { ml }),
+  deleteWater: (id: string) => request(Empty, "DELETE", `/water/${id}`),
+  estimateExercise: (body: ExerciseEstimateRequest) =>
+    request(z.object({ draft: ExerciseDraft }), "POST", "/exercise/estimate", body),
+  addExercise: (draft: ExerciseDraft) => request(z.object({ entry: ExerciseEntry }), "POST", "/exercise", draft),
+  deleteExercise: (id: string) => request(Empty, "DELETE", `/exercise/${id}`),
   progress: () => request(ProgressResponse, "GET", "/progress"),
   progressFor: (weekOf: string) => request(ProgressResponse, "GET", `/progress?weekOf=${weekOf}`),
   checkin: () => request(CheckinResponse, "POST", "/checkins", {}),

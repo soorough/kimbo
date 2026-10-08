@@ -1,5 +1,5 @@
 import type { AssistantAction, AssistantQuestion, AssistantReply, AssistantTurn } from "@kimbo/shared";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   RecordingPresets,
   requestRecordingPermissionsAsync,
@@ -58,6 +58,7 @@ const CARD_STYLE: Record<AssistantQuestion, { icon: IconName; bg: string; fg: st
 export default function Assistant() {
   const insets = useSafeAreaInsets();
   const home = useQuery({ queryKey: ["assistant"], queryFn: api.assistantHome });
+  const queryClient = useQueryClient();
   const startFromAi = useDraft((s) => s.startFromAi);
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
@@ -85,7 +86,7 @@ export default function Assistant() {
     }
   };
 
-  type NewMessage = { from: "user"; text: string } | { from: "kimbo"; thinking: true };
+  type NewMessage = { from: "user"; text: string } | { from: "kimbo"; thinking: true } | { from: "kimbo"; reply: AssistantReply };
   const push = (m: NewMessage) => {
     const id = nextId.current++;
     setMessages((all) => [...all, { ...m, id } as Message]);
@@ -175,7 +176,31 @@ export default function Assistant() {
     }
   };
 
-  const act = (a: AssistantAction) => {
+  const act = async (a: AssistantAction) => {
+    // Water and workouts log right here in the chat; Kimbo confirms in the thread.
+    if (a.kind === "log_water" || a.kind === "log_exercise") {
+      try {
+        if (a.kind === "log_water") await api.addWater(a.ml);
+        else await api.addExercise(a.draft);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        await queryClient.invalidateQueries();
+        push({
+          from: "kimbo",
+          reply: {
+            mood: "proud",
+            text:
+              a.kind === "log_water"
+                ? `Logged ${a.ml.toLocaleString("en-IN")} ml of water.`
+                : `Logged: ${a.draft.label}, ${a.draft.calories} kcal burned. Your budget for today just grew.`,
+            points: [],
+            actions: [],
+          },
+        });
+      } catch (e) {
+        setNotice(errorMessage(e));
+      }
+      return;
+    }
     if (a.kind === "log_meal" && a.draft) {
       startFromAi(a.draft, "repeat", a.mealType);
       router.push("/review");

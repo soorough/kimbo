@@ -31,6 +31,7 @@ const app = await createApp(
     recognizer: ai,
     extractor: ai,
     coach: ai instanceof ClaudeAdapters ? ai : undefined,
+    exerciseReader: ai,
     voice,
   },
   { logger: true },

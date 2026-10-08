@@ -67,6 +67,7 @@ export const FOCUS_MATCH = {
   balancedFibreG: 4,
 } as const;
 
-/** Water is counted in glasses; 8 × 250 ml is the everyday 2 litres. */
-export const WATER_GOAL_GLASSES = 8;
-export const WATER_MAX_GLASSES = 20;
+/** Everyday water goal: about eight 250 ml glasses. */
+export const WATER_GOAL_ML = 2000;
+/** Body weight to use for exercise calories before any weigh-in or goal exists. */
+export const DEFAULT_WEIGHT_KG = 65;

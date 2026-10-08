@@ -75,7 +75,7 @@ describe("Ask Kimbo", () => {
 
     const home = await api.get("/assistant", id);
     expect(home.json.greeting.mood).toBe("proud");
-    expect(home.json.greeting.text).toMatch(/^Your usual sprouts salad for a snack\? It fits today's goal\.$/);
+    expect(home.json.greeting.text).toMatch(/^Your usual sprouts salad for a snack fits today's goal\.$/);
 
     const res = await ask(id, { question: "what_to_eat" });
     expect(res.json.reply.text).toMatch(/^For a snack, your usual sprouts salad works/);
@@ -88,7 +88,7 @@ describe("Ask Kimbo", () => {
     await addReport(id);
     await lunch(id);
     const home = await api.get("/assistant", id);
-    expect(home.json.greeting.text).toMatch(/^How about [a-z ]+ for a snack\? It fits today's goal\.$/);
+    expect(home.json.greeting.text).toMatch(/^[A-Z][a-z ]+ for a snack fits today's goal\.$/);
   });
 
   describe("personal greeting from the language model", () => {
@@ -107,9 +107,9 @@ describe("Ask Kimbo", () => {
 
     it("hands the model what Kimbo knows about them, and uses its line when it keeps to the facts", async () => {
       const id = await withHistory();
-      api.ctx.coach.nextGreeting = { text: "Busy day, Asha? Your usual sprouts salad fits today's goal.", mood: "cheer" };
+      api.ctx.coach.nextGreeting = { text: "Busy day, Asha, your usual sprouts salad fits today's goal.", mood: "cheer" };
       const home = await api.get("/assistant", id);
-      expect(home.json.greeting).toMatchObject({ mood: "cheer", text: "Busy day, Asha? Your usual sprouts salad fits today's goal." });
+      expect(home.json.greeting).toMatchObject({ mood: "cheer", text: "Busy day, Asha, your usual sprouts salad fits today's goal." });
       const facts = api.ctx.coach.greetFacts.at(-1)!;
       expect(facts).toMatch(/Name: Asha/);
       expect(facts).toMatch(/Logging streak: 3 days in a row/);
@@ -121,11 +121,14 @@ describe("Ask Kimbo", () => {
     });
 
     it("falls back to Kimbo's own line when the model adds numbers or claims too much", async () => {
-      for (const text of ["Nice, Asha! Sprouts salad, 50 kcal, next?", "Your usual sprouts salad, Asha? That completes today's goal!"]) {
+      for (const text of ["Nice, Asha! Sprouts salad, 50 kcal, next?", "Your usual sprouts salad, Asha? That completes today's goal!",
+        "Your usual sprouts salad fits today's goal, Asha. A good fibre-rich choice for later.",
+        "Your usual sprouts salad for a snack fits today's goal, Asha, and it's fibre-rich too.",
+      ]) {
         const id = await withHistory();
         api.ctx.coach.nextGreeting = { text, mood: "happy" };
         const home = await api.get("/assistant", id);
-        expect(home.json.greeting.text).toBe("Your usual sprouts salad for a snack, Asha? It fits today's goal.");
+        expect(home.json.greeting.text).toBe("Your usual sprouts salad for a snack fits today's goal, Asha.");
       }
     });
 
@@ -146,7 +149,7 @@ describe("Ask Kimbo", () => {
       const big = { kind: "estimate", name: "Thali", quantity: 1, unit: "serving", nutrition: { calories, protein: 0, carbs: 0, fat: 0, fibre: 0, satFat: 0 } };
       await api.post("/meals", { mealType: "lunch", source: "text", items: [big] }, id);
       const home = await api.get("/assistant", id);
-      expect(home.json.greeting.text).toMatch(/^Your usual sprouts salad for a snack, Asha\? That completes today's goal\.$/);
+      expect(home.json.greeting.text).toMatch(/^Your usual sprouts salad for a snack completes today's goal, Asha\.$/);
     });
 
     it("words the line once per meal logged, not on every open", async () => {

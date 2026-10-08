@@ -48,6 +48,20 @@ export interface Coach {
   greet(input: { facts: string }): Promise<CoachGreeting>;
 }
 
+export interface ReadExercise {
+  /** short name, e.g. "Badminton", "Evening walk" */
+  activity: string;
+  kind: "run" | "weights" | "walk" | "cycle" | "yoga" | "sport" | "other";
+  intensity: "low" | "medium" | "high";
+  /** null when the text doesn't say how long */
+  minutes: number | null;
+}
+
+/** Reads a workout described in words. Calories are never taken from the model. */
+export interface ExerciseReader {
+  readExercise(text: string): Promise<ReadExercise>;
+}
+
 /** Kimbo's voice: speech out and in. Optional, so the app works without it. */
 export interface Voice {
   speak(text: string): Promise<Buffer>;
