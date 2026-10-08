@@ -525,7 +525,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     ...shadow.card,
   },
-  streakFire: { fontSize: 15, lineHeight: 20 },
+  streakFire: { fontSize: 16, lineHeight: 24, includeFontPadding: false, textAlignVertical: "center" },
   streakText: { fontFamily: fonts.bold, fontSize: 15, color: colors.ink },
   week: { flexDirection: "row", justifyContent: "space-between" },
   day: {

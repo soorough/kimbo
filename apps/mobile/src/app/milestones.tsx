@@ -1,11 +1,12 @@
 import type { Achievement } from "@kimbo/shared";
 import { useQuery } from "@tanstack/react-query";
+import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { BadgeArt, StreakFlame } from "@/components/BadgeArt";
 import { Kimbo } from "@/components/Kimbo";
-import { ShareStreak } from "@/components/ShareStreak";
+import { ShareCard, ShareStreak } from "@/components/ShareStreak";
 import { ErrorState, Icon, Screen, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { HABIT_BADGES, MEAL_BADGES, STREAK_BADGES } from "@/lib/badges";
@@ -16,6 +17,10 @@ type Badge = {
   title: string;
   how: string;
   earned: boolean;
+  /** shown on the locked card: what's left to do */
+  left?: string;
+  /** when it was earned, if Kimbo knows */
+  on?: string;
   kind: "streak" | "meals" | "habit";
   number?: number;
   icon?: IconName;
@@ -46,6 +51,7 @@ export default function Milestones() {
   const progress = useQuery({ queryKey: ["progress"], queryFn: api.progress });
   const journey = useQuery({ queryKey: ["journey"], queryFn: api.journey, retry: false });
   const [sharing, setSharing] = useState(false);
+  const [openBadge, setOpenBadge] = useState<Badge | null>(null);
   if (!progress.data) {
     return (
       <Screen>
@@ -57,11 +63,14 @@ export default function Milestones() {
   }
   const p = progress.data;
   const got = new Set<Achievement["type"]>(p.achievements.map((a) => a.type));
+  // Same streak as the 🔥 (one missed day allowed), so a 7 on the flame means Full week is earned.
+  const best = Math.max(p.streak, p.longestStreak);
   const streak: Badge[] = STREAK_BADGES.map((b) => ({
     key: `s${b.days}`,
     title: b.title,
     how: `${b.days} day streak`,
-    earned: p.longestStreak >= b.days,
+    earned: best >= b.days,
+    left: `${b.days - p.streak} more ${b.days - p.streak === 1 ? "day" : "days"} to go`,
     kind: "streak",
     number: b.days,
   }));
@@ -70,6 +79,7 @@ export default function Milestones() {
     title: b.title,
     how: `Logged ${b.meals} meals`,
     earned: p.mealsLogged >= b.meals,
+    left: `${b.meals - p.mealsLogged} more ${b.meals - p.mealsLogged === 1 ? "meal" : "meals"} to log`,
     kind: "meals",
     number: b.meals,
   }));
@@ -78,6 +88,8 @@ export default function Milestones() {
     title: b.title,
     how: b.how,
     earned: got.has(b.type),
+    left: `To earn it: ${b.how.charAt(0).toLowerCase()}${b.how.slice(1)}`,
+    on: p.achievements.find((a) => a.type === b.type)?.unlockedAt,
     kind: "habit",
     icon: b.icon,
   }));
@@ -127,16 +139,16 @@ export default function Milestones() {
 
       <View style={styles.statRow}>
         <View style={styles.stat}>
-          <T style={{ fontSize: 22 }}>🔥</T>
+          <T style={styles.emoji}>🔥</T>
           <View style={{ flex: 1 }}>
             <T variant="bodyStrong">
-              {p.longestStreak} {p.longestStreak === 1 ? "day" : "days"}
+              {best} {best === 1 ? "day" : "days"}
             </T>
             <T variant="caption">longest streak</T>
           </View>
         </View>
         <View style={styles.stat}>
-          <T style={{ fontSize: 22 }}>🏅</T>
+          <T style={styles.emoji}>🏅</T>
           <View style={{ flex: 1, gap: 4 }}>
             <T variant="bodyStrong">
               {earned}/{all.length} badges
@@ -148,9 +160,37 @@ export default function Milestones() {
         </View>
       </View>
 
-      <Section title="Streaks" badges={streak} />
-      <Section title="Meals logged" badges={meals} />
-      <Section title="Habits" badges={habits} />
+      <Section title="Streaks" badges={streak} onOpen={setOpenBadge} />
+      <Section title="Meals logged" badges={meals} onOpen={setOpenBadge} />
+      <Section title="Habits" badges={habits} onOpen={setOpenBadge} />
+
+      {openBadge ? (
+        <ShareCard
+          id={`badge-${openBadge.key}`}
+          visible
+          onClose={() => setOpenBadge(null)}
+          art={
+            <BadgeArt
+              kind={openBadge.kind}
+              earned={openBadge.earned}
+              number={openBadge.number}
+              icon={openBadge.icon}
+              size={170}
+              id={`big-${openBadge.key}`}
+            />
+          }
+          title={openBadge.title}
+          lines={[
+            openBadge.how,
+            ...(openBadge.earned && openBadge.on
+              ? [
+                  `Earned on ${new Date(openBadge.on).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}`,
+                ]
+              : []),
+          ]}
+          locked={openBadge.earned ? undefined : openBadge.left}
+        />
+      ) : null}
 
       <ShareStreak
         visible={sharing}
@@ -168,13 +208,22 @@ export default function Milestones() {
   );
 }
 
-function Section({ title, badges }: { title: string; badges: Badge[] }) {
+function Section({ title, badges, onOpen }: { title: string; badges: Badge[]; onOpen: (b: Badge) => void }) {
   return (
     <View style={{ gap: space.md }}>
       <T variant="heading">{title}</T>
       <View style={styles.grid}>
         {badges.map((b) => (
-          <View key={b.key} style={styles.cell} accessibilityLabel={`${b.title}: ${b.earned ? "earned" : b.how}`}>
+          <Pressable
+            key={b.key}
+            style={({ pressed }) => [styles.cell, pressed && { transform: [{ scale: 0.95 }] }]}
+            accessibilityRole="button"
+            accessibilityLabel={`${b.title}: ${b.earned ? "earned" : b.how}`}
+            onPress={() => {
+              Haptics.selectionAsync().catch(() => {});
+              onOpen(b);
+            }}
+          >
             <BadgeArt kind={b.kind} earned={b.earned} number={b.number} icon={b.icon} id={b.key} />
             <T variant="bodyStrong" align="center" style={!b.earned && { color: colors.inkSoft }}>
               {b.title}
@@ -182,7 +231,7 @@ function Section({ title, badges }: { title: string; badges: Badge[] }) {
             <T variant="caption" align="center">
               {b.how}
             </T>
-          </View>
+          </Pressable>
         ))}
       </View>
     </View>
@@ -190,6 +239,8 @@ function Section({ title, badges }: { title: string; badges: Badge[] }) {
 }
 
 const styles = StyleSheet.create({
+  // Emoji glyphs are taller than letters: a generous line height stops Android clipping them.
+  emoji: { fontSize: 22, lineHeight: 32, includeFontPadding: false, textAlignVertical: "center" },
   header: { flexDirection: "row", marginTop: space.sm },
   round: {
     width: 42,

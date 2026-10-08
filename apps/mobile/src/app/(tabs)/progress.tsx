@@ -97,14 +97,14 @@ function WeekOverWeek({ p }: { p: ProgressResponse }) {
 function MilestonesRow({ p }: { p: ProgressResponse }) {
   const earned =
     new Set(p.achievements.map((a) => a.type)).size +
-    STREAK_BADGES.filter((b) => p.longestStreak >= b.days).length +
+    STREAK_BADGES.filter((b) => Math.max(p.streak, p.longestStreak) >= b.days).length +
     MEAL_BADGES.filter((b) => p.mealsLogged >= b.meals).length;
   const total = HABIT_BADGES.length + STREAK_BADGES.length + MEAL_BADGES.length;
   const next = STREAK_BADGES.find((b) => b.days > p.streak);
   return (
     <Surface onPress={() => router.push("/milestones")} accessibilityLabel={`Milestones, ${earned} of ${total} badges`}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
-        <T style={{ fontSize: 30, lineHeight: 36 }}>🏅</T>
+        <T style={{ fontSize: 30, lineHeight: 42, includeFontPadding: false }}>🏅</T>
         <View style={{ flex: 1, gap: 2 }}>
           <T variant="heading">Milestones</T>
           <T variant="label">
