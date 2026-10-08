@@ -26,7 +26,7 @@ import { RulerPicker } from "@/components/RulerPicker";
 import { Button, Icon, Screen, Segmented, SegmentRing, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
-import { colors, macroColors, radius, space } from "@/lib/theme";
+import { colors, fonts, macroColors, radius, space } from "@/lib/theme";
 import {
   cmToIn,
   formatFeetInches,
@@ -121,10 +121,21 @@ const QUESTIONS: Record<Step, string> = {
 };
 
 /** Maintaining has no goal weight or pace to choose. */
+/**
+ * Three parts that read like a conversation: about you, then your goal (asked once Kimbo
+ * knows your weight), then how Kimbo can help. The report comes last, right before the
+ * plan is built, so its focus is part of the plan from day one.
+ */
+const SECTIONS = [
+  { label: "About you", steps: ["name", "sex", "age", "height", "weight", "activity"] },
+  { label: "Your goal", steps: ["goal", "goalWeight", "pace"] },
+  { label: "Your plan", steps: ["diet", "barriers", "report"] },
+] as const satisfies readonly { label: string; steps: readonly Step[] }[];
+
 function stepsFor(goal: GoalType | null): Step[] {
-  const base: Step[] = ["name", "goal", "diet", "barriers", "sex", "age", "height", "weight", "activity"];
-  // The report comes last, before the plan is built, so its focus is part of the plan from day one.
-  return goal && isWeightGoal(goal) ? [...base, "goalWeight", "pace", "report"] : [...base, "report"];
+  const all = SECTIONS.flatMap((s) => s.steps) as Step[];
+  // Maintaining has no goal weight or pace to choose.
+  return goal && isWeightGoal(goal) ? all : all.filter((s) => s !== "goalWeight" && s !== "pace");
 }
 
 /**
@@ -322,14 +333,9 @@ export default function Onboarding() {
         <T variant="label" tone="plum" align="center">
           {errorMessage(calculate.error)}
         </T>
-      ) : (
-        <Button
-          label={latestReport ? "Build my plan" : "Skip for now"}
-          kind={latestReport ? "primary" : "ghost"}
-          loading={calculate.isPending}
-          onPress={buildPlan}
-        />
-      )
+      ) : latestReport ? (
+        <Button label="Build my plan" loading={calculate.isPending} onPress={buildPlan} />
+      ) : undefined
     ) : current === "diet" ? (
       <Button label="Skip" kind="ghost" onPress={() => chooseDiet(null)} />
     ) : current === "barriers" ? (
@@ -368,11 +374,7 @@ export default function Onboarding() {
             <Icon name="arrow-left" size={20} />
           </Pressable>
         ) : null}
-        <View style={styles.segments}>
-          {steps.map((s, i) => (
-            <View key={s} style={[styles.segment, i <= step && styles.segmentOn]} />
-          ))}
-        </View>
+        <SectionProgress steps={goalType ? steps : stepsFor("lose")} current={step} />
       </View>
 
       <KimboScene
@@ -438,6 +440,12 @@ export default function Onboarding() {
               Kimbo reads your LDL, HbA1c and triglycerides and picks one thing to eat more of.
             </T>
             <ReportOptions from="onboarding" />
+            {/* Adding a report is the main path; skipping stays available but quiet. */}
+            <Pressable accessibilityRole="button" onPress={buildPlan} hitSlop={8} style={styles.skipLink}>
+              <T variant="label" tone="soft" align="center">
+                I don't have one right now
+              </T>
+            </Pressable>
           </View>
         )
       ) : null}
@@ -794,6 +802,30 @@ function Reveal({
   );
 }
 
+/** Three labelled bars, each filling with its own section, so a long setup feels like three short ones. */
+function SectionProgress({ steps, current }: { steps: Step[]; current: number }) {
+  const at = steps[current];
+  return (
+    <View style={styles.sections}>
+      {SECTIONS.map((sec) => {
+        const mine = steps.filter((s) => (sec.steps as readonly Step[]).includes(s));
+        const done = mine.filter((s) => steps.indexOf(s) <= current).length;
+        const active = at !== undefined && (sec.steps as readonly Step[]).includes(at);
+        return (
+          <View key={sec.label} style={styles.section}>
+            <View style={styles.sectionTrack}>
+              <View style={[styles.sectionFill, { width: `${(done / Math.max(1, mine.length)) * 100}%` }]} />
+            </View>
+            <T variant="caption" tone={active ? undefined : "faint"} style={active ? styles.sectionOn : undefined}>
+              {sec.label}
+            </T>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 /** What the protein number is for, in the user's terms. */
 const PROTEIN_WHY: Record<GoalType, string> = {
   lose: "Keeps muscle while you lose",
@@ -971,9 +1003,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: colors.surface,
   },
-  segments: { flex: 1, flexDirection: "row", gap: 6 },
-  segment: { flex: 1, height: 5, borderRadius: 3, backgroundColor: colors.sunk },
-  segmentOn: { backgroundColor: colors.leaf },
+  sections: { flex: 1, flexDirection: "row", gap: space.sm },
+  section: { flex: 1, gap: 4 },
+  sectionTrack: { height: 5, borderRadius: 3, backgroundColor: colors.sunk, overflow: "hidden" },
+  sectionFill: { height: 5, borderRadius: 3, backgroundColor: colors.leaf },
+  sectionOn: { color: colors.leafDeep, fontFamily: fonts.semibold },
+  skipLink: { paddingVertical: space.sm },
   question: { fontSize: 28, lineHeight: 34, marginTop: space.xs, marginBottom: space.md },
   card: {
     flexDirection: "row",
