@@ -208,7 +208,7 @@ export default function Onboarding() {
   };
 
   const calculate = useMutation({
-    // Preserve an existing custom target while recalculating; "Looks good" decides the final value.
+    // Preserve an existing custom target while recalculating; "Start my plan" decides the final value.
     mutationFn: (req: GoalRequest) =>
       api.saveGoal(profileId, saved?.targetOverride ? { ...req, targetOverride: saved.targetOverride } : req),
     // First setup gets the "putting your plan together" moment; editing later goes straight to the plan.
@@ -711,7 +711,7 @@ function Reveal({
               {error}
             </T>
           ) : null}
-          <Button label="Looks good" loading={confirming} onPress={onConfirm} />
+          <Button label="Start my plan" loading={confirming} onPress={onConfirm} />
         </View>
       }
     >
@@ -730,43 +730,48 @@ function Reveal({
         {name ? `Here's your plan, ${name}.` : "Here's your plan."}
       </T>
 
-      {/* One number on the ring; the colours show the split, the grams wait in the breakdown. */}
-      <View style={styles.revealTop}>
-        <SegmentRing
-          segments={macros.map((m) => ({ value: m.grams * m.kcalPerGram, color: m.color }))}
-          size={200}
-          stroke={14}
-        >
-          {showPath ? null : <Kimbo mood="happy" size={48} leaves={2} />}
-          <T variant="display" style={styles.bigNumber}>
-            {shown.toLocaleString("en-IN")}
-          </T>
-          <T variant="label">kcal a day</T>
-        </SegmentRing>
-        <View style={styles.legend}>
-          {macros.map((m) => (
-            <View key={m.label} style={styles.legendItem}>
-              <View style={[styles.macroDot, { backgroundColor: m.color, marginBottom: 0 }]} />
-              <T variant="caption">{m.label}</T>
-            </View>
-          ))}
-        </View>
-      </View>
-
       {showPath ? (
-        // The date lives here, once: at the end of the user's own line.
-        <GoalPath
-          startLabel={formatWeight(goal.weightKg, weightUnit)}
-          goalLabel={formatWeight(goal.targetWeightKg!, weightUnit)}
-          dateLabel={dateInWeeks(b.weeksToGoal!)}
-          losing={goal.goal === "lose"}
-        />
+        // One hero: the user's own line, Kimbo riding it to the date. The target is a single line under it.
+        <>
+          <GoalPath
+            startLabel={formatWeight(goal.weightKg, weightUnit)}
+            goalLabel={formatWeight(goal.targetWeightKg!, weightUnit)}
+            dateLabel={dateInWeeks(b.weeksToGoal!)}
+            losing={goal.goal === "lose"}
+          />
+          <View style={styles.targetLine}>
+            <T variant="title" align="center">
+              Eat about{" "}
+              <T variant="title" style={styles.targetNumber}>
+                {shown.toLocaleString("en-IN")} kcal
+              </T>{" "}
+              a day
+            </T>
+            <T variant="label" tone="soft" align="center">
+              {`${formatPace(Math.abs(b.kgPerWeek), weightUnit)} a week · ${paceWord(goal.goal, Math.abs(b.kgPerWeek))}`}
+            </T>
+          </View>
+        </>
       ) : (
-        <View style={[styles.pace, { alignSelf: "center" }]}>
-          <Icon name={paceIcon} size={16} color={colors.leafDeep} />
-          <T variant="label" tone="leaf">
-            {pace}
-          </T>
+        // No goal weight or date to draw: the target itself is the hero.
+        <View style={styles.revealTop}>
+          <SegmentRing
+            segments={macros.map((m) => ({ value: m.grams * m.kcalPerGram, color: m.color }))}
+            size={200}
+            stroke={14}
+          >
+            <Kimbo mood="happy" size={48} leaves={2} />
+            <T variant="display" style={styles.bigNumber}>
+              {shown.toLocaleString("en-IN")}
+            </T>
+            <T variant="label">kcal a day</T>
+          </SegmentRing>
+          <View style={styles.pace}>
+            <Icon name={paceIcon} size={16} color={colors.leafDeep} />
+            <T variant="label" tone="leaf">
+              {pace}
+            </T>
+          </View>
         </View>
       )}
 
@@ -824,6 +829,15 @@ function SectionProgress({ steps, current }: { steps: Step[]; current: number })
       })}
     </View>
   );
+}
+
+/** How a weekly pace feels, in a few plain words (the numbers are in "How fast?"). */
+function paceWord(goal: GoalType, kgPerWeek: number): string {
+  if (goal === "build_muscle") return kgPerWeek <= 0.25 ? "lean, mostly muscle" : "faster, some fat too";
+  if (kgPerWeek <= 0.25) return "gentle, keeps muscle";
+  if (kgPerWeek <= 0.5) return "steady and sustainable";
+  if (kgPerWeek <= 0.75) return "faster, takes effort";
+  return "fast, hardest to keep up";
 }
 
 /** What the protein number is for, in the user's terms. */
@@ -1032,8 +1046,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   revealTop: { alignItems: "center", gap: space.md, marginTop: space.xl },
-  legend: { flexDirection: "row", justifyContent: "center", gap: space.lg },
-  legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
+  targetLine: { gap: 4, marginTop: space.sm },
+  targetNumber: { color: colors.leafDeep },
   reportDone: {
     flexDirection: "row",
     alignItems: "center",

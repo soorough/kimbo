@@ -7,7 +7,7 @@ import { colors, space } from "@/lib/theme";
 import { Kimbo } from "./Kimbo";
 import { T } from "./Text";
 
-const H = 150;
+const H = 200;
 const PAD_X = 22;
 const TOP = 30;
 const BOTTOM = 34;
