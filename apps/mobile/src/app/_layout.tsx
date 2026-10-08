@@ -83,6 +83,7 @@ export default function RootLayout() {
             <Stack.Screen name="edit-goal" options={{ animation: "slide_from_bottom" }} />
             <Stack.Screen name="review" options={{ animation: "slide_from_bottom" }} />
             <Stack.Screen name="report-review" options={{ animation: "slide_from_right" }} />
+            <Stack.Screen name="assistant" options={{ animation: "slide_from_bottom" }} />
           </Stack>
           <MomentToast />
           <Celebration />

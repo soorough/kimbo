@@ -65,7 +65,8 @@
             "com.google.android.googlequicksearchbox"
           ]
         }
-      ]
+      ],
+      "expo-audio"
     ],
     "scheme": "kimbo",
     "experiments": {

@@ -2,6 +2,7 @@ import { router, type Tabs } from "expo-router";
 import type { ComponentProps } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { colors, fonts, shadow, space } from "@/lib/theme";
+import { AskKimboPill } from "./AskKimboPill";
 import { Icon, type IconName } from "./Icon";
 import { T } from "./Text";
 
@@ -38,6 +39,8 @@ export function TabBar({ state, descriptors, navigation, insets }: TabBarProps) 
 
   return (
     <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, space.sm) }]}>
+      {/* Kimbo floats over the screens where questions come up; You is settings. */}
+      {state.routes[state.index]?.name !== "you" ? <AskKimboPill /> : null}
       {tabs.slice(0, 2)}
       <View style={styles.centerSlot}>
         <Pressable

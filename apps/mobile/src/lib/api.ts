@@ -23,6 +23,9 @@ import {
   type ExtractReportRequest,
   type GoalRequest,
   type NameRequest,
+  AskResponse,
+  AssistantHomeResponse,
+  type AskRequest,
   type PreferencesRequest,
   type ParseMealRequest,
   type SaveMealRequest,
@@ -78,6 +81,15 @@ async function request<T extends z.ZodType>(
 }
 
 const ProfileEnvelope = z.object({ profile: Profile });
+
+/** Where Kimbo's spoken reply streams from; the audio player sends the profile header itself. */
+export function speechSource(text: string): { uri: string; headers: Record<string, string> } {
+  const profileId = useSession.getState().profileId;
+  return {
+    uri: `${BASE_URL}/assistant/speak?text=${encodeURIComponent(text)}`,
+    headers: profileId ? { "x-profile-id": profileId } : {},
+  };
+}
 const Empty = z.unknown();
 
 export const api = {
@@ -85,6 +97,10 @@ export const api = {
   getProfile: (id: string) => request(ProfileEnvelope, "GET", `/profiles/${id}`),
   saveGoal: (id: string, body: GoalRequest) => request(ProfileEnvelope, "PUT", `/profiles/${id}/goal`, body),
   saveName: (id: string, body: NameRequest) => request(ProfileEnvelope, "PUT", `/profiles/${id}/name`, body),
+  assistantHome: () => request(AssistantHomeResponse, "GET", "/assistant"),
+  ask: (body: AskRequest) => request(AskResponse, "POST", "/assistant/ask", body),
+  listen: (body: { audioBase64: string; mimeType: string }) =>
+    request(z.object({ text: z.string() }), "POST", "/assistant/listen", body),
   savePreferences: (id: string, body: PreferencesRequest) =>
     request(ProfileEnvelope, "PUT", `/profiles/${id}/preferences`, body),
 
