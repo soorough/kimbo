@@ -8,10 +8,13 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from "react-native";
-import { colors, space } from "@/lib/theme";
+import { colors, space, type } from "@/lib/theme";
+import { RollingNumber } from "./RollingNumber";
 import { T } from "./Text";
 
 const SPACING = 12;
+/** Closest two haptic ticks may be, so a fast glide reads as a ratchet rather than a buzz. */
+const HAPTIC_GAP_MS = 30;
 
 /**
  * Pick a number by scrolling a ruler — no keyboard, no invalid input.
@@ -63,21 +66,48 @@ export function RulerPicker({
     requestAnimationFrame(() => scroll.current?.scrollTo({ x: indexOf(value) * SPACING, animated: false }));
   };
 
+  const isMajor = useCallback(
+    (v: number) => {
+      const units = v / (step * majorEvery);
+      return Math.abs(units - Math.round(units)) < 1e-6;
+    },
+    [step, majorEvery],
+  );
+
+  /**
+   * Layered haptics: a soft tick per step, a firmer tap on long ticks (each kg, each 5 years).
+   * A fast flick crosses dozens of steps a second, so ticks are spaced at least HAPTIC_GAP_MS apart
+   * (a crossed long tick still wins) and the glide feels like a ratchet instead of a buzz.
+   */
+  const lastBuzz = useRef(0);
+  const majorPending = useRef(false);
+  const tick = (v: number) => {
+    const major = isMajor(v);
+    majorPending.current ||= major;
+    const now = Date.now();
+    if (now - lastBuzz.current < HAPTIC_GAP_MS) return;
+    lastBuzz.current = now;
+    if (majorPending.current) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    else Haptics.selectionAsync().catch(() => {});
+    majorPending.current = false;
+  };
+
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const next = valueAt(Math.round(e.nativeEvent.contentOffset.x / SPACING));
     if (next !== last.current) {
       last.current = next;
-      Haptics.selectionAsync().catch(() => {});
+      tick(next);
       onChange(next);
     }
   };
 
-  /** Android can come to rest between snap points; settle exactly on the nearest tick. */
+  /** Android can come to rest between snap points; settle exactly on the nearest tick, with a final thunk. */
   const settle = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const i = Math.max(0, Math.min(count - 1, Math.round(e.nativeEvent.contentOffset.x / SPACING)));
     if (Math.abs(e.nativeEvent.contentOffset.x - i * SPACING) > 0.5) {
       scroll.current?.scrollTo({ x: i * SPACING, animated: true });
     }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid).catch(() => {});
   };
 
   const nudge = (dir: 1 | -1) => {
@@ -91,8 +121,7 @@ export function RulerPicker({
     () =>
       Array.from({ length: count }, (_, i) => {
         // Long ticks sit on round values (150, 160…), whatever the ruler's lower limit is.
-        const units = valueAt(i) / (step * majorEvery);
-        const major = Math.abs(units - Math.round(units)) < 1e-6;
+        const major = isMajor(valueAt(i));
         return (
           <View key={i} style={styles.tickSlot}>
             <View style={[styles.tick, major ? styles.tickMajor : styles.tickMinor]} />
@@ -104,8 +133,11 @@ export function RulerPicker({
           </View>
         );
       }),
-    [count, majorEvery, step, valueAt, tickFormat],
+    [count, isMajor, valueAt, tickFormat],
   );
+
+  // Fractional rulers always show one decimal (71.0, not 71) so digits keep their slots and roll in place.
+  const shown = format ? format(value) : step < 1 ? value.toFixed(1) : String(Math.round(value));
 
   return (
     <View
@@ -118,13 +150,13 @@ export function RulerPicker({
       onAccessibilityAction={(e) => nudge(e.nativeEvent.actionName === "increment" ? 1 : -1)}
     >
       <View style={styles.readout}>
-        <T
-          variant="display"
-          style={compact ? styles.valueCompact : styles.value}
-          fit
-        >
-          {format ? format(value) : Number.isInteger(value) ? value : value.toFixed(1)}
-        </T>
+        {compact ? (
+          <T variant="display" style={styles.valueCompact} fit>
+            {shown}
+          </T>
+        ) : (
+          <RollingNumber text={shown} style={[type.display, styles.value]} lineHeight={styles.value.lineHeight} />
+        )}
         <T variant="title" tone="soft" numberOfLines={1} style={compact && styles.unitCompact}>
           {unit}
         </T>
@@ -136,8 +168,9 @@ export function RulerPicker({
             horizontal
             showsHorizontalScrollIndicator={false}
             snapToInterval={SPACING}
-            // Native momentum, like an iOS picker: a flick glides far, a slow drag tracks the finger.
-            decelerationRate={0.995}
+            // iOS's standard scroll physics (velocity ×0.998 per ms, a ~0.5 s time constant), measured
+            // from Cal AI's scale: a flick glides for 2–3 s and eases in, a slow drag tracks the finger.
+            decelerationRate={0.998}
             onScroll={onScroll}
             onMomentumScrollEnd={settle}
             onScrollEndDrag={(e) => {
@@ -161,7 +194,7 @@ export function RulerPicker({
 const styles = StyleSheet.create({
   wrap: { gap: space.xl, alignItems: "stretch", marginTop: space.xxxl * 2 },
   readout: { flexDirection: "row", alignItems: "baseline", justifyContent: "center", gap: space.sm },
-  value: { fontSize: 64, lineHeight: 72, fontVariant: ["tabular-nums"], flexShrink: 1 },
+  value: { fontSize: 64, lineHeight: 72, fontVariant: ["tabular-nums"] },
   wrapCompact: { marginTop: space.md, gap: space.md },
   valueCompact: { fontSize: 36, lineHeight: 44, flexShrink: 1 },
   unitCompact: { fontSize: 18, lineHeight: 24 },

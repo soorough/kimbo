@@ -1,12 +1,13 @@
 import type { GoalRequest } from "@kimbo/shared";
-import { useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, Animated, Easing, StyleSheet, View } from "react-native";
+import { useEffect, useRef } from "react";
+import { Animated, Easing, StyleSheet, View } from "react-native";
 import Svg, { Circle, Line, Path, Rect } from "react-native-svg";
+import { useReduceMotion } from "@/lib/motion";
 import { colors, fonts, radius } from "@/lib/theme";
 import { Kimbo, type KimboMood } from "./Kimbo";
 import { T } from "./Text";
 
-export type SceneStep = "name" | "goal" | "sex" | "age" | "height" | "weight" | "activity" | "goalWeight" | "pace";
+export type SceneStep = "name" | "goal" | "diet" | "barriers" | "sex" | "age" | "height" | "weight" | "activity" | "goalWeight" | "pace";
 
 type Activity = GoalRequest["activity"];
 
@@ -52,6 +53,8 @@ export function KimboScene({
         <Rect x={20} y={0} width={W - 40} height={8} rx={4} fill={colors.sunk} />
       </Svg>
       {step === "name" ? <Solo mood="wave" /> : null}
+      {step === "diet" ? <Solo mood="happy" /> : null}
+      {step === "barriers" ? <Solo mood="focus" /> : null}
       {step === "goal" ? <SignpostScene still={still} /> : null}
       {step === "sex" ? <Solo mood="wave" /> : null}
       {step === "age" ? <CakeScene still={still} /> : null}
@@ -62,16 +65,6 @@ export function KimboScene({
       {step === "pace" ? <WalkScene pace={pace} still={still} /> : null}
     </View>
   );
-}
-
-function useReduceMotion(): boolean {
-  const [reduce, setReduce] = useState(false);
-  useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then(setReduce)
-      .catch(() => {});
-  }, []);
-  return reduce;
 }
 
 /** A 0→1→0 loop with the given half-period; parked at 0 when motion is reduced. */
