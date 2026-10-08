@@ -45,6 +45,7 @@ export function GoalPath({
   goalLabel,
   dateLabel,
   losing,
+  onLanded,
 }: {
   /** e.g. "76.2 kg" */
   startLabel: string;
@@ -52,12 +53,15 @@ export function GoalPath({
   /** e.g. "6 Jan" */
   dateLabel: string;
   losing: boolean;
+  /** called once Kimbo lands on the goal */
+  onLanded?: () => void;
 }) {
   const [w, setW] = useState(0);
   const [landed, setLanded] = useState(false);
   const p = useDrawProgress(DRAW_MS, () => {
     setLanded(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    onLanded?.();
   });
 
   const left = PAD_X;

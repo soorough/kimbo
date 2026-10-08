@@ -14,12 +14,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { router, useIsFocused } from "expo-router";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Animated, Pressable, StyleSheet, View, type TextStyle } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
 import { KimboScene } from "@/components/KimboScene";
 import { NameField } from "@/components/NameField";
 import { BuildingPlan } from "@/components/BuildingPlan";
 import { GoalPath } from "@/components/GoalPath";
+import { useReduceMotion } from "@/lib/motion";
 import { ReportOptions } from "@/components/ReportOptions";
 import { PacePlanner } from "@/components/PacePlanner";
 import { RulerPicker } from "@/components/RulerPicker";
@@ -674,7 +675,6 @@ function Reveal({
   onBack: () => void;
   name: string | null;
 }) {
-  const shown = useCountUp(target);
   const b = goal.breakdown;
   const macros = [
     { label: "Protein", grams: goal.targets.protein, kcalPerGram: 4, color: macroColors.protein },
@@ -701,6 +701,28 @@ function Reveal({
           : "minus";
 
   const showPath = isWeightGoal(goal.goal) && goal.targetWeightKg !== null && b.weeksToGoal !== null;
+
+  // The journey plays once, holds a beat on the landing, then fades out as the ring springs in.
+  const still = useReduceMotion();
+  const [stage, setStage] = useState<"journey" | "plan">(showPath && !still ? "journey" : "plan");
+  const journeyOut = useRef(new Animated.Value(1)).current;
+  const journeyScale = useRef(new Animated.Value(1)).current;
+  const ringIn = useRef(new Animated.Value(stage === "plan" ? 1 : 0)).current;
+  const ringScale = useRef(new Animated.Value(stage === "plan" ? 1 : 0.85)).current;
+  const handOver = useCallback(() => {
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(journeyOut, { toValue: 0, duration: 260, useNativeDriver: true }),
+        Animated.timing(journeyScale, { toValue: 0.92, duration: 260, useNativeDriver: true }),
+      ]).start(() => {
+        setStage("plan");
+        Animated.parallel([
+          Animated.timing(ringIn, { toValue: 1, duration: 220, useNativeDriver: true }),
+          Animated.spring(ringScale, { toValue: 1, damping: 11, stiffness: 160, useNativeDriver: true }),
+        ]).start();
+      });
+    }, 900);
+  }, [journeyOut, journeyScale, ringIn, ringScale]);
 
   return (
     <Screen
@@ -730,54 +752,37 @@ function Reveal({
         {name ? `Here's your plan, ${name}.` : "Here's your plan."}
       </T>
 
-      {showPath ? (
-        // One hero: the user's own line, Kimbo riding it to the date. The target is a single line under it.
-        <>
+      {showPath && stage === "journey" ? (
+        // Act one: the user's own line draws itself and Kimbo rides it to the date…
+        <Animated.View style={{ opacity: journeyOut, transform: [{ scale: journeyScale }] }}>
           <GoalPath
             startLabel={formatWeight(goal.weightKg, weightUnit)}
             goalLabel={formatWeight(goal.targetWeightKg!, weightUnit)}
             dateLabel={dateInWeeks(b.weeksToGoal!)}
             losing={goal.goal === "lose"}
+            onLanded={handOver}
           />
-          <View style={styles.targetLine}>
-            <T variant="title" align="center">
-              Eat about{" "}
-              <T variant="title" style={styles.targetNumber}>
-                {shown.toLocaleString("en-IN")} kcal
-              </T>{" "}
-              a day
-            </T>
-            <T variant="label" tone="soft" align="center">
-              {`${formatPace(Math.abs(b.kgPerWeek), weightUnit)} a week · ${paceWord(goal.goal, Math.abs(b.kgPerWeek))}`}
-            </T>
-          </View>
-        </>
+        </Animated.View>
       ) : (
-        // No goal weight or date to draw: the target itself is the hero.
-        <View style={styles.revealTop}>
+        // …then hands over to the plan itself: one number, one line.
+        <Animated.View style={[styles.revealTop, { opacity: ringIn, transform: [{ scale: ringScale }] }]}>
           <SegmentRing
             segments={macros.map((m) => ({ value: m.grams * m.kcalPerGram, color: m.color }))}
-            size={200}
-            stroke={14}
+            size={220}
+            stroke={16}
           >
-            <Kimbo mood="happy" size={48} leaves={2} />
-            <T variant="display" style={styles.bigNumber}>
-              {shown.toLocaleString("en-IN")}
-            </T>
+            <Kimbo mood={showPath ? "cheer" : "happy"} size={52} leaves={showPath ? 3 : 2} />
+            <CountUp to={target} style={styles.bigNumber} />
             <T variant="label">kcal a day</T>
           </SegmentRing>
           <View style={styles.pace}>
             <Icon name={paceIcon} size={16} color={colors.leafDeep} />
             <T variant="label" tone="leaf">
-              {pace}
+              {showPath ? `${formatWeight(goal.targetWeightKg!, weightUnit)} by ${dateInWeeks(b.weeksToGoal!)}` : pace}
             </T>
           </View>
-        </View>
+        </Animated.View>
       )}
-
-      <T variant="caption" align="center">
-        Set from your age, height, weight and activity. Change it any time in Edit goal.
-      </T>
 
       <View style={styles.disclosures}>
         <Disclosure title="See the breakdown">
@@ -829,15 +834,6 @@ function SectionProgress({ steps, current }: { steps: Step[]; current: number })
       })}
     </View>
   );
-}
-
-/** How a weekly pace feels, in a few plain words (the numbers are in "How fast?"). */
-function paceWord(goal: GoalType, kgPerWeek: number): string {
-  if (goal === "build_muscle") return kgPerWeek <= 0.25 ? "lean, mostly muscle" : "faster, some fat too";
-  if (kgPerWeek <= 0.25) return "gentle, keeps muscle";
-  if (kgPerWeek <= 0.5) return "steady and sustainable";
-  if (kgPerWeek <= 0.75) return "faster, takes effort";
-  return "fast, hardest to keep up";
 }
 
 /** What the protein number is for, in the user's terms. */
@@ -984,6 +980,15 @@ function Card({
   );
 }
 
+function CountUp({ to, style }: { to: number; style: TextStyle }) {
+  const n = useCountUp(to);
+  return (
+    <T variant="display" style={style}>
+      {n.toLocaleString("en-IN")}
+    </T>
+  );
+}
+
 /** Counts up to the target the first time it appears, so the number lands with a little weight. */
 function useCountUp(to: number, ms = 700) {
   const [n, setN] = useState(0);
@@ -1046,8 +1051,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   revealTop: { alignItems: "center", gap: space.md, marginTop: space.xl },
-  targetLine: { gap: 4, marginTop: space.sm },
-  targetNumber: { color: colors.leafDeep },
   reportDone: {
     flexDirection: "row",
     alignItems: "center",
