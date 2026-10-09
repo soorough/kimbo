@@ -71,27 +71,17 @@ export default function FoodSearch() {
       <T variant="bodyStrong">{generate.isPending ? "Kimbo is preparing your meal…" : "Let Kimbo prepare your meal"}</T>
     </Pressable>
   ) : (
-    <View style={styles.actions}>
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => {
-          useDraft.getState().startManual(mealTypeForNow());
-          router.push("/review");
-        }}
-        style={[styles.pill, { flex: 1 }]}
-      >
-        <Icon name="file-text" size={18} color={colors.ink} />
-        <T variant="bodyStrong">Manual Add</T>
-      </Pressable>
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => router.push({ pathname: "/log", params: { voice: "1" } })}
-        style={[styles.pill, { flex: 1 }]}
-      >
-        <Icon name="mic" size={18} color={colors.ink} />
-        <T variant="bodyStrong">Voice Log</T>
-      </Pressable>
-    </View>
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => {
+        useDraft.getState().startManual(mealTypeForNow());
+        router.push("/review");
+      }}
+      style={styles.pill}
+    >
+      <Icon name="file-text" size={18} color={colors.ink} />
+      <T variant="bodyStrong">Manual Add</T>
+    </Pressable>
   );
 
   return (
@@ -196,7 +186,6 @@ const styles = StyleSheet.create({
   list: { flex: 1, width: "100%" },
   listContent: { flexGrow: 1, gap: space.md, paddingBottom: space.lg },
   empty: { alignItems: "center", gap: space.sm, paddingVertical: space.xxl, paddingHorizontal: space.lg },
-  actions: { flexDirection: "row", gap: space.md },
   pill: {
     minHeight: 54,
     flexDirection: "row",

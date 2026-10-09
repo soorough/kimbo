@@ -52,7 +52,7 @@ const HINTS = ["Reading your plate…", "Counting roti and katoris…", "Matchin
  * Nothing is saved here — the result always opens the review screen.
  */
 export default function LogMeal() {
-  const params = useLocalSearchParams<{ mealType?: string; voice?: string }>();
+  const params = useLocalSearchParams<{ mealType?: string }>();
   const presetType = isMealType(params.mealType) ? params.mealType : undefined;
   const [text, setText] = useState("");
   const [listening, setListening] = useState(false);
@@ -136,15 +136,6 @@ export default function LogMeal() {
       contextualStrings: VOICE_HINTS,
     });
   }
-
-  // Log food's "Voice Log" opens this sheet already listening.
-  const autoVoice = useRef(params.voice === "1");
-  useEffect(() => {
-    if (!autoVoice.current) return;
-    autoVoice.current = false;
-    toggleVoice();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   function quickAdd(draft: MealDraft) {
     startFromAi(draft, "repeat", presetType);
