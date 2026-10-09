@@ -1,4 +1,4 @@
-import type { MealType } from "@kimbo/shared";
+import type { MealType, PairingResponse } from "@kimbo/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -27,17 +27,18 @@ export default function Review() {
   const editingLine = draft.lines.find((l) => l.key === editing) ?? null;
   const insight = report.data?.insights;
   const risky = insight?.cutBackOn.find((item) => draft.lines.some((line) => lineName(line).toLowerCase().includes(item.name.toLowerCase())));
-  const itemNames = draft.lines.map(lineName);
-  // Kimbo picks the dish (from the report's helpers, skipping what's already in the meal);
-  // the language model only words the line, so the text always matches what Add adds.
-  const recommendation =
-    insight?.helpers.find((h) => !itemNames.some((n) => n.toLowerCase().includes(h.toLowerCase()))) ?? null;
-  const showSuggestion = draft.lines.length > 0 && !!(risky || recommendation);
-  const addRecommendation = async () => {
-    if (!recommendation) return;
-    const { foods } = await api.searchFoods(recommendation);
-    if (foods[0]) useDraft.getState().addFood(foods[0]);
-  };
+  // Kimbo's pairing rules pick what goes with this plate (rajma → rice, idli → sambar…),
+  // so the line always makes sense and always matches what Add adds.
+  const foodIds = draft.lines.flatMap((l) => (l.kind === "catalogue" ? [l.food.id] : []));
+  const pairing = useQuery({
+    queryKey: ["pairing", foodIds.join("|")],
+    queryFn: () => api.pairing(foodIds),
+    enabled: foodIds.length > 0,
+    placeholderData: (prev) => prev,
+    staleTime: 5 * 60_000,
+  });
+  const pick = pairing.data?.pairing ?? null;
+  const showSuggestion = draft.lines.length > 0 && !!(risky || pick);
   const isAiDraft = !draft.mealId && (draft.source === "photo" || draft.source === "text" || draft.source === "voice");
   const isManualDraft = !draft.mealId && draft.source === "manual";
   const [keep, setKeep] = useState(false);
@@ -162,11 +163,10 @@ export default function Review() {
 
       {showSuggestion ? (
         <MealSuggestion
-          items={itemNames}
-          dish={recommendation}
+          pick={pick}
           risky={risky?.name ?? null}
           focus={insight?.focus.title.toLowerCase() ?? null}
-          onAdd={addRecommendation}
+          onAdd={() => pick && useDraft.getState().addFood(pick.food)}
         />
       ) : null}
 
@@ -399,40 +399,23 @@ function formatTime(d: Date): string {
 }
 
 /**
- * Kimbo's pick for this meal, said the way Today says it: Kimbo thinks while the line is
- * worded, types it in once, then "Add it" slides in. Nothing shows until the line is ready.
+ * Kimbo's pick for this meal, said the way Today says it: the line types in once, then
+ * Add it / Ask Kimbo slide in. A dish that works against the focus is flagged first.
  */
 function MealSuggestion({
-  items,
-  dish,
+  pick,
   risky,
   focus,
   onAdd,
 }: {
-  items: string[];
-  dish: string | null;
+  pick: PairingResponse["pairing"];
   risky: string | null;
   focus: string | null;
   onAdd: () => void;
 }) {
-  const fallback = risky
-    ? `${risky} may work against your ${focus ?? "report focus"}${dish ? `. Try adding ${dish} instead` : ""}.`
-    : `Add ${dish} to round this meal out${focus ? ` for your ${focus}` : ""}.`;
-  const advice = useQuery({
-    queryKey: ["mealAdvice", items.join("|"), dish, risky],
-    queryFn: () =>
-      api.ask({
-        text: risky
-          ? `My meal: ${items.join(", ")}. In one friendly sentence of at most 14 words, say ${risky} may work against my ${focus ?? "goal"}${dish ? ` and suggest adding ${dish}` : ""}. Mention no other foods and no numbers.`
-          : `My meal: ${items.join(", ")}. In one friendly sentence of at most 14 words, suggest adding ${dish}${focus ? ` for my ${focus}` : ""}. Mention no other foods and no numbers.`,
-      }),
-    staleTime: 5 * 60_000,
-    retry: false,
-  });
-  const ready = !advice.isPending;
-  // Today-length lines only: a rambling reply gives way to Kimbo's own sentence.
-  const worded = advice.data?.reply.text?.trim();
-  const text = worded && worded.length <= 110 ? worded : fallback;
+  const text = risky
+    ? `${risky} may work against your ${focus ?? "report focus"}.${pick ? ` ${pick.text}` : ""}`
+    : pick!.text;
   const [typed, setTyped] = useState(false);
   const actions = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -446,15 +429,11 @@ function MealSuggestion({
   return (
     <View style={[styles.suggestion, risky ? styles.guidanceWarn : styles.guidanceGood]}>
       <View style={styles.suggestionHead}>
-        <Kimbo mood={!ready || !typed ? "thinking" : risky ? "focus" : "proud"} size={30} />
+        <Kimbo mood={!typed ? "thinking" : risky ? "focus" : "proud"} size={30} />
         <T variant="overline" tone={risky ? undefined : "leaf"}>{risky ? "WORTH A SWAP" : "KIMBO'S PICK 🌿"}</T>
       </View>
-      {ready ? (
-        <TypeOut key={text} text={text} variant="bodyStrong" numberOfLines={3} onDone={() => setTyped(true)} />
-      ) : (
-        <T variant="bodyStrong" tone="soft">Thinking about your meal…</T>
-      )}
-      {dish ? (
+      <TypeOut key={text} text={text} variant="bodyStrong" numberOfLines={3} onDone={() => setTyped(true)} />
+      {pick ? (
         <Animated.View
           style={[
             styles.suggestionActions,
@@ -473,7 +452,7 @@ function MealSuggestion({
               <T variant="label" tone="leaf" style={{ fontFamily: fonts.bold }}>Ask Kimbo</T>
             </T>
           </Pressable>
-          <Button label="Add it" compact accessibilityHint={`Adds ${dish} to this meal`} onPress={onAdd} />
+          <Button label="Add it" compact accessibilityHint={`Adds ${pick.food.name} to this meal`} onPress={onAdd} />
         </Animated.View>
       ) : null}
     </View>

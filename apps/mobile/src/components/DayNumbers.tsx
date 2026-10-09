@@ -71,7 +71,7 @@ export function DayNumbers({ data, diet }: { data: TodayResponse; diet: Diet | n
   ];
   const extras: Stat[] = [
     { key: "fibre", name: "Fibre", icon: "🥦", eaten: n.fibre, target: t?.fibre ?? 0, unit: "g", color: macroColors.fibre, goal: true },
-    { key: "satFat", name: "Sat fat", icon: "🧈", eaten: n.satFat, target: t?.satFat ?? 0, unit: "g", color: colors.plum },
+    { key: "satFat", name: "Sat fat", icon: "🧈", eaten: n.satFat, target: t?.satFat ?? 0, unit: "g", color: colors.inkSoft },
   ];
 
   const pages = [

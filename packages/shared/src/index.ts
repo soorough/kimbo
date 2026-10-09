@@ -573,6 +573,11 @@ export const AssistantReply = z.object({
 });
 export type AssistantReply = z.infer<typeof AssistantReply>;
 
+/** What to add to the meal being built (review / Create Meal). */
+export const PairingRequest = z.object({ foodIds: z.array(z.string()).max(30) });
+export const PairingResponse = z.object({ pairing: z.object({ food: Food, text: z.string() }).nullable() });
+export type PairingResponse = z.infer<typeof PairingResponse>;
+
 export const AssistantSuggestion = z.object({ question: AssistantQuestion, label: z.string() });
 export type AssistantSuggestion = z.infer<typeof AssistantSuggestion>;
 

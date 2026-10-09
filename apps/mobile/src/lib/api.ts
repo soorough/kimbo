@@ -28,6 +28,7 @@ import {
   type GoalRequest,
   type NameRequest,
   AskResponse,
+  PairingResponse,
   AssistantHomeResponse,
   type AskRequest,
   type PreferencesRequest,
@@ -103,6 +104,7 @@ export const api = {
   saveName: (id: string, body: NameRequest) => request(ProfileEnvelope, "PUT", `/profiles/${id}/name`, body),
   assistantHome: () => request(AssistantHomeResponse, "GET", "/assistant"),
   ask: (body: AskRequest) => request(AskResponse, "POST", "/assistant/ask", body),
+  pairing: (foodIds: string[]) => request(PairingResponse, "POST", "/assistant/pairing", { foodIds }),
   listen: (body: { audioBase64: string; mimeType: string }) =>
     request(z.object({ text: z.string() }), "POST", "/assistant/listen", body),
   savePreferences: (id: string, body: PreferencesRequest) =>

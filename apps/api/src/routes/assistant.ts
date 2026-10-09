@@ -5,6 +5,8 @@ import {
   type AssistantQuestion,
   type AssistantReply,
   type KimboMood,
+  PairingRequest,
+  type PairingResponse,
 } from "@kimbo/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -21,7 +23,8 @@ import {
   suggestions,
   type AssistantContext,
 } from "../domain/assistant.js";
-import { sumNutrition } from "../domain/catalogue.js";
+import { getEntry, sumNutrition, toFood } from "../domain/catalogue.js";
+import { pairFor } from "../domain/pairing.js";
 import { focusForDay } from "../domain/focus-history.js";
 import { mealSupportsFocus } from "../domain/focus-match.js";
 import { MARKER_FOCUS } from "../domain/health.js";
@@ -205,6 +208,14 @@ export function assistantRoutes(app: FastifyInstance, deps: Deps) {
     const profile = await requireProfile(deps, req);
     const ctx = await contextFor(deps, profile);
     return { greeting: await personalGreeting(deps, profile.id, ctx), suggestions: suggestions(ctx) };
+  });
+
+  app.post("/assistant/pairing", async (req): Promise<PairingResponse> => {
+    const profile = await requireProfile(deps, req);
+    const { foodIds } = parse(PairingRequest, req.body);
+    const ctx = await contextFor(deps, profile);
+    const pick = pairFor(foodIds, ctx.focus, ctx.diet);
+    return { pairing: pick ? { food: toFood(getEntry(pick.foodId)!), text: pick.text } : null };
   });
 
   app.post("/assistant/ask", async (req): Promise<AskResponse> => {

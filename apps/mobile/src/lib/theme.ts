@@ -68,7 +68,8 @@ export const night = {
 export const macroColors = {
   protein: "#B5532F",
   carbs: "#B7791F",
-  fat: "#6B579C",
+  // Blue, not plum: plum is the ring's "over target" colour and the two were indistinguishable.
+  fat: "#3B6EA5",
   fibre: "#2E6B4F",
 } as const;
 
