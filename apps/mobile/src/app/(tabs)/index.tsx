@@ -12,7 +12,7 @@ import { Kimbo } from "@/components/Kimbo";
 import { TypeOut } from "@/components/TypeOut";
 import { useMoments } from "@/components/Moments";
 import { TodaySkeleton } from "@/components/Skeleton";
-import { ErrorState, Icon, Screen, Surface, T, type IconName } from "@/components/ui";
+import { ErrorState, Icon, Ring, Screen, Surface, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useDraft } from "@/lib/draft";
 import { MEAL_LABEL } from "@/lib/format";
@@ -236,22 +236,26 @@ function PastWeek({
   return q.data ? (
     <WeekRow week={q.data} selected={selected} todayIso={todayIso} onPick={onPick} />
   ) : (
-    <WeekRow week={{ days: placeholder, trackedDates: [] }} selected={selected} todayIso={todayIso} onPick={onPick} />
+    <WeekRow week={{ days: placeholder, trackedDates: [], goal: null }} selected={selected} todayIso={todayIso} onPick={onPick} />
   );
 }
 
-/** Logged days are solid, unlogged past days are dotted, and future days stay selectable. */
+/**
+ * Logged days get a ring that fills with the day's calories against the target (Cal AI-style);
+ * unlogged past days are dotted, and future days stay selectable.
+ */
 function WeekRow({
   week,
   selected,
   todayIso,
   onPick,
 }: {
-  week: Pick<ProgressResponse, "days" | "trackedDates">;
+  week: Pick<ProgressResponse, "days" | "trackedDates" | "goal">;
   selected: string;
   todayIso: string;
   onPick: (date: string, isToday: boolean) => void;
 }) {
+  const target = week.goal?.targetCalories ?? 0;
   return (
     <View style={styles.week}>
       {week.days.map((d, i) => {
@@ -270,16 +274,15 @@ function WeekRow({
             <T variant="caption" tone={future ? "faint" : undefined}>
               {WEEKDAY[i]}
             </T>
-            <View
-              style={[
-                styles.dayDot,
-                logged ? styles.dayLogged : isToday ? styles.dayToday : future ? styles.dayFuture : styles.dayPast,
-              ]}
-            >
-              <T style={[styles.dayNum, future && { color: colors.inkFaint }, logged && styles.dayNumLogged]}>
-                {Number(d.date.slice(8))}
-              </T>
-            </View>
+            {logged ? (
+              <Ring value={target > 0 ? d.calories ?? 0 : 1} max={target > 0 ? target : 1} size={34} stroke={3} track={colors.line}>
+                <T style={styles.dayNum}>{Number(d.date.slice(8))}</T>
+              </Ring>
+            ) : (
+              <View style={[styles.dayDot, isToday ? styles.dayToday : future ? styles.dayFuture : styles.dayPast]}>
+                <T style={[styles.dayNum, future && { color: colors.inkFaint }]}>{Number(d.date.slice(8))}</T>
+              </View>
+            )}
           </Pressable>
         );
       })}
@@ -569,8 +572,6 @@ const styles = StyleSheet.create({
   dayPast: { borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.lineStrong },
   dayToday: { borderWidth: 2, borderColor: colors.ink },
   dayFuture: { borderWidth: 1.5, borderColor: colors.line },
-  dayLogged: { backgroundColor: colors.leaf, borderWidth: 1.5, borderColor: colors.leaf },
-  dayNumLogged: { color: colors.white },
   dayNum: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink },
   kimboLine: {
     gap: space.md,
