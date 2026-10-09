@@ -5,7 +5,7 @@ import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Image, Pressable, StyleSheet, View } from "react-native";
+import { Animated, Easing, Image, PanResponder, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { Button } from "@/components/Button";
@@ -26,6 +26,14 @@ const TIPS_SEEN = "kimbo.scanTipsSeen";
 export default function Scan() {
   const insets = useSafeAreaInsets();
   const camera = useRef<CameraView>(null);
+  const sheetDrag = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_event, gesture) => gesture.dy > 5,
+      onPanResponderRelease: (_event, gesture) => {
+        if (gesture.dy > 72 || gesture.vy > 1.1) router.back();
+      },
+    }),
+  ).current;
   const [permission, requestPermission] = useCameraPermissions();
   const [torch, setTorch] = useState(false);
   const [shot, setShot] = useState<string | null>(null);
@@ -74,73 +82,85 @@ export default function Scan() {
   };
 
   return (
-    <View style={styles.root}>
-      {shot ? (
-        <Image source={{ uri: shot }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-      ) : permission?.granted ? (
-        <CameraView ref={camera} style={StyleSheet.absoluteFill} facing="back" enableTorch={torch} />
-      ) : (
-        <View style={styles.noCamera}>
-          <Icon name="camera-off" size={36} color={colors.white} />
-          <T variant="bodyStrong" align="center" style={{ color: colors.white }}>
-            Kimbo needs the camera to scan your plate.
-          </T>
-          <Button label="Allow camera" onPress={requestPermission} />
-        </View>
-      )}
-
-      <View style={[styles.top, { paddingTop: insets.top + space.sm }]}>
-        <Round icon="x" label="Close" onPress={() => router.back()} />
-        <T variant="bodyStrong" style={{ color: colors.white }}>
-          Scan food
-        </T>
-        {shot ? <View style={{ width: 44 }} /> : <Round icon={torch ? "zap" : "zap-off"} label="Flash" onPress={() => setTorch((t) => !t)} />}
-      </View>
-
-      {/* Soft shades keep the white controls readable over a bright plate. */}
-      <Shade edge="top" />
-      <Shade edge="bottom" />
-      {shot ? null : <Frame />}
-      {analyse.isPending ? <Reading /> : null}
-
-      <View style={[styles.bottom, { paddingBottom: insets.bottom + space.xl }]}>
-        {analyse.error ? (
-          <View style={styles.errorBox}>
-            <T variant="bodyStrong" align="center">
-              {errorMessage(analyse.error)}
+    <View style={styles.modalRoot}>
+      <Pressable
+        style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.35)" }]}
+        onPress={() => router.back()}
+        accessibilityLabel="Close scan"
+      />
+      <View style={[styles.panel, { top: insets.top + space.sm, bottom: insets.bottom + space.xs }]}>
+        {shot ? (
+          <Image source={{ uri: shot }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        ) : permission?.granted ? (
+          <CameraView ref={camera} style={StyleSheet.absoluteFill} facing="back" enableTorch={torch} />
+        ) : (
+          <View style={styles.noCamera}>
+            <Icon name="camera-off" size={36} color={colors.white} />
+            <T variant="bodyStrong" align="center" style={{ color: colors.white }}>
+              Kimbo needs the camera to scan your plate.
             </T>
-            <Button label="Retake" onPress={retake} />
+            <Button label="Allow camera" onPress={requestPermission} />
           </View>
-        ) : shot ? null : (
-          <>
-            <T variant="label" align="center" style={styles.hint}>
-              Fit your whole plate in the frame
-            </T>
-            <View style={styles.controls}>
-              <Side icon="image" label="Library" onPress={library} />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Take photo"
-                disabled={!permission?.granted}
-                onPress={snap}
-                style={({ pressed }) => [styles.shutter, pressed && { transform: [{ scale: 0.92 }] }]}
-              >
-                <View style={styles.shutterInner} />
-              </Pressable>
-              <Side icon="edit-3" label="Type or say" onPress={() => router.replace("/log")} />
-            </View>
-          </>
         )}
-      </View>
 
-      {tips ? (
-        <Tips
-          onDone={() => {
-            setTips(false);
-            SecureStore.setItemAsync(TIPS_SEEN, "1").catch(() => {});
-          }}
-        />
-      ) : null}
+        {/* Soft shades keep the white controls readable over a bright plate. */}
+        <Shade edge="top" />
+        <Shade edge="bottom" />
+        {shot ? null : <Frame />}
+        {analyse.isPending ? <Reading /> : null}
+
+        <View {...sheetDrag.panHandlers} style={styles.handleArea}>
+          <View style={styles.handle} />
+        </View>
+        <ScrollView style={styles.panelScroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.top}>
+            <Round icon="x" label="Close" onPress={() => router.back()} />
+            <T variant="bodyStrong" style={{ color: colors.white }}>
+              Scan food
+            </T>
+            {shot ? <View style={{ width: 44 }} /> : <Round icon="info" label="Hints" onPress={() => setTips(true)} />}
+          </View>
+
+          <View style={styles.bottom}>
+            {analyse.error ? (
+              <View style={styles.errorBox}>
+                <T variant="bodyStrong" align="center">
+                  {errorMessage(analyse.error)}
+                </T>
+                <Button label="Retake" onPress={retake} />
+              </View>
+            ) : shot ? null : (
+              <>
+                <T variant="label" align="center" style={styles.hint}>
+                  Fit your whole plate in the frame
+                </T>
+                <View style={styles.controls}>
+                  <Side icon={torch ? "zap" : "zap-off"} label="Flash" selected={torch} onPress={() => setTorch((t) => !t)} />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Take photo"
+                    disabled={!permission?.granted}
+                    onPress={snap}
+                    style={({ pressed }) => [styles.shutter, pressed && { transform: [{ scale: 0.92 }] }]}
+                  >
+                    <View style={styles.shutterInner} />
+                  </Pressable>
+                  <Side icon="image" label="Library" onPress={library} />
+                </View>
+              </>
+            )}
+          </View>
+        </ScrollView>
+
+        {tips ? (
+          <Tips
+            onDone={() => {
+              setTips(false);
+              SecureStore.setItemAsync(TIPS_SEEN, "1").catch(() => {});
+            }}
+          />
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -258,9 +278,15 @@ function Round({ icon, label, onPress }: { icon: IconName; label: string; onPres
   );
 }
 
-function Side({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
+function Side({ icon, label, onPress, selected }: { icon: IconName; label: string; onPress: () => void; selected?: boolean }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={styles.side}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={selected === undefined ? undefined : { selected }}
+      onPress={onPress}
+      style={styles.side}
+    >
       <View style={styles.sideIcon}>
         <Icon name={icon} size={20} color={colors.white} />
       </View>
@@ -274,17 +300,26 @@ function Side({ icon, label, onPress }: { icon: IconName; label: string; onPress
 const CORNER = 34;
 const FILL = { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 } as const;
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#000" },
+  modalRoot: { flex: 1 },
+  panel: {
+    position: "absolute",
+    left: space.xs,
+    right: space.xs,
+    backgroundColor: "#000",
+    borderRadius: radius.xl,
+    overflow: "hidden",
+  },
+  handleArea: { height: 30, alignItems: "center", justifyContent: "center", zIndex: 2 },
+  handle: { width: 38, height: 4, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.55)" },
+  panelScroll: { flex: 1 },
+  scrollContent: { flexGrow: 1, justifyContent: "space-between" },
   noCamera: { ...FILL, alignItems: "center", justifyContent: "center", gap: space.lg, padding: space.xxl },
   top: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: space.xl,
+    paddingTop: space.sm,
   },
   shade: { position: "absolute", left: 0, right: 0 },
   round: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.35)" },
@@ -295,7 +330,7 @@ const styles = StyleSheet.create({
   tr: { top: 0, right: 0, borderTopWidth: 4, borderRightWidth: 4, borderTopRightRadius: 22 },
   bl: { bottom: 0, left: 0, borderBottomWidth: 4, borderLeftWidth: 4, borderBottomLeftRadius: 22 },
   br: { bottom: 0, right: 0, borderBottomWidth: 4, borderRightWidth: 4, borderBottomRightRadius: 22 },
-  bottom: { position: "absolute", left: 0, right: 0, bottom: 0, gap: space.lg, paddingHorizontal: space.xl },
+  bottom: { gap: space.lg, paddingHorizontal: space.xl, paddingBottom: space.xl },
   hint: { color: colors.white, opacity: 0.85 },
   controls: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   side: { width: 80, alignItems: "center", gap: 6 },

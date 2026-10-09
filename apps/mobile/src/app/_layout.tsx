@@ -90,7 +90,15 @@ export default function RootLayout() {
             <Stack.Screen name="assistant" options={{ animation: "slide_from_bottom" }} />
             <Stack.Screen name="milestones" options={{ animation: "slide_from_right" }} />
             <Stack.Screen name="meal" options={{ animation: "slide_from_right" }} />
-            <Stack.Screen name="scan" options={{ animation: "fade", contentStyle: { backgroundColor: "#000" } }} />
+            <Stack.Screen
+              name="scan"
+              options={{
+                presentation: "transparentModal",
+                animation: "fade",
+                contentStyle: { backgroundColor: "transparent" },
+                gestureEnabled: false,
+              }}
+            />
             <Stack.Screen name="exercise" options={{ animation: "slide_from_right" }} />
             <Stack.Screen name="exercise-entry" options={{ animation: "slide_from_right" }} />
             <Stack.Screen name="exercise-describe" options={{ animation: "slide_from_right" }} />
