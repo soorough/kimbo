@@ -96,7 +96,7 @@ describe("Ask Kimbo", () => {
   });
 
   it("once the meal of the moment is logged, the nudge goes quiet until the next meal's time", async () => {
-    const id = await onboarded({}, "Asha");
+    const id = await onboarded({ diet: null, barriers: [] }, "Asha");
     await addReport(id);
     await lunch(id);
     const quiet = (await api.get("/assistant", id)).json.greeting;

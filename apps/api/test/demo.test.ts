@@ -4,7 +4,7 @@ import { useTestApp } from "./harness.js";
 const api = useTestApp();
 
 describe("demo profile for reviewers", () => {
-  it("arrives ready: goal set, a week of meals, a sample report, a focus and milestones", async () => {
+  it("arrives ready: goal set, a month of meals, a sample report, a focus and milestones", async () => {
     const res = await api.post("/profiles", { mode: "demo" });
     expect(res.status).toBe(201);
     const { profile } = res.json;
@@ -13,7 +13,10 @@ describe("demo profile for reviewers", () => {
     expect(profile.goal.targetWeightKg).toBe(59);
 
     const journey = await api.get("/journey", profile.id);
-    expect(journey.json).toMatchObject({ startKg: 64, targetKg: 59, pct: 0 });
+    expect(journey.json).toMatchObject({ startKg: 64, targetKg: 59 });
+    // A month of weigh-ins trending down: partway to the goal, not there yet.
+    expect(journey.json.pct).toBeGreaterThan(20);
+    expect(journey.json.pct).toBeLessThan(60);
 
     const today = await api.get("/today", profile.id);
     expect(today.json.focus.key).toBe("fibre_focus");
@@ -26,6 +29,15 @@ describe("demo profile for reviewers", () => {
     expect(current.json.streak).toBeGreaterThanOrEqual(4);
     expect(current.json.focus.total).toBeGreaterThan(0);
     expect(current.json.achievements.map((a: { type: string }) => a.type)).toContain("first_3_days");
+
+    // Every week of the month has meals, so all four of Progress's week tabs have data.
+    for (const weekOf of ["2026-09-08", "2026-09-15", "2026-09-22", "2026-09-29"]) {
+      const week = await api.get(`/progress?weekOf=${weekOf}`, profile.id);
+      expect(week.json.daysTracked).toBeGreaterThanOrEqual(5);
+    }
+    const saved = await api.get("/saved-meals", profile.id);
+    expect(saved.json.meals.map((m: { name: string }) => m.name)).toEqual(expect.arrayContaining(["Usual breakfast", "Light dinner"]));
+    expect(today.json.water.ml).toBeGreaterThan(0);
 
     const reports = await api.get("/reports", profile.id);
     expect(reports.json.reports).toHaveLength(1);
