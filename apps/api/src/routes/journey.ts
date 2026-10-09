@@ -11,7 +11,12 @@ import { goalOf, type ProfileRow } from "../repo/profiles.js";
 import { listWeighIns, upsertWeighIn } from "../repo/weigh-ins.js";
 
 async function journeyFor(deps: Deps, profile: ProfileRow) {
-  const goal = goalOf(profile);
+  const savedGoal = goalOf(profile);
+  // Older sample profiles predate the goal-weight step. Match the 59 kg sample target
+  // used for new demo profiles without changing a real person's chosen goal.
+  const goal = savedGoal && profile.is_demo && savedGoal.goal === "lose" && savedGoal.targetWeightKg === null
+    ? { ...savedGoal, targetWeightKg: 59 }
+    : savedGoal;
   if (!goal) throw new HttpError(409, "GOAL_REQUIRED", "Set a goal first");
   const input = await loadProgressInput(deps, profile);
   const streak = onTargetStreak(input.meals, goal.effectiveTarget, input.today);

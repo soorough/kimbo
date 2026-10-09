@@ -16,7 +16,7 @@ import { addDays, localDate, startOfLocalDay } from "./time.js";
  * Everything is dated relative to "now".
  */
 
-const DEMO_GOAL = { age: 34, sex: "female", heightCm: 162, weightKg: 64, activity: "light", goal: "lose" } as const;
+const DEMO_GOAL = { age: 34, sex: "female", heightCm: 162, weightKg: 64, activity: "light", goal: "lose", targetWeightKg: 59 } as const;
 
 const c = (foodId: string, quantity: number, unit: string): ConfirmItem =>
   ({ kind: "catalogue", foodId, quantity, unit }) as ConfirmItem;

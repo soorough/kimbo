@@ -10,6 +10,10 @@ describe("demo profile for reviewers", () => {
     const { profile } = res.json;
     expect(profile.isDemo).toBe(true);
     expect(profile.goal.effectiveTarget).toBeGreaterThan(1200);
+    expect(profile.goal.targetWeightKg).toBe(59);
+
+    const journey = await api.get("/journey", profile.id);
+    expect(journey.json).toMatchObject({ startKg: 64, targetKg: 59, pct: 0 });
 
     const today = await api.get("/today", profile.id);
     expect(today.json.focus.key).toBe("fibre_focus");
