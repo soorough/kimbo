@@ -2,8 +2,8 @@ import type { Intensity } from "@kimbo/shared";
 import { useMutation } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
-import { Pressable, StyleSheet, TextInput, View } from "react-native";
+import { useRef, useState } from "react";
+import { PanResponder, Pressable, StyleSheet, TextInput, View } from "react-native";
 import { Button } from "@/components/Button";
 import { Icon, Screen, T } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
@@ -32,6 +32,8 @@ export default function ExerciseEntry() {
   const { kind: k } = useLocalSearchParams<{ kind?: string }>();
   const kind = k === "weights" ? "weights" : "run";
   const [intensity, setIntensity] = useState<Intensity>("medium");
+  const intensityRef = useRef<Intensity>("medium");
+  const trackHeight = useRef(0);
   const [minutes, setMinutes] = useState(15);
   const setDraft = useExerciseDraft((s) => s.set);
   const estimate = useMutation({
@@ -42,9 +44,29 @@ export default function ExerciseEntry() {
     },
   });
   const pick = (i: Intensity) => {
+    if (i === intensityRef.current) return;
+    intensityRef.current = i;
     Haptics.selectionAsync().catch(() => {});
     setIntensity(i);
   };
+  const chooseFromTrack = (y: number) => {
+    const height = trackHeight.current;
+    if (!height) return;
+    const fromBottom = (1 - Math.max(0, Math.min(height, y)) / height) * 100;
+    const nearest = ORDER.reduce((best, level) =>
+      Math.abs(LEVEL_AT[level] - fromBottom) < Math.abs(LEVEL_AT[best] - fromBottom) ? level : best,
+    );
+    pick(nearest);
+  };
+  const sliderResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (event) => chooseFromTrack(event.nativeEvent.locationY),
+      onPanResponderMove: (event) => chooseFromTrack(event.nativeEvent.locationY),
+      onPanResponderTerminationRequest: () => false,
+    }),
+  ).current;
 
   return (
     <Screen
@@ -66,9 +88,20 @@ export default function ExerciseEntry() {
           ))}
         </View>
         {/* The slider from Cal AI: a track that fills from the bottom up to the knob at the chosen level. */}
-        <View style={styles.track}>
-          <View style={[styles.trackFill, { height: `${LEVEL_AT[intensity]}%` }]} />
-          <View style={[styles.knob, { bottom: `${LEVEL_AT[intensity]}%` }]} />
+        <View
+          {...sliderResponder.panHandlers}
+          onLayout={(event) => {
+            trackHeight.current = event.nativeEvent.layout.height;
+          }}
+          accessibilityRole="adjustable"
+          accessibilityLabel="Set intensity"
+          accessibilityValue={{ min: 0, max: 2, now: ORDER.indexOf(intensity), text: intensity }}
+          style={styles.sliderTouch}
+        >
+          <View pointerEvents="none" style={styles.track}>
+            <View style={[styles.trackFill, { height: `${LEVEL_AT[intensity]}%` }]} />
+            <View style={[styles.knob, { bottom: `${LEVEL_AT[intensity]}%` }]} />
+          </View>
         </View>
       </View>
 
@@ -114,12 +147,19 @@ const styles = StyleSheet.create({
   levels: { padding: space.lg, paddingRight: space.xxxl + space.md, borderRadius: radius.lg, backgroundColor: colors.surface },
   level: { fontFamily: fonts.semibold, fontSize: 15, color: colors.inkFaint },
   levelOn: { fontFamily: fonts.bold, fontSize: 20, color: colors.ink },
-  // Pinned to the card's right edge, outside the layout flow, so the card hugs the three rows.
-  track: {
+  // A broad responder area makes the narrow track and knob easy to drag on both platforms.
+  sliderTouch: {
     position: "absolute",
-    right: space.xl,
+    right: space.xs,
     top: space.lg,
     bottom: space.lg,
+    width: 48,
+    alignItems: "center",
+  },
+  track: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
     width: 8,
     borderRadius: 4,
     backgroundColor: colors.sunk,
