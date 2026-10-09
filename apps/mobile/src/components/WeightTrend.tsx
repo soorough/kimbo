@@ -1,15 +1,18 @@
 import type { JourneyResponse } from "@kimbo/shared";
 import { useState } from "react";
 import { Pressable, StyleSheet, View, type LayoutChangeEvent } from "react-native";
-import Svg, { Circle, ClipPath, Defs, Line, LinearGradient, Path, Rect, Stop } from "react-native-svg";
+import Svg, { Circle, ClipPath, Defs, Line, Path, Rect, Text as SvgText } from "react-native-svg";
 import { colors, radius, space } from "@/lib/theme";
-import { formatWeight, useUnits } from "@/lib/units";
+import { formatWeight, kgToLb, useUnits } from "@/lib/units";
 import { useDrawProgress } from "./GoalPath";
 import { Surface } from "./Surface";
 import { T } from "./Text";
 
-const H = 140;
-const PAD = 12;
+const H = 210;
+const LEFT = 38;
+const RIGHT = 8;
+const TOP = 20;
+const BOTTOM = 32;
 
 const RANGES = [
   { label: "90D", days: 90 },
@@ -19,14 +22,14 @@ const RANGES = [
 ] as const;
 type RangeLabel = (typeof RANGES)[number]["label"];
 
-/** Weigh-ins over time as a filled line, with the goal weight dashed. Needs at least two points. */
+/** Cal AI-style weight history: labelled axes, dotted grid and a thin unfilled line. */
 export function WeightTrend({ journey }: { journey: JourneyResponse }) {
   const unit = useUnits((u) => u.weight);
   const [w, setW] = useState(0);
   const [range, setRange] = useState<RangeLabel>("90D");
   const drawn = useDrawProgress(1100);
   const all = journey.history;
-  if (all.length < 2) return null;
+
 
   const days = RANGES.find((r) => r.label === range)!.days;
   const cutoff = days === null ? "" : new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
@@ -34,122 +37,63 @@ export function WeightTrend({ journey }: { journey: JourneyResponse }) {
 
   // Time on the x axis (not weigh-in index), so gaps between weigh-ins look like gaps.
   // The plan is measured from the very first weigh-in, whatever range is showing.
-  const day0 = Date.parse(`${all[0]!.date}T12:00:00`);
+  const day0 = all.length ? Date.parse(`${all[0]!.date}T12:00:00`) : Date.now();
   const dayOf = (date: string) => (Date.parse(`${date}T12:00:00`) - day0) / 86_400_000;
   const from = points.length ? dayOf(points[0]!.date) : 0;
   const span = Math.max(1, points.length ? dayOf(points.at(-1)!.date) - from : 1);
-  const plan = planLine(journey);
-  const planKg = (d: number) => (plan ? plan(d) : null);
-  const values = points
-    .map((p) => p.kg)
-    .concat(journey.targetKg ?? [])
-    .concat(planKg(from) ?? [])
-    .concat(planKg(from + span) ?? []);
-  const min = Math.min(...values) - 0.5;
-  const max = Math.max(...values) + 0.5;
-  const xd = (d: number) => PAD + ((d - from) / span) * (w - PAD * 2);
-  const x = (i: number) => xd(dayOf(points[i]!.date));
-  const y = (kg: number) => PAD + ((max - kg) / (max - min)) * (H - PAD * 2);
-  const line = points.map((p, i) => `${i ? "L" : "M"} ${x(i)} ${y(p.kg)}`).join(" ");
-  const area = points.length >= 2 ? `${line} L ${x(points.length - 1)} ${H} L ${x(0)} ${H} Z` : "";
-  // Android's SVG can keep a stale clip after the reveal finishes, so drop it once drawn.
+  const values = points.map((p) => unit === "kg" ? p.kg : kgToLb(p.kg));
+  const low = values.length ? Math.min(...values) : 0;
+  const high = values.length ? Math.max(...values) : 1;
+  const step = Math.max(0.5, Math.ceil((high - low) / 2 * 2) / 2);
+  const min = Math.floor(low / step) * step;
+  const max = Math.max(min + step * 2, Math.ceil(high / step) * step);
+  const xd = (d: number) => LEFT + ((d - from) / span) * Math.max(0, w - LEFT - RIGHT);
+  const x = (i: number) => points.length === 1 ? (LEFT + w - RIGHT) / 2 : xd(dayOf(points[i]!.date));
+  const y = (weight: number) => TOP + ((max - weight) / (max - min)) * (H - TOP - BOTTOM);
+  const line = points.map((p, i) => `${i ? "L" : "M"} ${x(i)} ${y(values[i]!)}`).join(" ");
   const clip = drawn < 1 ? "url(#weightReveal)" : undefined;
-  const change = points.length ? Math.round((points.at(-1)!.kg - points[0]!.kg) * 10) / 10 : 0;
-  const planPath = plan
-    ? Array.from({ length: 25 }, (_, i) => from + (i / 24) * span)
-        .map((d, i) => `${i ? "L" : "M"} ${xd(d)} ${y(plan(d))}`)
-        .join(" ")
-    : null;
+  const dateLabel = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString("en-IN",
+    span <= 6 ? { weekday: "short" } : { day: "numeric", month: "short" });
 
   return (
-    <Surface tint="leaf">
+    <Surface>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
         <T variant="heading">Weight progress</T>
         {journey.pct !== null ? (
           <View style={styles.goalChip}>
             <T variant="caption" tone="ink" style={{ fontWeight: "700" }}>
-              {journey.pct}%
+              ⚑ {journey.pct}%
             </T>
             <T variant="caption"> of goal</T>
           </View>
         ) : null}
       </View>
-      {points.length >= 2 ? (
-        <T variant="label">
-          {change === 0 ? "No change" : `${change > 0 ? "+" : "−"}${formatWeight(Math.abs(change), unit)}`} since{" "}
-          {new Date(`${points[0]!.date}T12:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-        </T>
-      ) : (
-        <T variant="label">Not enough weigh-ins in this range yet.</T>
-      )}
       <View
         style={{ height: H, marginTop: space.sm }}
+        accessibilityLabel={`Weight history in ${unit}. ${points.map((p) => `${p.date}: ${formatWeight(p.kg, unit)}`).join(", ")}`}
         onLayout={(e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width)}
       >
-        {w > 0 && points.length >= 2 ? (
+        {w > LEFT + RIGHT && points.length > 0 ? (
           <Svg width={w} height={H}>
             <Defs>
-              {/* Both lines draw in left to right, like the plan on the target reveal. */}
               <ClipPath id="weightReveal">
-                <Rect x={0} y={0} width={PAD + (w - PAD) * drawn + 8} height={H} />
+                <Rect x={0} y={0} width={LEFT + (w - LEFT) * drawn + 8} height={H} />
               </ClipPath>
             </Defs>
-            {planPath ? (
-              <Path
-                d={planPath}
-                clipPath={clip}
-                fill="none"
-                stroke={colors.inkFaint}
-                strokeWidth={2}
-                strokeDasharray="2 5"
-                strokeLinecap="round"
-              />
-            ) : null}
-            {journey.targetKg !== null ? (
-              <Line
-                x1={PAD}
-                x2={w - PAD}
-                y1={y(journey.targetKg)}
-                y2={y(journey.targetKg)}
-                stroke={colors.leaf}
-                strokeDasharray="4 6"
-                strokeWidth={1.5}
-                opacity={0.6}
-              />
-            ) : null}
-            <Defs>
-              <LinearGradient id="weightArea" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor={colors.leaf} stopOpacity="0.28" />
-                <Stop offset="1" stopColor={colors.leaf} stopOpacity="0" />
-              </LinearGradient>
-            </Defs>
-            <Path d={area} fill="url(#weightArea)" clipPath={clip} />
-            <Path
-              d={line}
-              clipPath={clip}
-              fill="none"
-              stroke={colors.leaf}
-              strokeWidth={3}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-            />
-            {points.map((p, i) =>
-              x(i) > PAD + (w - PAD) * drawn ? null : i === points.length - 1 ? (
-                <Circle
-                  key={p.date}
-                  cx={x(i)}
-                  cy={y(p.kg)}
-                  r={6}
-                  fill={colors.leaf}
-                  stroke={colors.leafSoft}
-                  strokeWidth={3}
-                />
-              ) : (
-                <Circle key={p.date} cx={x(i)} cy={y(p.kg)} r={3} fill={colors.leaf} />
-              ),
-            )}
+            {[max, (min + max) / 2, min].map((value) => (
+              <ViewGrid key={value} value={value} y={y(value)} width={w} />
+            ))}
+            {[0, points.length - 1].filter((i, index, list) => list.indexOf(i) === index).map((i) => (
+              <Line key={`vertical-${i}`} x1={x(i)} x2={x(i)} y1={TOP - 12} y2={H - BOTTOM + 6} stroke="#EEEEF2" strokeDasharray="2 3" />
+            ))}
+            <Path d={line} clipPath={clip} fill="none" stroke={colors.ink} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+            {points.map((p, i) => x(i) > LEFT + (w - LEFT) * drawn ? null : (
+              <Circle key={p.date} cx={x(i)} cy={y(values[i]!)} r={2.5} fill={colors.ink} />
+            ))}
+            <SvgText x={x(0)} y={H - 5} fontSize={11} fill={colors.inkFaint} textAnchor="start">{dateLabel(points[0]!.date)}</SvgText>
+            {points.length > 1 ? <SvgText x={x(points.length - 1)} y={H - 5} fontSize={11} fill={colors.inkFaint} textAnchor="end">{dateLabel(points.at(-1)!.date)}</SvgText> : null}
           </Svg>
-        ) : null}
+        ) : <T variant="label" align="center" style={{ marginTop: 70 }}>Log your weight to start your graph.</T>}
       </View>
       <View style={styles.ranges}>
         {RANGES.map((r) => (
@@ -166,40 +110,30 @@ export function WeightTrend({ journey }: { journey: JourneyResponse }) {
           </Pressable>
         ))}
       </View>
-      <T variant="caption">
-        {[
-          plan ? "Dotted: your plan" : null,
-          journey.targetKg !== null ? `Dashed: goal ${formatWeight(journey.targetKg, unit)}` : null,
-        ]
-          .filter(Boolean)
-          .join(" · ")}
-      </T>
     </Surface>
   );
 }
 
-/** Where the plan says you'd be, d days after the first weigh-in: a steady weekly pace that stops at the goal. */
-function planLine(j: JourneyResponse): ((d: number) => number) | null {
-  if (j.targetKg === null || j.weeklyKg === 0 || (j.goal !== "lose" && j.goal !== "build_muscle")) return null;
-  const dir = j.goal === "lose" ? -1 : 1;
-  const target = j.targetKg;
-  return (d) => {
-    const kg = j.startKg + (dir * j.weeklyKg * d) / 7;
-    return dir < 0 ? Math.max(target, kg) : Math.min(target, kg);
-  };
+function ViewGrid({ value, y, width }: { value: number; y: number; width: number }) {
+  return (
+    <>
+      <Line x1={LEFT} x2={width - RIGHT} y1={y} y2={y} stroke="#D8D8DC" strokeDasharray="3 4" strokeWidth={1} />
+      <SvgText x={LEFT - 8} y={y + 4} textAnchor="end" fontSize={11} fill={colors.inkFaint}>{value.toFixed(1)}</SvgText>
+    </>
+  );
 }
 
 const styles = StyleSheet.create({
   goalChip: {
     flexDirection: "row",
-    backgroundColor: colors.surface,
+    backgroundColor: "#F7F7F9",
     borderRadius: radius.pill,
     paddingHorizontal: space.md,
     paddingVertical: 4,
   },
   ranges: {
     flexDirection: "row",
-    backgroundColor: "rgba(46,107,79,0.08)",
+    backgroundColor: "#F7F7F9",
     borderRadius: radius.pill,
     padding: 3,
     marginTop: space.xs,

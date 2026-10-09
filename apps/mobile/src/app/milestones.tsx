@@ -4,13 +4,12 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import { BadgeArt, StreakFlame } from "@/components/BadgeArt";
-import { Kimbo } from "@/components/Kimbo";
+import { BadgeArt, BadgeEmblem, StreakFlame } from "@/components/BadgeArt";
 import { ShareCard, ShareStreak } from "@/components/ShareStreak";
 import { ErrorState, Icon, Screen, T, type IconName } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { HABIT_BADGES, MEAL_BADGES, STREAK_BADGES } from "@/lib/badges";
-import { colors, fonts, radius, shadow, space } from "@/lib/theme";
+import { colors, radius, shadow, space } from "@/lib/theme";
 
 type Badge = {
   key: string;
@@ -127,12 +126,7 @@ export default function Milestones() {
           <T variant="heading">Day streak</T>
         </View>
         <View style={styles.hero}>
-          <View style={styles.medal}>
-            <Kimbo mood={earned > 0 ? "proud" : "idle"} size={54} leaves={Math.min(5, 1 + earned)} />
-            <View style={styles.medalCount}>
-              <T style={styles.medalNum}>{earned}</T>
-            </View>
-          </View>
+          <BadgeEmblem count={earned} size={116} />
           <T variant="heading">Badges earned</T>
         </View>
       </View>
@@ -253,26 +247,6 @@ const styles = StyleSheet.create({
   },
   heroRow: { flexDirection: "row", gap: space.md },
   hero: { flex: 1, alignItems: "center", gap: space.sm },
-  medal: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.turmericSoft,
-  },
-  medalCount: {
-    position: "absolute",
-    bottom: 0,
-    minWidth: 40,
-    paddingHorizontal: space.sm,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.ink,
-  },
-  medalNum: { fontFamily: fonts.bold, fontSize: 16, color: colors.white },
   statRow: { flexDirection: "row", gap: space.md },
   stat: {
     flex: 1,

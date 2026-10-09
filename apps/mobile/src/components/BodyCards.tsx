@@ -5,32 +5,53 @@ import { HABIT_BADGES, MEAL_BADGES, STREAK_BADGES } from "@/lib/badges";
 import { colors, radius, space } from "@/lib/theme";
 import { formatWeight, useUnits } from "@/lib/units";
 import { Icon } from "./Icon";
+import { BadgeArt, BadgeEmblem, StreakFlame } from "./BadgeArt";
 import { Surface } from "./Surface";
 import { T } from "./Text";
 
 /** Cal AI's two tiles at the top of Progress: the day streak and badges earned. Both open Milestones. */
 export function StatTiles({ p }: { p: ProgressResponse }) {
-  const earned =
-    new Set(p.achievements.map((a) => a.type)).size +
-    STREAK_BADGES.filter((b) => Math.max(p.streak, p.longestStreak) >= b.days).length +
-    MEAL_BADGES.filter((b) => p.mealsLogged >= b.meals).length;
+  const best = Math.max(p.streak, p.longestStreak);
+  const previews = [
+    ...STREAK_BADGES.filter((b) => best >= b.days).map((b) => ({ key: `s${b.days}`, kind: "streak" as const, number: b.days })),
+    ...MEAL_BADGES.filter((b) => p.mealsLogged >= b.meals).map((b) => ({ key: `m${b.meals}`, kind: "meals" as const, number: b.meals })),
+    ...HABIT_BADGES.filter((b) => p.achievements.some((a) => a.type === b.type)).map((b) => ({ key: b.type, kind: "habit" as const, icon: b.icon })),
+  ];
+  const earned = previews.length;
   const total = HABIT_BADGES.length + STREAK_BADGES.length + MEAL_BADGES.length;
   const open = () => router.push("/milestones");
+  const logged = new Set(p.trackedDates);
+  const today = new Date();
+  const sunday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay());
   return (
     <View style={styles.tiles}>
-      <Surface style={styles.tile} onPress={open} accessibilityLabel={`${p.streak} day streak. Open milestones`}>
-        <T style={styles.tileArt}>🔥</T>
-        <T style={styles.tileNum}>{p.streak}</T>
+      <Surface style={styles.tile} onPress={open} accessibilityLabel={`${p.streak} day streak. Open streaks and badges`}>
+        <StreakFlame count={p.streak} size={88} id="progress-streak" />
         <T variant="label">Day streak</T>
+        <View style={styles.week}>
+          {["S", "M", "T", "W", "T", "F", "S"].map((label, i) => {
+            const day = new Date(sunday.getFullYear(), sunday.getMonth(), sunday.getDate() + i);
+            const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+            const done = logged.has(iso);
+            return (
+              <View key={i} style={styles.weekDay} accessibilityLabel={`${day.toLocaleDateString(undefined, { weekday: "long" })}: ${done ? "logged" : "not logged"}`}>
+                <T variant="caption" style={done && { color: colors.turmericDeep }}>{label}</T>
+                <View style={[styles.dayDot, done && { backgroundColor: colors.turmeric }]}>
+                  {done ? <Icon name="check" size={11} color={colors.white} /> : null}
+                </View>
+              </View>
+            );
+          })}
+        </View>
       </Surface>
-      <Surface
-        style={styles.tile}
-        onPress={open}
-        accessibilityLabel={`${earned} of ${total} badges earned. Open milestones`}
-      >
-        <T style={styles.tileArt}>🏅</T>
-        <T style={styles.tileNum}>{earned}</T>
+      <Surface style={styles.tile} onPress={open} accessibilityLabel={`${earned} of ${total} badges earned. Open streaks and badges`}>
+        <BadgeEmblem count={earned} size={88} />
         <T variant="label">Badges earned</T>
+        <View style={styles.previews}>
+          {previews.length ? previews.slice(-3).map(({ key, ...badge }) => (
+            <BadgeArt key={key} {...badge} earned size={23} id={`preview-${key}`} />
+          )) : <T variant="caption" tone="faint">Your first is ahead</T>}
+        </View>
       </Surface>
     </View>
   );
@@ -167,9 +188,11 @@ export function BmiCard({ heightCm, kg }: { heightCm: number; kg: number }) {
 
 const styles = StyleSheet.create({
   tiles: { flexDirection: "row", gap: space.md },
-  tile: { flex: 1, alignItems: "center", gap: 2, paddingVertical: space.lg },
-  tileArt: { fontSize: 40, lineHeight: 52, includeFontPadding: false },
-  tileNum: { fontSize: 26, lineHeight: 32, fontWeight: "700", color: colors.ink },
+  tile: { flex: 1, alignItems: "center", gap: 2, paddingHorizontal: space.sm, paddingVertical: space.lg },
+  week: { flexDirection: "row", alignSelf: "stretch", justifyContent: "center", gap: 3, marginTop: 4 },
+  weekDay: { alignItems: "center", gap: 2, flex: 1, maxWidth: 22 },
+  dayDot: { width: 16, height: 16, borderRadius: 8, backgroundColor: "#ECECEC", alignItems: "center", justifyContent: "center" },
+  previews: { height: 38, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, marginTop: 4 },
   changeRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
   changeTrack: { flex: 1, height: 8, borderRadius: radius.pill, backgroundColor: colors.sunk, overflow: "hidden" },
   changeFill: { height: 8, borderRadius: radius.pill },

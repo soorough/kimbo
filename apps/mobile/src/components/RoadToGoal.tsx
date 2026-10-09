@@ -1,7 +1,6 @@
 import type { JourneyResponse } from "@kimbo/shared";
-import { router } from "expo-router";
 import { useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View, type LayoutChangeEvent } from "react-native";
+import { ScrollView, StyleSheet, View, type LayoutChangeEvent } from "react-native";
 import { colors, space } from "@/lib/theme";
 import { formatWeight, useUnits } from "@/lib/units";
 import { Kimbo } from "./Kimbo";
@@ -32,16 +31,7 @@ export function RoadToGoal({ journey }: { journey: JourneyResponse }) {
 
   return (
     <Surface accessibilityLabel={`${title}. ${journey.pct ?? 0}% there. ${logged} days logged.`}>
-      <View style={styles.head}>
-        <T variant="overline" tone="soft">
-          {title.toUpperCase()}
-        </T>
-        <Pressable accessibilityRole="button" accessibilityLabel="Edit goal" hitSlop={10} onPress={() => router.push("/edit-goal")}>
-          <T variant="label" tone="leaf">
-            Edit goal
-          </T>
-        </Pressable>
-      </View>
+      <T variant="overline" tone="soft">{title.toUpperCase()}</T>
 
       <View style={styles.top}>
         {journey.pct !== null ? (
@@ -173,7 +163,6 @@ function toWeeks(calendar: Day[], minWeeks: number): { month: string | null; day
 }
 
 const styles = StyleSheet.create({
-  head: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   top: { flexDirection: "row", alignItems: "center", gap: space.lg, marginVertical: space.sm },
   big: { fontSize: 30, lineHeight: 36 },
   gridRow: { flexDirection: "row", gap: 6 },

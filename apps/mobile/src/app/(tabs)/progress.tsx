@@ -1,7 +1,8 @@
-import type { ProgressResponse } from "@kimbo/shared";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import type { Diet, ProgressResponse, Report } from "@kimbo/shared";
+import { useQueries, useQuery } from "@tanstack/react-query";
+import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { View } from "react-native";
 import { StatTiles, WeightChanges } from "@/components/BodyCards";
 import { JourneyCard } from "@/components/JourneyCard";
 import { CaloriesWeek } from "@/components/ProgressCharts";
@@ -10,11 +11,15 @@ import { CardSkeleton, ProgressSkeleton } from "@/components/Skeleton";
 import { WeightTrend } from "@/components/WeightTrend";
 import { ErrorState, Icon, Screen, Surface, T } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
-import { colors, radius, space } from "@/lib/theme";
+import { useSession } from "@/lib/session";
+import { colors, space } from "@/lib/theme";
 
 export default function Progress() {
+  const profileId = useSession((state) => state.profileId);
   const progress = useQuery({ queryKey: ["progress"], queryFn: api.progress });
   const journey = useQuery({ queryKey: ["journey"], queryFn: api.journey, retry: false });
+  const reports = useQuery({ queryKey: ["reports"], queryFn: api.reports });
+  const profile = useQuery({ queryKey: ["profile", profileId], queryFn: () => api.getProfile(profileId!), enabled: !!profileId });
   if (progress.isLoading)
     return (
       <Screen>
@@ -30,75 +35,64 @@ export default function Progress() {
   }
   const p = progress.data;
 
-  // Body and habits live here; health (BMI, the report's food focus) lives on Report.
   return (
     <Screen>
       <View style={{ gap: 2, marginTop: space.sm }}>
-        <T variant="overline" tone="faint">
-          {rangeLabel(p)}
-        </T>
         <T variant="display">Progress</T>
       </View>
 
       <StatTiles p={p} />
+      <BloodReportEntry report={reports.data?.reports[0]} focusTitle={p.focus?.title} loading={reports.isLoading} />
       {journey.data ? <JourneyCard /> : null}
       {journey.data ? <WeightTrend journey={journey.data} /> : null}
       {journey.data ? <WeightChanges journey={journey.data} /> : null}
       {journey.data ? <RoadToGoal journey={journey.data} /> : null}
-      <CaloriesWeeks p={p} />
-
-      <WeekOverWeek p={p} />
-
-      {p.insights.length ? (
-        <Surface tint="sunk">
-          <T variant="overline" tone="soft">
-            PATTERNS
-          </T>
-          {p.insights.map((i) => (
-            <View key={i} style={styles.insight}>
-              <Icon name="zap" size={16} color={colors.turmericDeep} />
-              <T variant="body" style={{ flex: 1 }}>
-                {i}
-              </T>
-            </View>
-          ))}
-        </Surface>
-      ) : null}
+      <CaloriesWeeks p={p} diet={profile.data?.profile.diet ?? null} />
     </Screen>
+  );
+}
+
+function BloodReportEntry({ report, focusTitle, loading }: { report?: Report; focusTitle?: string; loading: boolean }) {
+  if (loading) return <CardSkeleton h={104} />;
+  const watching = report?.markers.filter((marker) => marker.status !== "in_range").length ?? 0;
+  const result = report
+    ? watching > 0
+      ? `${watching} ${watching === 1 ? "number" : "numbers"} worth watching`
+      : "Checked numbers in range"
+    : "Turn your results into a food focus";
+  return (
+    <Surface onPress={() => router.push("/blood-report")} accessibilityLabel={report ? "Open blood report" : "Add a blood report"}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.leafSoft, alignItems: "center", justifyContent: "center" }}>
+          <Icon name="file-text" size={22} color={colors.leafDeep} />
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <T variant="heading">Blood report</T>
+          <T variant="label" tone="soft">{result}</T>
+        </View>
+        <Icon name="chevron-right" size={20} color={colors.inkFaint} />
+      </View>
+      {report && focusTitle ? <T variant="caption">Food focus: {focusTitle}</T> : null}
+    </Surface>
   );
 }
 
 const WEEKS = ["This wk", "Last wk", "2 wk ago", "3 wk ago"];
 
 /** The calories chart with Cal AI's week tabs: this week comes with Progress, earlier weeks load on tap. */
-function CaloriesWeeks({ p }: { p: ProgressResponse }) {
+function CaloriesWeeks({ p, diet }: { p: ProgressResponse; diet: Diet | null }) {
   const [back, setBack] = useState(0);
-  const weekOf = addDays(p.weekStart, -7 * back);
-  const past = useQuery({
-    queryKey: ["progress", weekOf],
-    queryFn: () => api.progressFor(weekOf),
-    enabled: back > 0,
-    placeholderData: keepPreviousData,
+  // Fetch the three visible choices together so switching weeks never displays stale bars.
+  const history = useQueries({
+    queries: [1, 2, 3].map((weeksBack) => {
+      const weekOf = addDays(p.weekStart, -7 * weeksBack);
+      return { queryKey: ["progress", weekOf], queryFn: () => api.progressFor(weekOf) };
+    }),
   });
-  const shown = back === 0 ? p : past.data;
+  const shown = back === 0 ? p : history[back - 1]?.data;
   return (
     <View style={{ gap: space.sm }}>
-      {shown ? <CaloriesWeek p={shown} current={back === 0} /> : <CardSkeleton h={260} />}
-      <View style={styles.weeks}>
-        {WEEKS.map((label, i) => (
-          <Pressable
-            key={label}
-            accessibilityRole="button"
-            accessibilityState={{ selected: i === back }}
-            onPress={() => setBack(i)}
-            style={[styles.week, i === back && styles.weekOn]}
-          >
-            <T variant="label" tone={i === back ? "ink" : "faint"}>
-              {label}
-            </T>
-          </Pressable>
-        ))}
-      </View>
+      {shown ? <CaloriesWeek p={shown} diet={diet} weekTabs={{ labels: WEEKS, selected: back, onSelect: setBack }} /> : <CardSkeleton h={300} />}
     </View>
   );
 }
@@ -108,39 +102,3 @@ function addDays(iso: string, days: number): string {
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
-
-/** Only celebrates gains; a quieter week is simply not mentioned. */
-function WeekOverWeek({ p }: { p: ProgressResponse }) {
-  const w = p.weekOverWeek;
-  const lines: string[] = [];
-  if (w.daysTracked && w.daysTracked > 0)
-    lines.push(`${w.daysTracked} more day${w.daysTracked === 1 ? "" : "s"} tracked than last week`);
-  if (w.goalDaysMet && w.goalDaysMet > 0)
-    lines.push(`${w.goalDaysMet} more goal day${w.goalDaysMet === 1 ? "" : "s"} than last week`);
-  if (w.focusPct && w.focusPct > 0) lines.push(`Focus up ${w.focusPct} points from last week`);
-  if (!lines.length) return null;
-  return (
-    <Surface tint="turmeric">
-      {lines.map((l) => (
-        <View key={l} style={styles.insight}>
-          <Icon name="arrow-up-right" size={16} color={colors.turmericDeep} />
-          <T variant="bodyStrong" style={{ flex: 1 }}>
-            {l}
-          </T>
-        </View>
-      ))}
-    </Surface>
-  );
-}
-
-function rangeLabel(p: ProgressResponse): string {
-  const fmt = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString([], { day: "numeric", month: "short" });
-  return `${fmt(p.weekStart)} – ${fmt(p.weekEnd)}`.toUpperCase();
-}
-
-const styles = StyleSheet.create({
-  insight: { flexDirection: "row", alignItems: "center", gap: space.sm },
-  weeks: { flexDirection: "row", backgroundColor: colors.sunk, borderRadius: radius.pill, padding: 3 },
-  week: { flex: 1, alignItems: "center", paddingVertical: 6, borderRadius: radius.pill },
-  weekOn: { backgroundColor: colors.surface },
-});

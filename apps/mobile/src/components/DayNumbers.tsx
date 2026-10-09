@@ -30,6 +30,8 @@ export const PROTEIN_ICON: Record<Diet, string> = {
   jain: "🧀",
   vegan: "🫘",
 };
+export const CARBS_ICON = "🌾";
+export const FAT_ICON = "🥜";
 
 interface Stat {
   key: string;
@@ -64,8 +66,8 @@ export function DayNumbers({ data, diet }: { data: TodayResponse; diet: Diet | n
   };
   const macros: Stat[] = [
     { key: "protein", name: "Protein", icon: PROTEIN_ICON[diet ?? "vegetarian"], eaten: n.protein, target: t?.protein ?? 0, unit: "g", color: macroColors.protein, goal: true },
-    { key: "carbs", name: "Carbs", icon: "🌾", eaten: n.carbs, target: t?.carbs ?? 0, unit: "g", color: macroColors.carbs },
-    { key: "fat", name: "Fat", icon: "🥜", eaten: n.fat, target: t?.fat ?? 0, unit: "g", color: macroColors.fat },
+    { key: "carbs", name: "Carbs", icon: CARBS_ICON, eaten: n.carbs, target: t?.carbs ?? 0, unit: "g", color: macroColors.carbs },
+    { key: "fat", name: "Fat", icon: FAT_ICON, eaten: n.fat, target: t?.fat ?? 0, unit: "g", color: macroColors.fat },
   ];
   const extras: Stat[] = [
     { key: "fibre", name: "Fibre", icon: "🥦", eaten: n.fibre, target: t?.fibre ?? 0, unit: "g", color: macroColors.fibre, goal: true },

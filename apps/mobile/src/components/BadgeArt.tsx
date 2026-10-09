@@ -25,7 +25,7 @@ function Sparkle({ x, y, r, fill }: { x: number; y: number; r: number; fill: str
 export function StreakFlame({ count, size = 120, id = "f" }: { count: number; size?: number; id?: string }) {
   const c = count > 0 ? LIT : DIM;
   const label = String(count);
-  const pillW = 22 + label.length * 13;
+
   return (
     <View style={{ width: size, height: size }} accessibilityLabel={`${count} day streak`}>
       <Svg width={size} height={size} viewBox="0 0 100 100">
@@ -44,18 +44,40 @@ export function StreakFlame({ count, size = 120, id = "f" }: { count: number; si
         ) : null}
         <Path d={FLAME} fill={`url(#${id}-body)`} />
         <Path d={FLAME_CORE} fill={c.glow} opacity={0.9} />
-        <Rect x={50 - pillW / 2} y={66} width={pillW} height={26} rx={13} fill={c.deep} />
-        <SvgText
-          x={50}
-          y={85}
-          fontSize={19}
-          fontFamily={fonts.bold}
-          fontWeight="bold"
-          fill="#FFFFFF"
-          textAnchor="middle"
-        >
+
+        {/* Paint the outline first so it cannot eat into the solid white numeral. */}
+        <SvgText x={50} y={94} fontSize={34} fontFamily="sans-serif" fontWeight="900"
+          fill="#FFFFFF" stroke={c.deep} strokeWidth={5} strokeLinejoin="round" textAnchor="middle">
           {label}
         </SvgText>
+        <SvgText x={50} y={94} fontSize={34} fontFamily="sans-serif" fontWeight="900"
+          fill="#FFFFFF" textAnchor="middle">
+          {label}
+        </SvgText>
+      </Svg>
+    </View>
+  );
+}
+
+/** Faceted badge emblem shared by Progress and Milestones. */
+export function BadgeEmblem({ count, size = 110 }: { count: number; size?: number }) {
+  const edge = "M50 7 L78 17 L91 43 L87 70 L66 88 L35 88 L13 70 L9 43 L22 17 Z";
+  return (
+    <View style={{ width: size, height: size }} accessibilityLabel={`${count} badges earned`}>
+      <Svg width={size} height={size} viewBox="0 0 100 100">
+        <Path d={edge} fill="#343044" stroke="#B7944D" strokeWidth={2} />
+        <Path d="M50 7 L50 48 L22 17 Z" fill="#494158" />
+        <Path d="M22 17 L50 48 L9 43 L13 70 Z" fill="#383247" />
+        <Path d="M50 7 L78 17 L50 48 Z" fill="#282435" />
+        <Path d="M78 17 L91 43 L50 48 Z" fill="#4C425E" />
+        <Path d="M91 43 L87 70 L50 48 Z" fill="#5A4D6C" />
+        <Path d="M87 70 L66 88 L50 48 Z" fill="#3E354F" />
+        <Path d="M66 88 L35 88 L50 48 Z" fill="#292335" />
+        <Path d="M35 88 L13 70 L50 48 Z" fill="#51445F" />
+        <SvgText x={50} y={96} fontSize={34} fontFamily="sans-serif" fontWeight="900"
+          fill="#FFFFFF" stroke="#343044" strokeWidth={5} strokeLinejoin="round" textAnchor="middle">{count}</SvgText>
+        <SvgText x={50} y={96} fontSize={34} fontFamily="sans-serif" fontWeight="900"
+          fill="#FFFFFF" textAnchor="middle">{count}</SvgText>
       </Svg>
     </View>
   );

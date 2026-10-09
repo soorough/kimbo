@@ -1,181 +1,162 @@
-import type { ProgressResponse } from "@kimbo/shared";
-import { useState } from "react";
-import { StyleSheet, View, type LayoutChangeEvent } from "react-native";
-import Svg, { Line, Rect } from "react-native-svg";
+import type { Diet, ProgressResponse } from "@kimbo/shared";
+import { useLayoutEffect, useRef, useState } from "react";
+import { Animated, Easing, Pressable, StyleSheet, View, type LayoutChangeEvent } from "react-native";
+import Svg, { G, Line, Rect, Text as SvgText } from "react-native-svg";
 import { colors, radius, space } from "@/lib/theme";
+import { useReduceMotion } from "@/lib/motion";
+import { CARBS_ICON, FAT_ICON, PROTEIN_ICON } from "./DayNumbers";
 import { Icon } from "./Icon";
 import { Kimbo } from "./Kimbo";
 import { Ring } from "./Meter";
 import { Surface } from "./Surface";
 import { T } from "./Text";
 
-const DAY_LETTERS = ["M", "T", "W", "T", "F", "S", "S"];
-const CHART_H = 132;
+const DAY_LETTERS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const CHART_H = 206;
+const LEFT = 28;
+const TOP = 10;
+const BOTTOM = 25;
+const MACROS = [
+  { key: "protein", label: "Protein", color: "#DE6971", kcalPerGram: 4 },
+  { key: "carbs", label: "Carbs", color: "#E8A16C", kcalPerGram: 4 },
+  { key: "fat", label: "Fats", color: "#718DC7", kcalPerGram: 9 },
+] as const;
 
-type DayState = "on" | "over" | "under" | "empty" | "ahead";
+type Day = ProgressResponse["days"][number];
 
-function dayState(calories: number | null, goal: ProgressResponse["goal"]): DayState {
-  if (calories === null) return "ahead";
-  if (calories === 0) return "empty";
-  if (!goal) return "on";
-  const band = (goal.targetCalories * goal.bandPct) / 100;
-  if (calories > Math.round(goal.targetCalories + band)) return "over";
-  if (calories < Math.round(goal.targetCalories - band)) return "under";
-  return "on";
-}
-
-/**
- * The week in calories: one bar per day against the target band. On-target days fill
- * turmeric (a small celebration), days over the band go plum (worth watching, never red),
- * lighter days stay quiet. Today is outlined because it is still going.
- */
-export function CaloriesWeek({ p, current = true }: { p: ProgressResponse; current?: boolean }) {
+/** Seven daily calorie bars with their protein, carb and fat contribution. */
+export function CaloriesWeek({
+  p,
+  diet,
+  weekTabs,
+}: {
+  p: ProgressResponse;
+  diet: Diet | null;
+  weekTabs: { labels: readonly string[]; selected: number; onSelect: (index: number) => void };
+}) {
   const [w, setW] = useState(0);
-  const goal = p.goal;
-  const todayIndex = current ? p.daysElapsed - 1 : -1;
-  const top =
-    Math.max(goal ? goal.targetCalories * (1 + goal.bandPct / 100) * 1.12 : 0, ...p.days.map((d) => d.calories ?? 0)) ||
-    1;
-  const y = (kcal: number) => CHART_H - (kcal / top) * CHART_H;
-  const slot = w / 7;
-  const barW = Math.min(26, slot * 0.58);
-
-  const fill: Record<DayState, string> = {
-    on: colors.turmeric,
-    over: colors.plum,
-    under: "rgba(227,155,45,0.38)",
-    empty: "transparent",
-    ahead: "transparent",
-  };
-
-  const { summary, hint } = caloriesCopy(p, current);
+  const reduceMotion = useReduceMotion();
+  const growth = useRef(new Animated.Value(0)).current;
   const logged = p.days.filter((d) => (d.calories ?? 0) > 0);
   const average = logged.length
-    ? Math.round(logged.reduce((sum, d) => sum + d.calories!, 0) / logged.length)
-    : null;
+    ? Math.round(logged.reduce((sum, day) => sum + day.calories!, 0) / logged.length)
+    : 0;
+  const peak = Math.max(...p.days.map((day) => day.calories ?? 0), 1);
+  const base = 10 ** Math.floor(Math.log10(Math.max(peak / 4, 1)));
+  const tick = [1, 2, 5, 10].map((n) => n * base).find((n) => n >= peak / 4)!;
+  const topValue = Math.max(tick, Math.ceil(peak / tick) * tick);
+  const ticks = Math.round(topValue / tick);
+  const plotH = CHART_H - TOP - BOTTOM;
+  const chartW = Math.max(0, w - LEFT - 4);
+  const slot = chartW / 7;
+  const barW = Math.min(26, slot * 0.5);
+  const y = (calories: number) => TOP + plotH * (1 - calories / topValue);
+  const todayIndex = p.daysElapsed - 1;
+  const dataKey = p.days.map((day) => `${day.date}:${day.calories}:${day.protein}:${day.carbs}:${day.fat}`).join("|");
+
+  useLayoutEffect(() => {
+    if (w <= LEFT) return;
+    growth.stopAnimation();
+    if (reduceMotion) {
+      growth.setValue(1);
+      return;
+    }
+    growth.setValue(0.02);
+    Animated.timing(growth, {
+      toValue: 1,
+      duration: 620,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+    return () => growth.stopAnimation();
+  }, [dataKey, growth, reduceMotion, w]);
 
   return (
-    <Surface tint="turmeric" accessibilityLabel={`Calories this week. ${summary}. ${hint ?? ""}`}>
-      <T variant="overline" tone="soft">
-        CALORIES
-      </T>
-      <T variant="heading">{summary}</T>
-      {average !== null ? (
-        <T variant="label">Daily average {average.toLocaleString("en-IN")} kcal</T>
-      ) : null}
-      {hint ? <T variant="caption">{hint}</T> : null}
-      <View style={{ height: CHART_H, marginTop: space.sm }} onLayout={(e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width)}>
-        {w > 0 ? (
+    <Surface accessibilityLabel={`Daily average calories: ${average}. ${logged.length} days logged this week.`}>
+      <T variant="heading">Daily Average Calories</T>
+      <View style={styles.dailyValue}>
+        <T style={styles.dailyNumber}>{average.toLocaleString("en-IN")}</T>
+        <T variant="caption">cals</T>
+      </View>
+      <View style={{ height: CHART_H, marginTop: space.md }} onLayout={(e: LayoutChangeEvent) => {
+        const width = Math.round(e.nativeEvent.layout.width);
+        setW((previous) => previous === width ? previous : width);
+      }}>
+        {w > LEFT ? (
           <Svg width={w} height={CHART_H}>
-            {goal ? (
-              <>
-                {/* the ±band around the target, then the target itself */}
-                <Rect
-                  x={0}
-                  width={w}
-                  y={y(goal.targetCalories * (1 + goal.bandPct / 100))}
-                  height={y(goal.targetCalories * (1 - goal.bandPct / 100)) - y(goal.targetCalories * (1 + goal.bandPct / 100))}
-                  fill="rgba(143,90,11,0.08)"
-                  rx={6}
-                />
-                <Line
-                  x1={0}
-                  x2={w}
-                  y1={y(goal.targetCalories)}
-                  y2={y(goal.targetCalories)}
-                  stroke={colors.turmericDeep}
-                  strokeWidth={1.5}
-                  strokeDasharray="4 5"
-                />
-              </>
-            ) : null}
-            {p.days.map((d, i) => {
-              const state = dayState(d.calories, goal);
-              const x = slot * i + (slot - barW) / 2;
-              if (state === "empty" || state === "ahead") {
-                // a stub so the day still has a place on the chart
-                return (
-                  <Rect
-                    key={d.date}
-                    x={x}
-                    y={CHART_H - 6}
-                    width={barW}
-                    height={6}
-                    rx={3}
-                    fill={state === "empty" ? "rgba(35,32,27,0.12)" : "none"}
-                    stroke={state === "ahead" ? "rgba(35,32,27,0.18)" : "none"}
-                    strokeDasharray="3 3"
-                  />
-                );
-              }
-              const h = Math.max(8, CHART_H - y(d.calories!));
+            {Array.from({ length: ticks + 1 }, (_, i) => i).map((i) => {
+              const value = tick * i;
+              const lineY = y(value);
               return (
-                <Rect
-                  key={d.date}
-                  x={x}
-                  y={CHART_H - h}
-                  width={barW}
-                  height={h}
-                  rx={Math.min(8, barW / 2)}
-                  fill={fill[state]}
-                  stroke={i === todayIndex ? colors.ink : "none"}
-                  strokeWidth={i === todayIndex ? 2 : 0}
-                />
+                <G key={`grid-${i}`}>
+                  <Line x1={LEFT} x2={w - 4} y1={lineY} y2={lineY} stroke="#D1D1D3" strokeDasharray={i ? "3 4" : undefined} strokeWidth={1} />
+                  <SvgText x={LEFT - 6} y={lineY + 3} fontSize={10} fill={colors.inkFaint} textAnchor="end">{Math.round(value)}</SvgText>
+                </G>
+              );
+            })}
+            {p.days.map((day, i) => {
+              const x = LEFT + slot * i + (slot - barW) / 2;
+              return (
+                <G key={day.date}>
+                  <Line x1={x + barW / 2} x2={x + barW / 2} y1={TOP} y2={TOP + plotH} stroke="#EFEFF1" strokeDasharray="2 3" />
+                  <SvgText x={LEFT + slot * (i + 0.5)} y={CHART_H - 3} textAnchor="middle" fontSize={11}
+                    fill={i === todayIndex && weekTabs.selected === 0 ? colors.ink : colors.inkFaint}>
+                    {DAY_LETTERS[i]}
+                  </SvgText>
+                </G>
               );
             })}
           </Svg>
         ) : null}
+        {w > LEFT ? (
+          <Animated.View pointerEvents="none" style={{ position: "absolute", top: TOP, left: 0, width: w, height: plotH,
+            transformOrigin: "center bottom", transform: [{ scaleY: growth }] }}>
+            <Svg width={w} height={plotH}>
+              {p.days.map((day, i) => {
+                const calories = day.calories ?? 0;
+                if (calories <= 0) return null;
+                const x = LEFT + slot * i + (slot - barW) / 2;
+                const segments = macroSegments(day);
+                let bottom = plotH;
+                return segments.map((segment, j) => {
+                  const h = Math.max(0, (segment.calories / topValue) * plotH);
+                  bottom -= h;
+                  return <Rect key={`${day.date}-${j}`} x={x} y={bottom} width={barW} height={h}
+                    fill={segment.color} rx={j === segments.length - 1 ? 5 : 0} />;
+                });
+              })}
+            </Svg>
+          </Animated.View>
+        ) : null}
       </View>
-      <View style={styles.letters}>
-        {DAY_LETTERS.map((l, i) => (
-          <T key={i} variant="caption" align="center" tone={i === todayIndex ? "ink" : "faint"} style={{ flex: 1 }}>
-            {l}
-          </T>
+      <View style={styles.macroLegend}>
+        {MACROS.map((macro) => (
+          <View key={macro.key} style={styles.legendItem}>
+            <T style={{ fontSize: 12, lineHeight: 16 }}>{macro.key === "protein" ? PROTEIN_ICON[diet ?? "vegetarian"] : macro.key === "carbs" ? CARBS_ICON : FAT_ICON}</T>
+            <T variant="caption" tone="ink">{macro.label}</T>
+          </View>
         ))}
       </View>
-      {goal ? (
-        <View style={styles.legend}>
-          <Legend color={colors.turmeric} label="On target" />
-          <Legend color={colors.plum} label="Over" />
-          <View style={styles.legendItem}>
-            <View style={styles.dash} />
-            <T variant="caption">{goal.targetCalories.toLocaleString("en-IN")} kcal</T>
-          </View>
-        </View>
-      ) : null}
+      <View style={styles.weekTabs}>
+        {weekTabs.labels.map((label, i) => (
+          <Pressable key={label} accessibilityRole="button" accessibilityState={{ selected: i === weekTabs.selected }}
+            onPress={() => weekTabs.onSelect(i)} style={[styles.weekTab, i === weekTabs.selected && styles.weekTabOn]}>
+            <T variant="caption" tone={i === weekTabs.selected ? "ink" : "faint"}>{label}</T>
+          </Pressable>
+        ))}
+      </View>
     </Surface>
   );
 }
 
-const plural = (n: number) => (n === 1 ? "day" : "days");
-
-/** Today only counts toward the goal once it lands in the band, so early in the week there may be nothing to score yet. */
-function caloriesCopy(p: ProgressResponse, current: boolean): { summary: string; hint?: string } {
-  const goal = p.goal;
-  if (p.daysTracked === 0)
-    return current
-      ? { summary: "Your week starts with one meal", hint: "Each day you log gets a bar here." }
-      : { summary: "Nothing logged this week" };
-  if (!current && (!goal || goal.daysTracked === 0))
-    return { summary: `${p.daysTracked} of 7 ${plural(7)} logged` };
-  if (!goal) return { summary: `${p.daysTracked} of ${p.daysElapsed} ${plural(p.daysElapsed)} logged` };
-  if (goal.daysTracked > 0)
-    return { summary: `${goal.daysMet} of ${goal.daysTracked} ${plural(goal.daysTracked)} on target` };
-  const today = p.days[p.daysElapsed - 1]?.calories ?? 0;
-  const target = goal.targetCalories.toLocaleString("en-IN");
-  return {
-    summary: `${today.toLocaleString("en-IN")} of ${target} kcal today`,
-    hint: `Land within ${goal.bandPct}% of your target and today counts.`,
-  };
-}
-
-function Legend({ color, label }: { color: string; label: string }) {
-  return (
-    <View style={styles.legendItem}>
-      <View style={[styles.swatch, { backgroundColor: color }]} />
-      <T variant="caption">{label}</T>
-    </View>
-  );
+function macroSegments(day: Day): { calories: number; color: string }[] {
+  const total = day.calories ?? 0;
+  const raw = MACROS.map((macro) => ({ calories: day[macro.key] * macro.kcalPerGram, color: macro.color }));
+  const macroTotal = raw.reduce((sum, item) => sum + item.calories, 0);
+  // Food energy and rounded macro grams differ slightly; scale segments to the saved calorie total.
+  return macroTotal > 0
+    ? raw.reverse().map((item) => ({ ...item, calories: (item.calories / macroTotal) * total }))
+    : [{ calories: total, color: "#D9D9DD" }];
 }
 
 /** This week's focus as a ring Kimbo sits in; the sprout grows with the score. */
@@ -206,10 +187,12 @@ export function FocusRing({ focus }: { focus: NonNullable<ProgressResponse["focu
 }
 
 const styles = StyleSheet.create({
-  letters: { flexDirection: "row" },
-  legend: { flexDirection: "row", flexWrap: "wrap", gap: space.md, marginTop: space.xs },
-  legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
-  swatch: { width: 10, height: 10, borderRadius: 3 },
-  dash: { width: 14, borderTopWidth: 1.5, borderStyle: "dashed", borderColor: colors.turmericDeep },
+  dailyValue: { flexDirection: "row", alignItems: "baseline", gap: 6, marginTop: space.xs },
+  dailyNumber: { fontSize: 36, lineHeight: 42, fontWeight: "700", color: colors.ink },
+  macroLegend: { flexDirection: "row", justifyContent: "center", gap: space.lg, marginTop: space.sm },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 2 },
+  weekTabs: { flexDirection: "row", backgroundColor: "#F0F0F2", borderRadius: radius.pill, padding: 3, marginTop: space.md },
+  weekTab: { flex: 1, alignItems: "center", paddingVertical: 6, borderRadius: radius.pill },
+  weekTabOn: { backgroundColor: colors.surface },
   cardHead: { flexDirection: "row", alignItems: "center", gap: 6 },
 });

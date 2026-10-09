@@ -34,9 +34,10 @@ export function JourneyCard() {
           <T variant="label">Current weight</T>
           <T style={styles.big}>{formatWeight(j.currentKg, unit)}</T>
         </View>
+        <Button label="Log weight" kind="secondary" compact onPress={() => setWeighing(true)} />
       </View>
 
-      {j.targetKg !== null && j.pct !== null ? <GoalBar j={j} /> : null}
+      <GoalBar j={j} />
 
       <View style={styles.bottom}>
         <T variant="caption" style={{ flex: 1 }}>
@@ -52,7 +53,6 @@ export function JourneyCard() {
             "Weigh in to start tracking your trend."
           )}
         </T>
-        <Button label="Log weight" kind="secondary" compact onPress={() => setWeighing(true)} />
       </View>
 
       <Sheet visible={weighing} onClose={() => setWeighing(false)} title="Today's weight">
@@ -75,19 +75,18 @@ function goalDate(j: JourneyResponse): string | null {
 
 function GoalBar({ j }: { j: JourneyResponse }) {
   const unit = useUnits((u) => u.weight);
-  const pct = j.pct ?? 0;
+  const pct = Math.max(0, Math.min(100, j.pct ?? 0));
   return (
     <View style={{ gap: space.xs }}>
       <View style={styles.track}>
         <View style={[styles.fill, { width: `${pct}%` }]} />
-        <View style={[styles.marker, { left: `${pct}%` }]} />
       </View>
       <View style={styles.labels}>
         <T variant="caption">
           Start: <T variant="caption" tone="ink" style={{ fontWeight: "700" }}>{formatWeight(j.startKg, unit)}</T>
         </T>
         <T variant="caption">
-          Goal: <T variant="caption" tone="ink" style={{ fontWeight: "700" }}>{formatWeight(j.targetKg!, unit)}</T>
+          Goal: <T variant="caption" tone="ink" style={{ fontWeight: "700" }}>{j.targetKg !== null ? formatWeight(j.targetKg, unit) : formatWeight(j.startKg, unit)}</T>
         </T>
       </View>
     </View>
@@ -151,21 +150,10 @@ function daysAgo(date: string): string {
 }
 
 const styles = StyleSheet.create({
-  top: { flexDirection: "row", alignItems: "flex-start", gap: space.md },
+  top: { flexDirection: "row", alignItems: "center", gap: space.md },
   big: { fontSize: 30, lineHeight: 38, fontWeight: "700", color: colors.ink },
-  track: { height: 10, borderRadius: radius.pill, backgroundColor: colors.sunk, marginTop: space.sm },
-  fill: { height: 10, borderRadius: radius.pill, backgroundColor: colors.leaf },
-  marker: {
-    position: "absolute",
-    top: -4,
-    width: 18,
-    height: 18,
-    marginLeft: -9,
-    borderRadius: 9,
-    backgroundColor: colors.surface,
-    borderWidth: 3,
-    borderColor: colors.leaf,
-  },
+  track: { height: 6, borderRadius: radius.pill, backgroundColor: "#EEEEF2", marginTop: space.xs },
+  fill: { height: 6, borderRadius: radius.pill, backgroundColor: colors.ink },
   labels: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   bottom: { flexDirection: "row", alignItems: "center", gap: space.md, marginTop: space.xs },
 });
