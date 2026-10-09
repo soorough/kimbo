@@ -158,6 +158,7 @@ export default function Onboarding() {
   if (existing.data && firstSetup.current === null) firstSetup.current = !existing.data.profile.goal;
 
   const [step, setStep] = useState(0);
+  const readingReport = useIsMutating({ mutationKey: REPORT_READING }) > 0;
   const [name, setName] = useState("");
   const [diet, setDiet] = useState<Diet | null>(null);
   const [barriers, setBarriers] = useState<Barrier[]>([]);
@@ -315,7 +316,6 @@ export default function Onboarding() {
   }
 
   const current = steps[Math.min(step, steps.length - 1)]!;
-  const readingReport = useIsMutating({ mutationKey: REPORT_READING }) > 0;
   const body = { age, sex: sex ?? "other", heightCm: height, weightKg: weight };
   // Goal weight is asked before today's weight, so until then it isn't held to a direction.
   const weightKnown = !!saved || steps.indexOf("weight") < step;
