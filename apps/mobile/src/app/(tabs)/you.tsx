@@ -121,7 +121,7 @@ export default function You() {
       <View style={styles.list}>
         <Row icon="user" label={name ? "Change your name" : "Add your name"} onPress={() => setEditingName(name ?? "")} />
         <View style={styles.divider} />
-        <Row icon="file-text" label="Health reports" onPress={() => router.push("/(tabs)/report")} />
+        <Row icon="file-text" label="Health reports" onPress={() => router.push("/blood-report")} />
         <View style={styles.divider} />
         <Row
           icon={isDemo ? "user-plus" : "refresh-ccw"}

@@ -206,7 +206,7 @@ export default function Assistant() {
       router.push("/review");
     } else if (a.kind === "log_meal") router.push({ pathname: "/log", params: { mealType: a.mealType } });
     else if (a.screen === "nutrition") router.push("/nutrition");
-    else router.navigate(a.screen === "report" ? "/(tabs)/report" : "/(tabs)/progress");
+    else router.push(a.screen === "report" ? "/blood-report" : "/(tabs)/progress");
   };
 
   // Arriving from "Something else?" on Today: don't repeat the suggestion they just passed on.

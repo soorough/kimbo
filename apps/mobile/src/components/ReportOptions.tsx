@@ -50,11 +50,11 @@ export function ReportOptions({ from }: { from?: "onboarding" }) {
       </View>
       {intake.error ? (
         <T variant="label" tone="plum" align="center">
-          {errorMessage(intake.error)} You can also add it later from the Report tab.
+          {errorMessage(intake.error)} You can also add it later from Progress.
         </T>
       ) : (
         <T variant="caption" align="center">
-          Optional. You can add it any time from the Report tab.
+          Optional. You can add it any time from Progress.
         </T>
       )}
     </View>

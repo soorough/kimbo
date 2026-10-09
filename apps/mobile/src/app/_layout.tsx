@@ -76,6 +76,7 @@ export default function RootLayout() {
             <Stack.Screen name="welcome" />
             <Stack.Screen name="onboarding" />
             <Stack.Screen name="report-offer" options={{ animation: "slide_from_right" }} />
+            <Stack.Screen name="blood-report" options={{ animation: "slide_from_right" }} />
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="log" options={sheet} />
             <Stack.Screen name="food-search" options={sheet} />

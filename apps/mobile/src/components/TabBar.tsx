@@ -10,7 +10,7 @@ import { T } from "./Text";
 
 type TabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>["tabBar"]>>[0];
 
-const ICONS: Record<string, IconName> = { index: "home", progress: "trending-up", report: "file-text", you: "user" };
+const ICONS: Record<string, IconName> = { index: "home", progress: "trending-up", groups: "users", you: "user" };
 
 /**
  * Four destinations around one raised action. Logging a meal is what people do

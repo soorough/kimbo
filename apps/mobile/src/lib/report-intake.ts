@@ -10,7 +10,7 @@ import { useReportDraft } from "./report-draft";
 
 /**
  * Every way into a report (file, camera, sample, typing) ends on the same review
- * screen. Used by the Report tab and the optional onboarding step, which passes
+ * screen. Used by the blood report screen and the optional onboarding step, which passes
  * from: "onboarding" so the review hands back to setup instead of going to Today.
  */
 export function useReportIntake(opts: { from?: "onboarding" } = {}) {

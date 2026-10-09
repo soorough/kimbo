@@ -219,7 +219,7 @@ function MiniCard({ stat }: { stat: Stat }) {
 
 /**
  * The food focus in words: "On track" / "Add one" under its name, so it's clear what it
- * tracks. Tapping it explains the focus on the Report tab.
+ * tracks. Tapping it explains the focus on the blood report screen.
  */
 function FocusMini({ data }: { data: TodayResponse }) {
   const f = data.focus;
@@ -232,7 +232,7 @@ function FocusMini({ data }: { data: TodayResponse }) {
       accessibilityRole="button"
       accessibilityLabel={`${name}: ${status}`}
       accessibilityHint="Explains your food focus"
-      onPress={() => router.navigate("/(tabs)/report")}
+      onPress={() => router.push("/blood-report")}
       style={({ pressed }) => [styles.card, styles.mini, pressed && styles.pressed]}
     >
       <T style={[styles.miniValue, on && { color: colors.leaf }]}>{status}</T>
