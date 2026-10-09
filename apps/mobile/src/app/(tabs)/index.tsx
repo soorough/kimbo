@@ -20,6 +20,7 @@ import { useAfterWrite } from "@/lib/mutations";
 import { useIntro } from "@/lib/intro";
 import { useReduceMotion } from "@/lib/motion";
 import { useSession } from "@/lib/session";
+import { useTodaySelection } from "@/lib/today-selection";
 import { colors, fonts, radius, shadow, space } from "@/lib/theme";
 
 const MEAL_ICON: Record<TodayMeal["mealType"], IconName> = {
@@ -36,7 +37,8 @@ const WEEKDAY = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
  */
 export default function Today() {
   const profileId = useSession((s) => s.profileId);
-  const [date, setDate] = useState<string | null>(null);
+  const date = useTodaySelection((s) => s.date);
+  const setDate = useTodaySelection((s) => s.select);
   const today = useQuery({
     queryKey: ["today", date],
     queryFn: () => (date ? api.todayFor(date) : api.today()),
@@ -162,7 +164,10 @@ function WeekStrip({
 }) {
   const { width } = useWindowDimensions();
   const pageW = width;
-  const todayIso = [...week.days].reverse().find((d) => d.calories !== null)?.date ?? selected;
+  // The first future day is null; its previous day is today. On Sunday there is no
+  // future date in this week, so the week end is today.
+  const firstFuture = week.days.find((d) => d.calories === null)?.date;
+  const todayIso = firstFuture ? addDaysIso(firstFuture, -1) : week.weekEnd;
   const starts = Array.from({ length: WEEKS_BACK + 1 + WEEKS_AHEAD }, (_, i) =>
     addDaysIso(week.weekStart, (i - WEEKS_BACK) * 7),
   );
@@ -221,24 +226,28 @@ function PastWeek({
   const q = useQuery({ queryKey: ["progress", start], queryFn: () => api.progressFor(start), enabled: near });
   const placeholder: ProgressResponse["days"] = Array.from({ length: 7 }, (_, i) => ({
     date: addDaysIso(start, i),
-    // Days ahead have nothing yet and can't be picked.
+    // Null calories identify future dates in a real response; these placeholders
+    // keep the same past/future styling while an older week loads.
     calories: addDaysIso(start, i) > todayIso ? null : 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
   }));
   return q.data ? (
     <WeekRow week={q.data} selected={selected} todayIso={todayIso} onPick={onPick} />
   ) : (
-    <WeekRow week={{ days: placeholder }} selected={selected} todayIso={todayIso} onPick={onPick} />
+    <WeekRow week={{ days: placeholder, trackedDates: [] }} selected={selected} todayIso={todayIso} onPick={onPick} />
   );
 }
 
-/** One week, Cal AI-style: past days dashed, today a solid ring, days ahead faded. The picked day is raised. */
+/** Logged days are solid, unlogged past days are dotted, and future days stay selectable. */
 function WeekRow({
   week,
   selected,
   todayIso,
   onPick,
 }: {
-  week: Pick<ProgressResponse, "days">;
+  week: Pick<ProgressResponse, "days" | "trackedDates">;
   selected: string;
   todayIso: string;
   onPick: (date: string, isToday: boolean) => void;
@@ -249,20 +258,27 @@ function WeekRow({
         const future = d.date > todayIso;
         const isToday = d.date === todayIso;
         const isSel = d.date === selected;
+        const logged = week.trackedDates.includes(d.date);
         return (
           <Pressable
             key={d.date}
-            disabled={future}
             accessibilityRole="button"
-            accessibilityLabel={`${WEEKDAY[i]} ${Number(d.date.slice(8))}`}
+            accessibilityLabel={`${WEEKDAY[i]} ${Number(d.date.slice(8))}${logged ? ", logged" : future ? ", future date" : ", no entries"}`}
             onPress={() => onPick(d.date, isToday)}
             style={[styles.day, isSel && styles.daySel]}
           >
             <T variant="caption" tone={future ? "faint" : undefined}>
               {WEEKDAY[i]}
             </T>
-            <View style={[styles.dayDot, isToday ? styles.dayToday : future ? styles.dayFuture : styles.dayPast]}>
-              <T style={[styles.dayNum, future && { color: colors.inkFaint }]}>{Number(d.date.slice(8))}</T>
+            <View
+              style={[
+                styles.dayDot,
+                logged ? styles.dayLogged : isToday ? styles.dayToday : future ? styles.dayFuture : styles.dayPast,
+              ]}
+            >
+              <T style={[styles.dayNum, future && { color: colors.inkFaint }, logged && styles.dayNumLogged]}>
+                {Number(d.date.slice(8))}
+              </T>
             </View>
           </Pressable>
         );
@@ -393,7 +409,7 @@ function MealNudge({
   );
 }
 
-/** Sketch-like empty state, with "same as yesterday" when there is something to repeat. */
+/** Empty state stays visible; the tab's + button is the route into meal logging. */
 function EmptyMeals({ canRepeat }: { canRepeat: TodayMeal["mealType"][] }) {
   const afterWrite = useAfterWrite();
   const repeat = useMutation({
@@ -401,7 +417,7 @@ function EmptyMeals({ canRepeat }: { canRepeat: TodayMeal["mealType"][] }) {
     onSuccess: (res) => afterWrite(res.events),
   });
   return (
-    <Pressable accessibilityRole="button" onPress={() => router.push("/log")} style={styles.empty}>
+    <View style={styles.empty}>
       <View style={styles.sketch}>
         <View style={styles.sketchCard}>
           <Kimbo mood="sleepy" size={34} />
@@ -433,7 +449,7 @@ function EmptyMeals({ canRepeat }: { canRepeat: TodayMeal["mealType"][] }) {
           ))}
         </View>
       ) : null}
-    </Pressable>
+    </View>
   );
 }
 
@@ -553,6 +569,8 @@ const styles = StyleSheet.create({
   dayPast: { borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.lineStrong },
   dayToday: { borderWidth: 2, borderColor: colors.ink },
   dayFuture: { borderWidth: 1.5, borderColor: colors.line },
+  dayLogged: { backgroundColor: colors.leaf, borderWidth: 1.5, borderColor: colors.leaf },
+  dayNumLogged: { color: colors.white },
   dayNum: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink },
   kimboLine: {
     gap: space.md,
