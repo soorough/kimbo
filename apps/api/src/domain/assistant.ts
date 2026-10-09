@@ -30,6 +30,8 @@ export interface AssistantContext {
   name: string | null;
   hour: number;
   nextMeal: MealType;
+  /** false once the meal the clock suggests is logged: Today's nudge waits for the next meal time */
+  mealDue: boolean;
   targets: MacroTargets | null;
   totals: Nutrition;
   todayMeals: { mealType: MealType; dishes: string[]; supportsFocus: boolean | null }[];
@@ -295,6 +297,17 @@ export function greeting(ctx: AssistantContext): AssistantReply {
   const helped = ctx.todayMeals.filter((m) => m.supportsFocus).length;
   if (ctx.hour >= 22 && logged === 0) {
     return { mood: "sleepy", text: `Late one${hi}. Want to log anything quickly before bed?`, points: [], actions: [logAction(ctx.nextMeal)] };
+  }
+  if (helped > 0 && !ctx.mealDue) {
+    const allDone = ctx.todayMeals.some((m) => m.mealType === ctx.nextMeal);
+    return {
+      mood: "proud",
+      text: allDone
+        ? `That's today's meals logged${hi}. Nice work.`
+        : `Logged${hi}. I'll suggest ${MEAL_WORD[ctx.nextMeal]} when it's time.`,
+      points: [],
+      actions: [],
+    };
   }
   if (helped > 0) {
     return {

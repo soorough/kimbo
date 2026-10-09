@@ -14,6 +14,8 @@ async function onboarded(prefs?: { diet: string | null; barriers: string[] }, na
 const ldlWatch = [{ marker: "ldl", value: 142, unit: "mg/dL" }];
 const addReport = (id: string) =>
   api.post("/reports", { reportDate: "2026-10-01", source: "manual", markers: ldlWatch }, id);
+/** Lunch is logged; the snack nudge waits for snack time (16:30 IST). */
+const snackTime = () => api.ctx.clock.set("2026-10-06T11:00:00Z");
 const lunch = (id: string) =>
   api.post(
     "/meals",
@@ -72,6 +74,7 @@ describe("Ask Kimbo", () => {
     await snack("sprouts", "katori", "2026-10-05");
     for (const d of ["2026-10-02", "2026-10-04", "2026-10-05"]) await snack("samosa", "piece", d);
     await lunch(id);
+    snackTime();
 
     const home = await api.get("/assistant", id);
     expect(home.json.greeting.mood).toBe("proud");
@@ -87,8 +90,20 @@ describe("Ask Kimbo", () => {
     const id = await onboarded();
     await addReport(id);
     await lunch(id);
+    snackTime();
     const home = await api.get("/assistant", id);
     expect(home.json.greeting.text).toMatch(/^[A-Z][a-z ]+ for a snack fits today's goal\.$/);
+  });
+
+  it("once the meal of the moment is logged, the nudge goes quiet until the next meal's time", async () => {
+    const id = await onboarded({}, "Asha");
+    await addReport(id);
+    await lunch(id);
+    const quiet = (await api.get("/assistant", id)).json.greeting;
+    expect(quiet).toMatchObject({ mood: "proud", text: "Logged, Asha. I'll suggest a snack when it's time.", actions: [] });
+    snackTime();
+    const due = (await api.get("/assistant", id)).json.greeting;
+    expect(due.actions).toMatchObject([{ kind: "log_meal", mealType: "snack" }]);
   });
 
   describe("personal greeting from the language model", () => {
@@ -102,6 +117,7 @@ describe("Ask Kimbo", () => {
           id,
         );
       await lunch(id);
+      snackTime();
       return id;
     }
 

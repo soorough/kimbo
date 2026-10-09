@@ -61,11 +61,13 @@ async function contextFor(deps: Deps, profile: ProfileRow): Promise<AssistantCon
   const goal = goalOf(profile);
   const week = weekStats(input, input.today);
   const latest = reports[0] ?? null;
-  const nextMeal = nextMealType(suggestMealType(now, profile.timezone), todays.map((m) => m.mealType));
+  const clockMeal = suggestMealType(now, profile.timezone);
+  const nextMeal = nextMealType(clockMeal, todays.map((m) => m.mealType));
   return {
     name: profile.name,
     hour: localHour(now, profile.timezone),
     nextMeal,
+    mealDue: !todays.some((m) => m.mealType === clockMeal),
     // Exercise earns back calories, so what's "left" today includes what was burned.
     targets: goal ? { ...goal.targets, calories: goal.targets.calories + burned } : null,
     totals: sumNutrition(todays.map((m) => m.totals)),
@@ -114,7 +116,7 @@ const greetings = new Map<string, AssistantReply>();
 async function personalGreeting(deps: Deps, profileId: string, ctx: AssistantContext): Promise<AssistantReply> {
   const rule = greeting(ctx);
   const idea = mealIdea(ctx);
-  if (!deps.coach || rule.mood !== "proud" || !idea) return rule;
+  if (!deps.coach || rule.mood !== "proud" || !rule.actions.length || !idea) return rule;
   const key = `${profileId}|${ctx.todayMeals.length}|${rule.text}`;
   const cached = greetings.get(key);
   if (cached) return cached;
