@@ -24,7 +24,7 @@ export interface Deps {
   coach?: Coach;
   /** reads described workouts; calories always come from Kimbo's rules */
   exerciseReader: ExerciseReader;
-  /** Kimbo's spoken voice and listening; optional */
+  /** Kimbo's spoken voice; optional */
   voice?: Voice;
 }
 

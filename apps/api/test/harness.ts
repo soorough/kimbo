@@ -75,13 +75,9 @@ export class FakeExerciseReader implements ExerciseReader {
 /** Stand-in for ElevenLabs. */
 export class FakeVoice implements Voice {
   spoken: string[] = [];
-  heard = "what should I eat for dinner";
   async speak(text: string) {
     this.spoken.push(text);
     return Buffer.from("ID3-fake-mp3");
-  }
-  async transcribe() {
-    return this.heard;
   }
 }
 

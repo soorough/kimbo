@@ -62,10 +62,9 @@ export interface ExerciseReader {
   readExercise(text: string): Promise<ReadExercise>;
 }
 
-/** Kimbo's voice: speech out and in. Optional, so the app works without it. */
+/** Kimbo's voice: speech out. Optional, so the app works without it. */
 export interface Voice {
   speak(text: string): Promise<Buffer>;
-  transcribe(audio: { base64: string; mimeType: string }): Promise<string>;
 }
 
 /** Thrown by adapters when the provider fails; surfaced to clients as a retryable error. */

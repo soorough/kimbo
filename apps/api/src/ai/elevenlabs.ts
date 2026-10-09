@@ -27,15 +27,6 @@ export class ElevenLabsVoice implements Voice {
     return Buffer.from(await res.arrayBuffer());
   }
 
-  async transcribe(audio: { base64: string; mimeType: string }): Promise<string> {
-    const form = new FormData();
-    form.append("model_id", "scribe_v1");
-    form.append("file", new Blob([Buffer.from(audio.base64, "base64")], { type: audio.mimeType }), "question.m4a");
-    const res = await this.call("/speech-to-text", { method: "POST", body: form });
-    const json = (await res.json()) as { text?: string };
-    return (json.text ?? "").trim();
-  }
-
   private async call(path: string, init: RequestInit): Promise<Response> {
     let res: Response;
     try {

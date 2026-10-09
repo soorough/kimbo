@@ -182,7 +182,7 @@ AI assists with recognition and extraction; deterministic code owns nutrition va
 1. **AI adapters (behind interfaces)** — the only code that knows about model providers:
    - `MealRecognizer` — `fromText(text)` and `fromImage(image)` → list of candidate items `{ name, quantity, unit, confidence }`. Output is free-form names, not nutrition.
    - `ReportExtractor` — `extract(file)` → list of `{ markerName, value, unit, reportDate? }` raw candidates.
-   - `Transcriber` (should ship) — `transcribe(audio)` → text.
+   - `Voice` — `speak(text)` → audio for Kimbo's spoken replies (ElevenLabs). Voice *input* is on-device speech recognition; the transcript is sent as plain text.
    - Each has a fake implementation for tests and local demo.
 2. **Food catalogue** — deterministic, versioned Indian-food dataset (~60–100 items/dishes: roti, rice, dal, rajma, chole, paneer dishes, common sabzis, curd, poha, idli, dosa, eggs, common chicken dishes, etc.). Each entry: canonical ID, display name, aliases (Hinglish/spelling variants), per-unit nutrition for supported household units (calories, protein, carbs, fat, fibre, saturated fat), default unit, and **food tags** used by focus rules (e.g. `fibre_rich`, `high_sat_fat`, `refined_carb`, `fried`, `high_sugar`, `lean_protein`). Interface: `match(name) → catalogue item | unknown`, `nutritionFor(itemId, quantity, unit)`, `search(query)`.
 3. **Meal resolution** — takes recognizer candidates and resolves each against the catalogue into a **meal draft**: matched items get deterministic nutrition; unmatched items become `estimate` items with an editable default and an `isEstimate` flag. The draft is returned to the client; **nothing is persisted at this stage.**

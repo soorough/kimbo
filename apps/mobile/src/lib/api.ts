@@ -105,8 +105,6 @@ export const api = {
   assistantHome: () => request(AssistantHomeResponse, "GET", "/assistant"),
   ask: (body: AskRequest) => request(AskResponse, "POST", "/assistant/ask", body),
   pairing: (foodIds: string[]) => request(PairingResponse, "POST", "/assistant/pairing", { foodIds }),
-  listen: (body: { audioBase64: string; mimeType: string }) =>
-    request(z.object({ text: z.string() }), "POST", "/assistant/listen", body),
   savePreferences: (id: string, body: PreferencesRequest) =>
     request(ProfileEnvelope, "PUT", `/profiles/${id}/preferences`, body),
 

@@ -241,7 +241,7 @@ describe("Ask Kimbo", () => {
     expect((await ask(id, { text: "x".repeat(301) })).status).toBe(400);
   });
 
-  it("speaks a reply as audio and turns a recording into text", async () => {
+  it("speaks a reply as audio", async () => {
     const id = await onboarded();
     const speak = await api.ctx.app.inject({
       method: "GET",
@@ -251,7 +251,5 @@ describe("Ask Kimbo", () => {
     expect(speak.statusCode).toBe(200);
     expect(speak.headers["content-type"]).toMatch(/audio\/mpeg/);
     expect(api.ctx.voice.spoken).toEqual(["Hello from Kimbo"]);
-    const heard = await api.post("/assistant/listen", { audioBase64: "AAAA", mimeType: "audio/m4a" }, id);
-    expect(heard.json).toEqual({ text: "what should I eat for dinner" });
   });
 });

@@ -201,7 +201,6 @@ function isAboutEating(text: string): boolean {
 }
 
 const SpeakRequest = z.object({ text: z.string().trim().min(1).max(800) });
-const ListenRequest = z.object({ audioBase64: z.string().min(1).max(5 * 1024 * 1024), mimeType: z.string().min(1).max(100) });
 
 export function assistantRoutes(app: FastifyInstance, deps: Deps) {
   app.get("/assistant", { config: { rateLimit: { max: 120, timeWindow: 60_000 } } }, async (req): Promise<AssistantHomeResponse> => {
@@ -246,12 +245,5 @@ export function assistantRoutes(app: FastifyInstance, deps: Deps) {
     const { text } = parse(SpeakRequest, req.query);
     const audio = await deps.voice.speak(text);
     return reply.type("audio/mpeg").send(audio);
-  });
-
-  app.post("/assistant/listen", { config: { rateLimit: { max: 20, timeWindow: 60_000 } } }, async (req) => {
-    await requireProfile(deps, req);
-    if (!deps.voice) throw new HttpError(503, "VOICE_UNAVAILABLE", "Kimbo can't listen right now", true);
-    const { audioBase64, mimeType } = parse(ListenRequest, req.body);
-    return { text: await deps.voice.transcribe({ base64: audioBase64, mimeType }) };
   });
 }
