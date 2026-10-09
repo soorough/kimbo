@@ -565,6 +565,8 @@ export type AssistantAction = z.infer<typeof AssistantAction>;
 /** One thing Kimbo says: a sentence, up to three short points, up to two actions. */
 export const AssistantReply = z.object({
   mood: KimboMood,
+  /** Said first, then replaced by `text` (Today: praise for the progress, then the meal idea). */
+  lead: z.string().optional(),
   text: z.string(),
   points: z.array(z.string()),
   actions: z.array(AssistantAction),

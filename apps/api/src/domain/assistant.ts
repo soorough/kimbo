@@ -318,12 +318,32 @@ export function greeting(ctx: AssistantContext): AssistantReply {
     };
   }
   const part = ctx.hour < 12 ? "Good morning" : ctx.hour < 17 ? "Good afternoon" : "Good evening";
+  // Nothing logged yet today: a word on how it's going, then the meal they usually start with.
+  const idea = logged === 0 && ctx.mealDue && suggestFromHistory(ctx) ? mealIdea(ctx) : null;
+  if (idea) {
+    return {
+      mood: "happy",
+      lead: progressLead(ctx, `${part}${hi}!`),
+      text: nextMealOffer(ctx, ""),
+      points: [],
+      actions: [logAction(ctx.nextMeal, idea.draft)],
+    };
+  }
   return {
     mood: "wave",
-    text: `${part}${hi}! Ask me anything about your food, your report or your week.`,
+    text: `${part}${hi}! What's for ${MEAL_WORD[ctx.nextMeal]}?`,
     points: [],
-    actions: [],
+    actions: [logAction(ctx.nextMeal)],
   };
+}
+
+/** One honest line about how it's going, from Kimbo's own numbers. */
+function progressLead(ctx: AssistantContext, hello: string): string {
+  const { onTargetDays, daysLogged } = ctx.week;
+  if (ctx.streak >= 3) return `${hello} ${ctx.streak} days in a row, you're doing really well.`;
+  if (onTargetDays) return `${hello} On target ${onTargetDays} ${onTargetDays === 1 ? "day" : "days"} this week, good progress.`;
+  if (daysLogged) return `${hello} ${daysLogged} ${daysLogged === 1 ? "day" : "days"} logged this week, keep it going.`;
+  return hello;
 }
 
 export function suggestions(ctx: AssistantContext): AssistantSuggestion[] {

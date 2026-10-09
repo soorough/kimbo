@@ -319,7 +319,7 @@ function KimboLine() {
     );
   }
 
-  return <MealNudge text={line.text} mood={line.mood} mealType={log.mealType} draft={log.draft} />;
+  return <MealNudge lead={line.lead} text={line.text} mood={line.mood} mealType={log.mealType} draft={log.draft} />;
 }
 
 const MEAL_EMOJI: Record<MealType, string> = { breakfast: "☕", lunch: "🍛", snack: "🍎", dinner: "🌙" };
@@ -329,11 +329,13 @@ const MEAL_EMOJI: Record<MealType, string> = { breakfast: "☕", lunch: "🍛", 
  * hops when done, then the actions slide in and the Log pill breathes once.
  */
 function MealNudge({
+  lead,
   text,
   mood,
   mealType,
   draft,
 }: {
+  lead?: string;
   text: string;
   mood: KimboMood;
   mealType: MealType;
@@ -345,6 +347,9 @@ function MealNudge({
   // Types in every time Today opens; only reduced motion shows it at once.
   const seen = still;
   const [typed, setTyped] = useState(seen);
+  // With a lead ("27 days in a row…"), Kimbo says it first, pauses, then retypes into the idea.
+  const [onIdea, setOnIdea] = useState(!lead || seen);
+  const leadDone = () => setTimeout(() => setOnIdea(true), 1400);
   const footer = useRef(new Animated.Value(seen ? 1 : 0)).current;
   const breathe = useRef(new Animated.Value(1)).current;
 
@@ -369,7 +374,11 @@ function MealNudge({
       </View>
       {/* Kimbo starts talking once the launch intro is out of the way. */}
       {introDone || seen ? (
-        <TypeOut text={text} variant="bodyStrong" numberOfLines={4} instant={seen} onDone={() => setTyped(true)} />
+        onIdea ? (
+          <TypeOut key="idea" text={text} variant="bodyStrong" numberOfLines={4} instant={seen} onDone={() => setTyped(true)} />
+        ) : (
+          <TypeOut key="lead" text={lead!} variant="bodyStrong" numberOfLines={4} onDone={leadDone} />
+        )
       ) : (
         <T variant="bodyStrong" numberOfLines={4} style={{ opacity: 0 }}>
           {text}

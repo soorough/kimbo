@@ -95,6 +95,21 @@ describe("Ask Kimbo", () => {
     expect(home.json.greeting.text).toMatch(/^[A-Z][a-z ]+ for a snack fits today's goal\.$/);
   });
 
+  it("before anything is logged today, says how it's going, then offers the meal they usually start with", async () => {
+    const id = await onboarded({ diet: null, barriers: [] }, "Asha");
+    for (const d of ["2026-10-03", "2026-10-04", "2026-10-05"])
+      await api.post(
+        "/meals",
+        { mealType: "breakfast", source: "text", eatenAt: `${d}T03:00:00Z`, items: [{ kind: "catalogue", foodId: "poha", quantity: 1, unit: "plate" }] },
+        id,
+      );
+    api.ctx.clock.set("2026-10-06T02:00:00Z"); // 7:30 am IST
+    const { greeting } = (await api.get("/assistant", id)).json;
+    expect(greeting.lead).toBe("Good morning, Asha! 3 days in a row, you're doing really well.");
+    expect(greeting.text).toMatch(/^Your usual poha for breakfast/);
+    expect(greeting.actions).toMatchObject([{ kind: "log_meal", mealType: "breakfast", draft: { items: [{ food: { id: "poha" } }] } }]);
+  });
+
   it("once the meal of the moment is logged, the nudge goes quiet until the next meal's time", async () => {
     const id = await onboarded({ diet: null, barriers: [] }, "Asha");
     await addReport(id);
