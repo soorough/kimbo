@@ -13,10 +13,14 @@ import { useReportDraft } from "./report-draft";
  * screen. Used by the blood report screen and the optional onboarding step, which passes
  * from: "onboarding" so the review hands back to setup instead of going to Today.
  */
+/** Lets a screen around ReportOptions know the report is being read (onboarding hides its own Kimbo). */
+export const REPORT_READING = ["reportReading"];
+
 export function useReportIntake(opts: { from?: "onboarding" } = {}) {
   const setDraft = useReportDraft((s) => s.set);
 
   const extract = useMutation({
+    mutationKey: REPORT_READING,
     // File preparation runs inside the mutation so any failure shows as an error state.
     mutationFn: async ({ load }: { load: () => Promise<ExtractReportRequest>; source: "upload" | "sample" }) =>
       api.extractReport(await load()),

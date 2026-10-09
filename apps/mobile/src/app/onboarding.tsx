@@ -10,7 +10,7 @@ import {
   type Goal,
   type GoalRequest,
 } from "@kimbo/shared";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { router, useIsFocused } from "expo-router";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
@@ -22,6 +22,7 @@ import { BuildingPlan } from "@/components/BuildingPlan";
 import { GoalPath } from "@/components/GoalPath";
 import { useReduceMotion } from "@/lib/motion";
 import { ReportOptions } from "@/components/ReportOptions";
+import { REPORT_READING } from "@/lib/report-intake";
 import { PacePlanner } from "@/components/PacePlanner";
 import { RulerPicker } from "@/components/RulerPicker";
 import { Button, Icon, Screen, Segmented, SegmentRing, T, type IconName } from "@/components/ui";
@@ -314,6 +315,7 @@ export default function Onboarding() {
   }
 
   const current = steps[Math.min(step, steps.length - 1)]!;
+  const readingReport = useIsMutating({ mutationKey: REPORT_READING }) > 0;
   const body = { age, sex: sex ?? "other", heightCm: height, weightKg: weight };
   // Goal weight is asked before today's weight, so until then it isn't held to a direction.
   const weightKnown = !!saved || steps.indexOf("weight") < step;
@@ -385,7 +387,8 @@ export default function Onboarding() {
         <SectionProgress steps={goalType ? steps : stepsFor("lose")} current={step} />
       </View>
 
-      <KimboScene
+      {/* While the report is read, ReportOptions' own Kimbo is the only one on screen. */}
+      {readingReport ? null : <KimboScene
         step={current}
         heightCm={height}
         weightLabel={formatWeight(weight, weightUnit)}
@@ -396,13 +399,13 @@ export default function Onboarding() {
             ? PACES[goalType].indexOf(weeklyKg) / (PACES[goalType].length - 1)
             : null
         }
-      />
-      <View style={{ gap: space.xs }}>
+      />}
+      {readingReport ? null : <View style={{ gap: space.xs }}>
         <T variant="title" style={styles.question}>
           {QUESTIONS[current]}
         </T>
         {current === "activity" ? <T variant="label">This sets how many calories you burn on a normal day.</T> : null}
-      </View>
+      </View>}
 
       {current === "name" ? <NameField value={name} onChange={setName} onSubmit={submitName} autoFocus /> : null}
 
@@ -444,16 +447,18 @@ export default function Onboarding() {
           </View>
         ) : (
           <View style={{ gap: space.md }}>
-            <T variant="body" tone="soft">
-              Kimbo reads your LDL, HbA1c and triglycerides and picks one thing to eat more of.
-            </T>
+            {readingReport ? null : (
+              <T variant="body" tone="soft">
+                Kimbo reads your LDL, HbA1c and triglycerides and picks one thing to eat more of.
+              </T>
+            )}
             <ReportOptions from="onboarding" />
             {/* Adding a report is the main path; skipping stays available but quiet. */}
-            <Pressable accessibilityRole="button" onPress={buildPlan} hitSlop={8} style={styles.skipLink}>
+            {readingReport ? null : <Pressable accessibilityRole="button" onPress={buildPlan} hitSlop={8} style={styles.skipLink}>
               <T variant="label" tone="soft" align="center">
                 I don't have one right now
               </T>
-            </Pressable>
+            </Pressable>}
           </View>
         )
       ) : null}

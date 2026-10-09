@@ -1,18 +1,15 @@
-import type { MealType, PairingResponse } from "@kimbo/shared";
+import type { PairingResponse } from "@kimbo/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Pressable, StyleSheet, TextInput, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
 import { TypeOut } from "@/components/TypeOut";
-import { Button, Chip, Icon, Notice, Ring, Screen, Segmented, Sheet, Stepper, T, formatQty } from "@/components/ui";
+import { Button, Chip, Icon, Notice, Ring, Screen, Sheet, Stepper, T, formatQty } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { draftTotals, lineNutrition, toConfirmItems, useDraft, type DraftLine } from "@/lib/draft";
-import { MEAL_LABEL, MEAL_ORDER } from "@/lib/format";
 import { useAfterWrite } from "@/lib/mutations";
 import { colors, fonts, radius, space } from "@/lib/theme";
-
-const MEAL_OPTIONS = MEAL_ORDER.map((m) => ({ value: m, label: MEAL_LABEL[m] }));
 
 /**
  * The confirmation step every AI result passes through. Items read as a short list;
@@ -170,22 +167,6 @@ export default function Review() {
         />
       ) : null}
 
-      {!isManualDraft ? <View style={{ gap: space.sm }}>
-        <T variant="label">Meal</T>
-        <Segmented<MealType> options={MEAL_OPTIONS} value={draft.mealType} onChange={draft.setMealType} />
-      </View> : null}
-      {!isManualDraft ? <View style={styles.timeRow}>
-        <Icon name="clock" size={18} color={colors.inkSoft} />
-        <T variant="bodyStrong" style={{ flex: 1 }}>
-          {formatTime(draft.eatenAt)}
-        </T>
-        <Chip label="−30 min" onPress={() => draft.shiftTime(-30)} />
-        <Chip
-          label="+30 min"
-          disabled={Date.now() - draft.eatenAt.getTime() < 60_000}
-          onPress={() => draft.shiftTime(30)}
-        />
-      </View> : null}
 
       {!isManualDraft ? <View style={styles.keep}>
         <Pressable
@@ -392,12 +373,6 @@ function portionLabel(line: DraftLine): string {
     : `${formatQty(line.quantity)} × ${option?.label ?? line.unit}`;
 }
 
-function formatTime(d: Date): string {
-  const sameDay = d.toDateString() === new Date().toDateString();
-  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-  return sameDay ? `Today, ${time}` : `${d.toLocaleDateString([], { weekday: "short" })}, ${time}`;
-}
-
 /**
  * Kimbo's pick for this meal, said the way Today says it: the line types in once, then
  * Add it / Ask Kimbo slide in. A dish that works against the focus is flagged first.
@@ -491,7 +466,6 @@ const styles = StyleSheet.create({
     borderTopColor: colors.line,
   },
   estimate: { backgroundColor: colors.plumSoft, borderRadius: radius.pill, paddingHorizontal: space.sm },
-  timeRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
   keep: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: space.md, gap: space.md },
   keepRow: { flexDirection: "row", alignItems: "center", gap: space.md },
   keepInput: {
