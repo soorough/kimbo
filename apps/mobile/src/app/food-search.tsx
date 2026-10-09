@@ -68,7 +68,7 @@ export default function FoodSearch() {
       style={[styles.pill, generate.isPending && { opacity: 0.6 }]}
     >
       <Icon name="star" size={18} color={colors.ink} />
-      <T variant="bodyStrong">{generate.isPending ? "Reading your meal…" : "Generate results using AI"}</T>
+      <T variant="bodyStrong">{generate.isPending ? "Kimbo is preparing your meal…" : "Let Kimbo prepare your meal"}</T>
     </Pressable>
   ) : (
     <View style={styles.actions}>
@@ -134,7 +134,7 @@ export default function FoodSearch() {
                   <View style={styles.empty}>
                     <T variant="bodyStrong">No matches for “{query}”</T>
                     <T variant="caption" align="center">
-                      {pick ? "You can add it as an estimate below." : "Let Kimbo work it out with AI below."}
+                      {pick ? "You can add it as an estimate below." : "Let Kimbo prepare it for you below."}
                     </T>
                   </View>
                 )
