@@ -1,9 +1,10 @@
 import type { MealType } from "@kimbo/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { useRef, useState } from "react";
-import { Pressable, StyleSheet, TextInput, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Animated, Pressable, StyleSheet, TextInput, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
+import { TypeOut } from "@/components/TypeOut";
 import { Button, Chip, Icon, Notice, Ring, Screen, Segmented, Sheet, Stepper, T, formatQty } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { draftTotals, lineNutrition, toConfirmItems, useDraft, type DraftLine } from "@/lib/draft";
@@ -26,14 +27,12 @@ export default function Review() {
   const editingLine = draft.lines.find((l) => l.key === editing) ?? null;
   const insight = report.data?.insights;
   const risky = insight?.cutBackOn.find((item) => draft.lines.some((line) => lineName(line).toLowerCase().includes(item.name.toLowerCase())));
-  const recommendation = insight?.helpers[0] ?? null;
   const itemNames = draft.lines.map(lineName);
-  const mealAdvice = useQuery({
-    queryKey: ["mealAdvice", itemNames.join("|"), insight?.focus.key],
-    queryFn: () => api.ask({ text: `What goes well with these foods in my meal: ${itemNames.join(", ")}? Suggest one simple addition that supports my goals${insight?.focus ? ` and my ${insight.focus.title.toLowerCase()} focus` : ""}. Keep it to one short sentence.` }),
-    enabled: itemNames.length > 0,
-    staleTime: 60_000,
-  });
+  // Kimbo picks the dish (from the report's helpers, skipping what's already in the meal);
+  // the language model only words the line, so the text always matches what Add adds.
+  const recommendation =
+    insight?.helpers.find((h) => !itemNames.some((n) => n.toLowerCase().includes(h.toLowerCase()))) ?? null;
+  const showSuggestion = draft.lines.length > 0 && !!(risky || recommendation);
   const addRecommendation = async () => {
     if (!recommendation) return;
     const { foods } = await api.searchFoods(recommendation);
@@ -103,17 +102,8 @@ export default function Review() {
         </View>
       }
     >
-      {draft.lines.length > 0 && (risky || recommendation || mealAdvice.data?.reply.text) ? (
-        <View style={[styles.guidance, risky ? styles.guidanceWarn : styles.guidanceGood]}>
-          <Kimbo mood={risky ? "focus" : "proud"} size={34} />
-          <T variant="bodyStrong" numberOfLines={2} style={{ flex: 1 }}>
-            {risky ? `${risky.name} may work against your ${insight?.focus.title.toLowerCase() ?? "report focus"}.` : mealAdvice.data?.reply.text ?? `Kimbo suggests ${recommendation} to support today’s goal.`}
-          </T>
-          {recommendation ? <Pressable accessibilityRole="button" onPress={addRecommendation}><T variant="label" tone="leaf">Add</T></Pressable> : null}
-        </View>
-      ) : null}
       {!isManualDraft && draft.lines.length ? (
-        <View style={styles.note}>
+        showSuggestion ? null : <View style={styles.note}>
           <Kimbo mood={draft.mealId ? "idle" : "happy"} size={44} />
           <T variant="label" style={{ flex: 1 }}>
             {draft.mealId
@@ -169,6 +159,16 @@ export default function Review() {
           </T>
         </Pressable>
       </View>
+
+      {showSuggestion ? (
+        <MealSuggestion
+          items={itemNames}
+          dish={recommendation}
+          risky={risky?.name ?? null}
+          focus={insight?.focus.title.toLowerCase() ?? null}
+          onAdd={addRecommendation}
+        />
+      ) : null}
 
       {!isManualDraft ? <View style={{ gap: space.sm }}>
         <T variant="label">Meal</T>
@@ -398,8 +398,92 @@ function formatTime(d: Date): string {
   return sameDay ? `Today, ${time}` : `${d.toLocaleDateString([], { weekday: "short" })}, ${time}`;
 }
 
+/**
+ * Kimbo's pick for this meal, said the way Today says it: Kimbo thinks while the line is
+ * worded, types it in once, then "Add it" slides in. Nothing shows until the line is ready.
+ */
+function MealSuggestion({
+  items,
+  dish,
+  risky,
+  focus,
+  onAdd,
+}: {
+  items: string[];
+  dish: string | null;
+  risky: string | null;
+  focus: string | null;
+  onAdd: () => void;
+}) {
+  const fallback = risky
+    ? `${risky} may work against your ${focus ?? "report focus"}${dish ? `. Try adding ${dish} instead` : ""}.`
+    : `Add ${dish} to round this meal out${focus ? ` for your ${focus}` : ""}.`;
+  const advice = useQuery({
+    queryKey: ["mealAdvice", items.join("|"), dish, risky],
+    queryFn: () =>
+      api.ask({
+        text: risky
+          ? `My meal: ${items.join(", ")}. In one friendly sentence of at most 14 words, say ${risky} may work against my ${focus ?? "goal"}${dish ? ` and suggest adding ${dish}` : ""}. Mention no other foods and no numbers.`
+          : `My meal: ${items.join(", ")}. In one friendly sentence of at most 14 words, suggest adding ${dish}${focus ? ` for my ${focus}` : ""}. Mention no other foods and no numbers.`,
+      }),
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const ready = !advice.isPending;
+  // Today-length lines only: a rambling reply gives way to Kimbo's own sentence.
+  const worded = advice.data?.reply.text?.trim();
+  const text = worded && worded.length <= 110 ? worded : fallback;
+  const [typed, setTyped] = useState(false);
+  const actions = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    setTyped(false);
+    actions.setValue(0);
+  }, [text, actions]);
+  useEffect(() => {
+    if (typed) Animated.spring(actions, { toValue: 1, damping: 14, stiffness: 160, useNativeDriver: true }).start();
+  }, [typed, actions]);
+
+  return (
+    <View style={[styles.suggestion, risky ? styles.guidanceWarn : styles.guidanceGood]}>
+      <View style={styles.suggestionHead}>
+        <Kimbo mood={!ready || !typed ? "thinking" : risky ? "focus" : "proud"} size={30} />
+        <T variant="overline" tone={risky ? undefined : "leaf"}>{risky ? "WORTH A SWAP" : "KIMBO'S PICK 🌿"}</T>
+      </View>
+      {ready ? (
+        <TypeOut key={text} text={text} variant="bodyStrong" numberOfLines={3} onDone={() => setTyped(true)} />
+      ) : (
+        <T variant="bodyStrong" tone="soft">Thinking about your meal…</T>
+      )}
+      {dish ? (
+        <Animated.View
+          style={[
+            styles.suggestionActions,
+            { opacity: actions, transform: [{ translateY: actions.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }] },
+          ]}
+          pointerEvents={typed ? "auto" : "none"}
+        >
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={8}
+            onPress={() => router.push({ pathname: "/assistant", params: { intent: "else" } })}
+            style={({ pressed }) => [{ flex: 1 }, pressed && { opacity: 0.6 }]}
+          >
+            <T variant="label" tone="soft">
+              Something else?{" "}
+              <T variant="label" tone="leaf" style={{ fontFamily: fonts.bold }}>Ask Kimbo</T>
+            </T>
+          </Pressable>
+          <Button label="Add it" compact accessibilityHint={`Adds ${dish} to this meal`} onPress={onAdd} />
+        </Animated.View>
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  guidance: { flexDirection: "row", alignItems: "center", gap: space.sm, paddingHorizontal: space.md, paddingVertical: space.sm, borderRadius: radius.md },
+  suggestion: { gap: space.md, padding: space.lg, borderRadius: radius.lg },
+  suggestionHead: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  suggestionActions: { flexDirection: "row", alignItems: "center", gap: space.md },
   guidanceWarn: { backgroundColor: colors.plumSoft },
   guidanceGood: { backgroundColor: colors.leafSoft },
   createSummary: { gap: space.sm },
