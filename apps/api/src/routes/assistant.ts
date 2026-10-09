@@ -201,10 +201,10 @@ function isAboutEating(text: string): boolean {
 }
 
 const SpeakRequest = z.object({ text: z.string().trim().min(1).max(800) });
-const ListenRequest = z.object({ audioBase64: z.string().min(1), mimeType: z.string() });
+const ListenRequest = z.object({ audioBase64: z.string().min(1).max(5 * 1024 * 1024), mimeType: z.string().min(1).max(100) });
 
 export function assistantRoutes(app: FastifyInstance, deps: Deps) {
-  app.get("/assistant", async (req): Promise<AssistantHomeResponse> => {
+  app.get("/assistant", { config: { rateLimit: { max: 120, timeWindow: 60_000 } } }, async (req): Promise<AssistantHomeResponse> => {
     const profile = await requireProfile(deps, req);
     const ctx = await contextFor(deps, profile);
     return { greeting: await personalGreeting(deps, profile.id, ctx), suggestions: suggestions(ctx) };
@@ -218,7 +218,7 @@ export function assistantRoutes(app: FastifyInstance, deps: Deps) {
     return { pairing: pick ? { food: toFood(getEntry(pick.foodId)!), text: pick.text } : null };
   });
 
-  app.post("/assistant/ask", async (req): Promise<AskResponse> => {
+  app.post("/assistant/ask", { config: { rateLimit: { max: 30, timeWindow: 60_000 } } }, async (req): Promise<AskResponse> => {
     const profile = await requireProfile(deps, req);
     const body = parse(AskRequest, req.body);
     const ctx = await contextFor(deps, profile);
@@ -240,7 +240,7 @@ export function assistantRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   // GET so the app's audio player can stream it directly (with the profile header).
-  app.get<{ Querystring: { text?: string } }>("/assistant/speak", async (req, reply) => {
+  app.get<{ Querystring: { text?: string } }>("/assistant/speak", { config: { rateLimit: { max: 60, timeWindow: 60_000 } } }, async (req, reply) => {
     await requireProfile(deps, req);
     if (!deps.voice) throw new HttpError(503, "VOICE_UNAVAILABLE", "Kimbo's voice isn't set up", true);
     const { text } = parse(SpeakRequest, req.query);
@@ -248,7 +248,7 @@ export function assistantRoutes(app: FastifyInstance, deps: Deps) {
     return reply.type("audio/mpeg").send(audio);
   });
 
-  app.post("/assistant/listen", async (req) => {
+  app.post("/assistant/listen", { config: { rateLimit: { max: 20, timeWindow: 60_000 } } }, async (req) => {
     await requireProfile(deps, req);
     if (!deps.voice) throw new HttpError(503, "VOICE_UNAVAILABLE", "Kimbo can't listen right now", true);
     const { audioBase64, mimeType } = parse(ListenRequest, req.body);

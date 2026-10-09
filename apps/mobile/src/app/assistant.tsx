@@ -1,13 +1,7 @@
 import type { AssistantAction, AssistantQuestion, AssistantReply, AssistantTurn } from "@kimbo/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  RecordingPresets,
-  requestRecordingPermissionsAsync,
-  setAudioModeAsync,
-  useAudioPlayer,
-  useAudioRecorder,
-} from "expo-audio";
-import { readAsStringAsync } from "expo-file-system/legacy";
+import { setAudioModeAsync, useAudioPlayer } from "expo-audio";
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from "expo-speech-recognition";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -42,6 +36,7 @@ const HINTS = [
   "Try: is poha good for my report?",
   "Tap the mic to talk",
 ];
+const VOICE_HINTS = ["roti", "dal", "rajma", "chawal", "poha", "idli", "dosa", "sambar", "paneer", "sabzi", "salad", "chai", "khichdi", "biryani"];
 
 /** Big, friendly starting points so nobody faces a blank box. */
 const CARD_STYLE: Record<AssistantQuestion, { icon: IconName; bg: string; fg: string }> = {
@@ -68,13 +63,37 @@ export default function Assistant() {
   const nextId = useRef(1);
   const scroll = useRef<ScrollView>(null);
   const player = useAudioPlayer(null);
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const busy = messages.some((m) => "thinking" in m);
   const hint = useRotatingHint();
+  const heard = useRef("");
 
   useEffect(() => {
     setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
   }, []);
+
+  useSpeechRecognitionEvent("result", (event) => {
+    const said = event.results[0]?.transcript ?? "";
+    setText(said);
+    if (event.isFinal) heard.current = said;
+  });
+  useSpeechRecognitionEvent("end", () => {
+    setListening(false);
+    const said = heard.current;
+    heard.current = "";
+    setText("");
+    if (said.trim()) send({ text: said });
+  });
+  useSpeechRecognitionEvent("error", (event) => {
+    setListening(false);
+    if (event.error === "aborted") return;
+    setNotice(
+      event.error === "no-speech" || event.error === "speech-timeout"
+        ? "I didn't catch that. Try again, or type it."
+        : event.error === "not-allowed"
+          ? "Allow microphone access for Kimbo in Settings."
+          : "Voice isn't available right now. You can type instead.",
+    );
+  });
 
   const speak = (line: string) => {
     if (!voiceOn) return;
@@ -145,31 +164,21 @@ export default function Assistant() {
   /** Tap to start, tap again to send. ElevenLabs turns the recording into text. */
   const toggleMic = async () => {
     if (listening) {
-      setListening(false);
-      try {
-        await recorder.stop();
-        const uri = recorder.uri;
-        if (!uri) return;
-        const audioBase64 = await readAsStringAsync(uri, { encoding: "base64" });
-        const { text: heard } = await api.listen({ audioBase64, mimeType: "audio/m4a" });
-        if (heard) send({ text: heard });
-        else setNotice("I didn't catch that. Try again, or type it.");
-      } catch {
-        setNotice("I can't listen right now. You can type instead.");
-      }
+      ExpoSpeechRecognitionModule.stop();
       return;
     }
-    const perm = await requestRecordingPermissionsAsync();
+    const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
     if (!perm.granted) {
-      setNotice("Allow the microphone to talk to Kimbo.");
+      setNotice("Allow microphone access for Kimbo in Settings.");
       return;
     }
     try {
-      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      setNotice(null);
       player.pause();
-      await recorder.prepareToRecordAsync();
-      recorder.record();
+      heard.current = "";
+      setText("");
       setListening(true);
+      ExpoSpeechRecognitionModule.start({ lang: "en-IN", interimResults: true, contextualStrings: VOICE_HINTS });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     } catch {
       setNotice("I can't listen right now. You can type instead.");

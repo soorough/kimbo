@@ -1,4 +1,5 @@
 import Fastify from "fastify";
+import rateLimit from "@fastify/rate-limit";
 import { ZodError } from "zod";
 import { AiUnavailableError, type Coach, type ExerciseReader, type MealRecognizer, type ReportExtractor, type Voice } from "./ai/types.js";
 import type { Clock } from "./clock.js";
@@ -30,6 +31,17 @@ export interface Deps {
 export async function createApp(deps: Deps, opts: { logger?: boolean } = {}) {
   // Photos and report PDFs arrive base64-encoded in JSON bodies.
   const app = Fastify({ logger: opts.logger ?? false, bodyLimit: 15 * 1024 * 1024 });
+
+  // One generous global cap per IP, tightened per-route for the paid AI endpoints.
+  await app.register(rateLimit, {
+    max: 300,
+    timeWindow: 60_000,
+    errorResponseBuilder: () => ({
+      code: "RATE_LIMITED",
+      message: "Too many requests. Please slow down and try again.",
+      retryable: true,
+    }),
+  });
 
   app.setErrorHandler((err, req, reply) => {
     if (err instanceof ZodError) {

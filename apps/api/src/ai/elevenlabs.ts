@@ -11,11 +11,11 @@ export class ElevenLabsVoice implements Voice {
     private apiKey: string,
     /** a warm, clear voice; override with KIMBO_VOICE_ID */
     private voiceId = "hpp4J3VqNfWAUOO0d1Us",
-    private model = "eleven_multilingual_v2",
+    private model = "eleven_turbo_v2_5",
   ) {}
 
   async speak(text: string): Promise<Buffer> {
-    const res = await this.call(`/text-to-speech/${this.voiceId}?output_format=mp3_44100_64`, {
+    const res = await this.call(`/text-to-speech/${this.voiceId}?output_format=mp3_22050_32`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
