@@ -52,7 +52,8 @@
             "buildArchs": [
               "arm64-v8a"
             ],
-            "usesCleartextTraffic": false
+            "usesCleartextTraffic": false,
+            "extraProguardRules": "# Barcode scanning is off (expo-camera barcodeScannerEnabled: false); only its unused code paths reference these.\n-dontwarn com.google.mlkit.vision.**\n-dontwarn com.google.android.gms.tasks.**"
           }
         }
       ],
@@ -73,9 +74,11 @@
         {
           "cameraPermission": "Kimbo uses the camera so you can scan your meals.",
           "microphonePermission": false,
-          "recordAudioAndroid": false
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": false
         }
-      ]
+      ],
+      "./plugins/with-no-gif"
     ],
     "scheme": "kimbo",
     "experiments": {

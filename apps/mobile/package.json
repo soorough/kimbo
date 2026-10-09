@@ -53,7 +53,12 @@
       "exclude": [
         "react-native-reanimated",
         "react-native-worklets"
-      ]
+      ],
+      "android": {
+        "buildFromSource": [
+          "expo-camera"
+        ]
+      }
     }
   }
 }
