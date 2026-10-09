@@ -21,7 +21,7 @@ export interface WeekStats {
   daysElapsed: number;
   trackedDates: string[];
   /** kcal for each day Mon–Sun: 0 for a past day with nothing logged, null for days ahead */
-  days: { date: string; calories: number | null }[];
+  days: { date: string; calories: number | null; protein: number; carbs: number; fat: number }[];
   goalDaysMet: number | null;
   /** Completed tracked days, plus today once it's within the band — today never counts as a miss. */
   goalDaysEvaluated: number | null;
@@ -41,12 +41,24 @@ export function weekStats(input: ProgressInput, anyDateInWeek: string): WeekStat
   const daysElapsed = Math.max(0, Math.min(7, daysBetween(start, lastCounted) + 1));
   const weekMeals = input.meals.filter((m) => m.localDate >= start && m.localDate <= lastCounted);
 
-  const caloriesByDay = new Map<string, number>();
-  for (const m of weekMeals) caloriesByDay.set(m.localDate, (caloriesByDay.get(m.localDate) ?? 0) + m.totals.calories);
-  const trackedDates = [...caloriesByDay.keys()].sort();
+  const totalsByDay = new Map<string, { calories: number; protein: number; carbs: number; fat: number }>();
+  for (const m of weekMeals) {
+    const totals = totalsByDay.get(m.localDate) ?? { calories: 0, protein: 0, carbs: 0, fat: 0 };
+    for (const key of ["calories", "protein", "carbs", "fat"] as const) totals[key] += m.totals[key];
+    totalsByDay.set(m.localDate, totals);
+  }
+  const caloriesByDay = new Map([...totalsByDay].map(([date, totals]) => [date, totals.calories]));
+  const trackedDates = [...totalsByDay.keys()].sort();
   const days = Array.from({ length: 7 }, (_, i) => {
     const date = addDays(start, i);
-    return { date, calories: date > lastCounted ? null : Math.round(caloriesByDay.get(date) ?? 0) };
+    const totals = totalsByDay.get(date);
+    return {
+      date,
+      calories: date > lastCounted ? null : Math.round(totals?.calories ?? 0),
+      protein: Math.round(totals?.protein ?? 0),
+      carbs: Math.round(totals?.carbs ?? 0),
+      fat: Math.round(totals?.fat ?? 0),
+    };
   });
 
   let goalDaysMet: number | null = null;

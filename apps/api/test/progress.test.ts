@@ -109,13 +109,13 @@ describe("weekly progress", () => {
     await log(id, "2026-10-07", kcal(700)); // two meals add up
     await log(id, "2026-10-09", kcal(650)); // today, so far
     expect((await api.get("/progress", id)).json.days).toEqual([
-      { date: "2026-10-05", calories: 1800 },
-      { date: "2026-10-06", calories: 0 },
-      { date: "2026-10-07", calories: 1900 },
-      { date: "2026-10-08", calories: 0 },
-      { date: "2026-10-09", calories: 650 },
-      { date: "2026-10-10", calories: null },
-      { date: "2026-10-11", calories: null },
+      { date: "2026-10-05", calories: 1800, protein: 0, carbs: 0, fat: 0 },
+      { date: "2026-10-06", calories: 0, protein: 0, carbs: 0, fat: 0 },
+      { date: "2026-10-07", calories: 1900, protein: 0, carbs: 0, fat: 0 },
+      { date: "2026-10-08", calories: 0, protein: 0, carbs: 0, fat: 0 },
+      { date: "2026-10-09", calories: 650, protein: 0, carbs: 0, fat: 0 },
+      { date: "2026-10-10", calories: null, protein: 0, carbs: 0, fat: 0 },
+      { date: "2026-10-11", calories: null, protein: 0, carbs: 0, fat: 0 },
     ]);
   });
 

@@ -353,6 +353,15 @@ export const MarkerKey = z.enum(["ldl", "hba1c", "triglycerides"]);
 export type MarkerKey = z.infer<typeof MarkerKey>;
 export const MarkerStatus = z.enum(["in_range", "worth_watching", "high"]);
 export type MarkerStatus = z.infer<typeof MarkerStatus>;
+/**
+ * General status bands in canonical units, shared so the API labels and mobile graph stay aligned.
+ * These are food-planning context, not individual treatment targets or diagnoses.
+ */
+export const MARKER_THRESHOLDS = {
+  ldl: { worthWatching: 100, high: 160 },
+  hba1c: { worthWatching: 5.7, high: 6.5 },
+  triglycerides: { worthWatching: 150, high: 200 },
+} as const;
 export const ReportSource = z.enum(["upload", "sample", "manual"]);
 
 export const ExtractReportRequest = z.union([
@@ -596,7 +605,13 @@ export const ProgressResponse = z.object({
   daysTracked: z.number(),
   trackedDates: z.array(LocalDate),
   /** Mon–Sun kcal: 0 for a past day with nothing logged, null for days still ahead */
-  days: z.array(z.object({ date: LocalDate, calories: z.number().nullable() })),
+  days: z.array(z.object({
+    date: LocalDate,
+    calories: z.number().nullable(),
+    protein: z.number(),
+    carbs: z.number(),
+    fat: z.number(),
+  })),
   streak: z.number(),
   /** longest run of days in a row with a meal logged, ever */
   longestStreak: z.number(),

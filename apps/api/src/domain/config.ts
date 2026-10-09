@@ -1,7 +1,10 @@
 /**
- * Every tunable product constant lives here so it can be reviewed in one place.
- * Sources are noted inline; medical thresholds should be re-reviewed before release.
+ * API tunables live here. Shared marker bands are re-exported so API status labels
+ * and the mobile range graph use the same boundaries.
  */
+import { MARKER_THRESHOLDS } from "@kimbo/shared";
+
+export { MARKER_THRESHOLDS };
 
 export const DEFAULT_TIMEZONE = "Asia/Kolkata";
 
@@ -36,19 +39,6 @@ export const UNKNOWN_DISH_KCAL_PER_UNIT = {
   tbsp: 45,
   g: 2,
   serving: 250,
-} as const;
-
-// --- Health markers ---
-/**
- * Status thresholds in canonical units (lower bound of each band).
- * LDL: NCEP ATP III (<100 optimal, 160+ high). HbA1c: ADA (5.7–6.4 prediabetes range, 6.5+).
- * Triglycerides: NCEP ATP III (<150 normal, 150–199 borderline, 200+ high).
- * Kimbo words these non-diagnostically; review before release.
- */
-export const MARKER_THRESHOLDS = {
-  ldl: { worthWatching: 100, high: 160 },
-  hba1c: { worthWatching: 5.7, high: 6.5 },
-  triglycerides: { worthWatching: 150, high: 200 },
 } as const;
 
 /** When markers are equally out of range, the earlier one decides the focus. */
