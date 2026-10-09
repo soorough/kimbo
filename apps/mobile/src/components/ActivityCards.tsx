@@ -23,15 +23,64 @@ export const EXERCISE_ICON: Record<ExerciseEntry["kind"], IconName> = {
   manual: "zap",
 };
 
-/** A water log in Recently logged: the amount, the time, and Cal AI's "…" menu (add water, delete). */
+/**
+ * One row in Recently logged, shared by meals, water and workouts so the list reads evenly:
+ * a tile on the left, the title with its time, the calories line, and one quiet detail line.
+ */
+export function LoggedRow({
+  tile,
+  tileColor = colors.paper,
+  title,
+  at,
+  amount,
+  detail,
+  badge,
+  onPress,
+  accessibilityLabel,
+}: {
+  tile: React.ReactNode;
+  tileColor?: string;
+  title: string;
+  at: string;
+  amount: string;
+  detail?: string | null;
+  badge?: React.ReactNode;
+  onPress: () => void;
+  accessibilityLabel: string;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      onPress={onPress}
+      style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
+    >
+      <View style={[styles.tile, { backgroundColor: tileColor }]}>{tile}</View>
+      <View style={styles.body}>
+        <View style={styles.titleRow}>
+          <T variant="bodyStrong" numberOfLines={1} style={{ flex: 1 }}>{title}</T>
+          <T variant="caption" tone="soft">{time(at)}</T>
+        </View>
+        <View style={styles.titleRow}>
+          <T variant="label" style={{ color: colors.ink }}>{amount}</T>
+          {badge}
+        </View>
+        {detail ? <T variant="caption" tone="soft" numberOfLines={1}>{detail}</T> : null}
+      </View>
+    </Pressable>
+  );
+}
+
+/** A water log in Recently logged: tap for Add water or Delete. */
 export function WaterEntryCard({ entry }: { entry: WaterEntry }) {
   const [adding, setAdding] = useState(false);
   return (
     <>
       <EntryCard
         icon={<Icon name="droplet" size={20} color={WATER_BLUE} />}
+        tileColor="#E6F0FA"
         title="Water"
-        detail={`${entry.ml.toLocaleString("en-IN")} ml`}
+        amount={`${entry.ml.toLocaleString("en-IN")} ml`}
         at={entry.loggedAt}
         menu={[{ label: "Add water", icon: "plus-circle", run: () => setAdding(true) }]}
         remove={() => api.deleteWater(entry.id)}
@@ -41,36 +90,19 @@ export function WaterEntryCard({ entry }: { entry: WaterEntry }) {
   );
 }
 
-/** A workout in Recently logged, Cal AI-style: "204 Calories burned", then intensity and minutes. */
+/** A workout in Recently logged: calories burned, then intensity and minutes. */
 export function ExerciseEntryCard({ entry }: { entry: ExerciseEntry }) {
+  const detail = [
+    entry.intensity ? `${entry.intensity[0]!.toUpperCase()}${entry.intensity.slice(1)} intensity` : null,
+    entry.minutes ? `${entry.minutes} min` : null,
+  ].filter(Boolean).join(" · ");
   return (
     <EntryCard
-      icon={<Icon name={EXERCISE_ICON[entry.kind]} size={20} color={colors.ink} />}
+      icon={<Icon name={EXERCISE_ICON[entry.kind]} size={20} color={colors.terracotta} />}
+      tileColor="#FBEDE6"
       title={entry.label}
-      detail={
-        <View style={{ gap: 4 }}>
-          <T variant="body">
-            <T variant="heading">{entry.calories} Calories</T>
-            <T variant="label"> burned</T>
-          </T>
-          {entry.intensity || entry.minutes ? (
-            <View style={styles.meta}>
-              {entry.intensity ? (
-                <View style={styles.metaItem}>
-                  <Icon name="sun" size={13} color={colors.terracotta} />
-                  <T variant="caption">Intensity: {entry.intensity[0]!.toUpperCase() + entry.intensity.slice(1)}</T>
-                </View>
-              ) : null}
-              {entry.minutes ? (
-                <View style={styles.metaItem}>
-                  <Icon name="clock" size={13} color={WATER_BLUE} />
-                  <T variant="caption">{entry.minutes} Mins</T>
-                </View>
-              ) : null}
-            </View>
-          ) : null}
-        </View>
-      }
+      amount={`${entry.calories} kcal burned`}
+      detail={detail}
       at={entry.loggedAt}
       menu={[]}
       remove={() => api.deleteExercise(entry.id)}
@@ -80,15 +112,19 @@ export function ExerciseEntryCard({ entry }: { entry: ExerciseEntry }) {
 
 function EntryCard({
   icon,
+  tileColor,
   title,
+  amount,
   detail,
   at,
   menu,
   remove,
 }: {
   icon: React.ReactNode;
+  tileColor: string;
   title: string;
-  detail: React.ReactNode;
+  amount: string;
+  detail?: string;
   at: string;
   menu: { label: string; icon: IconName; run: () => void }[];
   remove: () => Promise<unknown>;
@@ -104,18 +140,17 @@ function EntryCard({
     },
   });
   return (
-    <View style={styles.card}>
-      <View style={styles.icon}>{icon}</View>
-      <View style={{ flex: 1, gap: 2 }}>
-        <T variant="heading">{title}</T>
-        {typeof detail === "string" ? <T variant="label">{detail}</T> : detail}
-      </View>
-      <View style={{ alignItems: "flex-end", gap: 2 }}>
-        <Pressable accessibilityRole="button" accessibilityLabel={`More for ${title}`} hitSlop={12} onPress={() => setOpen(true)}>
-          <Icon name="more-horizontal" size={20} color={colors.inkSoft} />
-        </Pressable>
-        <T variant="caption">{time(at)}</T>
-      </View>
+    <>
+      <LoggedRow
+        tile={icon}
+        tileColor={tileColor}
+        title={title}
+        at={at}
+        amount={amount}
+        detail={detail}
+        onPress={() => setOpen(true)}
+        accessibilityLabel={`${title}, ${amount}. Options`}
+      />
       <Sheet visible={open} onClose={() => setOpen(false)} title={title}>
         <View style={{ gap: space.xs }}>
           {menu.map((m) => (
@@ -140,7 +175,7 @@ function EntryCard({
           </Pressable>
         </View>
       </Sheet>
-    </View>
+    </>
   );
 }
 
@@ -149,12 +184,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: space.md,
-    padding: space.lg,
+    paddingVertical: space.md,
+    paddingHorizontal: space.md,
     borderRadius: radius.lg,
     backgroundColor: colors.surface,
   },
-  icon: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: colors.paper },
-  meta: { flexDirection: "row", flexWrap: "wrap", gap: space.md },
-  metaItem: { flexDirection: "row", alignItems: "center", gap: 4 },
+  tile: { width: 52, height: 52, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
+  body: { flex: 1, gap: 2 },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
   option: { flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.md },
 });

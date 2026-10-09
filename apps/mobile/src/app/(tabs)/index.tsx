@@ -5,7 +5,7 @@ import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Animated, AppState, Easing, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { Button } from "@/components/Button";
-import { ExerciseEntryCard, WaterEntryCard } from "@/components/ActivityCards";
+import { ExerciseEntryCard, LoggedRow, WaterEntryCard } from "@/components/ActivityCards";
 import { DayNumbers, PROTEIN_ICON } from "@/components/DayNumbers";
 import { mealTitle } from "@/lib/meal-title";
 import { Kimbo } from "@/components/Kimbo";
@@ -92,8 +92,8 @@ export default function Today() {
 
       <DayNumbers data={data} diet={diet} />
 
-      <View style={{ gap: space.md }}>
-        <T variant="heading">{isToday ? "Recently logged" : "Logged"}</T>
+      <View style={{ gap: space.sm }}>
+        <T variant="heading" style={{ marginBottom: space.xs }}>{isToday ? "Recently logged" : "Logged"}</T>
         {/* Meals, water and workouts together, newest first (Cal AI's "Recently uploaded"). */}
         {recent(data).map((r) =>
           r.kind === "meal" ? (
@@ -456,48 +456,29 @@ function EmptyMeals({ canRepeat }: { canRepeat: TodayMeal["mealType"][] }) {
   );
 }
 
-/** A meal in Recently logged, Cal AI-style: what it was, calories consumed, the macros. Opens the meal. */
+/** A meal in Recently logged: meal-time tile, name, kcal, macros on one line. Opens the meal. */
 function MealCard({ meal, diet }: { meal: TodayMeal; diet: TodayDiet }) {
+  const kcal = Math.round(meal.totals.calories);
+  const t = meal.totals;
   return (
-    <Surface
+    <LoggedRow
+      tile={<T style={styles.mealEmoji}>{MEAL_EMOJI[meal.mealType]}</T>}
+      tileColor={colors.sunk}
+      title={mealTitle(meal)}
+      at={meal.eatenAt}
+      amount={`${kcal} kcal`}
+      badge={
+        meal.supportsFocus ? (
+          <View style={styles.focusBadge}>
+            <Icon name="check" size={11} color={colors.leafDeep} />
+            <T variant="caption" tone="leaf">Focus</T>
+          </View>
+        ) : null
+      }
+      detail={`${MEAL_LABEL[meal.mealType]} · ${PROTEIN_ICON[diet ?? "vegetarian"]} ${Math.round(t.protein)}g  🌾 ${Math.round(t.carbs)}g  🥜 ${Math.round(t.fat)}g`}
       onPress={() => router.push({ pathname: "/meal", params: { id: meal.id } })}
-      accessibilityLabel={`${mealTitle(meal)}, ${Math.round(meal.totals.calories)} calories`}
-    >
-      <View style={styles.rowCenter}>
-        <T variant="heading" style={{ flex: 1 }} numberOfLines={1}>
-          {mealTitle(meal)}
-        </T>
-        <T variant="caption">
-          {MEAL_LABEL[meal.mealType]} · {new Date(meal.eatenAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-        </T>
-      </View>
-      <T variant="body">
-        <T variant="heading">{Math.round(meal.totals.calories)} Calories</T>
-        <T variant="label"> consumed</T>
-      </T>
-      <View style={styles.macroRow}>
-        {(
-          [
-            [PROTEIN_ICON[diet ?? "vegetarian"], meal.totals.protein],
-            ["🌾", meal.totals.carbs],
-            ["🥜", meal.totals.fat],
-          ] as const
-        ).map(([icon, g]) => (
-          <View key={icon} style={styles.macroItem}>
-            <T style={{ fontSize: 13 }}>{icon}</T>
-            <T variant="label">{Math.round(g)}g</T>
-          </View>
-        ))}
-        {meal.supportsFocus ? (
-          <View style={styles.macroItem}>
-            <Icon name="check" size={13} color={colors.leafDeep} />
-            <T variant="caption" tone="leaf">
-              Helped your focus
-            </T>
-          </View>
-        ) : null}
-      </View>
-    </Surface>
+      accessibilityLabel={`${mealTitle(meal)}, ${kcal} calories${meal.supportsFocus ? ", helped your focus" : ""}`}
+    />
   );
 }
 
@@ -619,7 +600,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: colors.surface,
   },
-  rowCenter: { flexDirection: "row", alignItems: "center", gap: space.md },
   mealIcon: {
     width: 38,
     height: 38,
@@ -628,8 +608,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  macroRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: space.md },
-  macroItem: { flexDirection: "row", alignItems: "center", gap: 4 },
+  mealEmoji: { fontSize: 24, lineHeight: 30 },
+  focusBadge: { flexDirection: "row", alignItems: "center", gap: 2, paddingHorizontal: 6, paddingVertical: 1, borderRadius: radius.pill, backgroundColor: colors.leafSoft },
   helped: {
     flexDirection: "row",
     alignItems: "center",
