@@ -78,12 +78,38 @@ export function TodaySkeleton() {
   );
 }
 
+/** Mirrors Progress top to bottom (tiles, blood report, journey, weight, calories) so nothing jumps. */
 export function ProgressSkeleton() {
   return (
     <SkeletonScreen>
-      <Bone w={120} h={10} />
-      <Bone w="55%" h={30} r={radius.md} />
-      <Card h={250}>
+      <Bone w="45%" h={34} r={radius.md} />
+      <View style={styles.row}>
+        <View style={{ flex: 1 }}>
+          <Bone h={150} r={radius.lg} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Bone h={150} r={radius.lg} />
+        </View>
+      </View>
+      <Card h={84}>
+        <View style={[styles.row, { alignItems: "center" }]}>
+          <Bone w={44} h={44} r={22} />
+          <View style={{ flex: 1, gap: space.sm }}>
+            <Bone w="45%" h={16} />
+            <Bone w="65%" h={10} />
+          </View>
+        </View>
+      </Card>
+      <Card h={160}>
+        <Bone w="40%" h={16} />
+        <Bone h={10} />
+        <Bone w="80%" h={10} />
+      </Card>
+      <Card h={240}>
+        <Bone w="45%" h={18} />
+        <Bone h={150} r={radius.md} />
+      </Card>
+      <Card h={300}>
         <Bone w="60%" h={18} />
         <View style={[styles.row, { alignItems: "flex-end", flex: 1 }]}>
           {[60, 90, 40, 110, 80, 20, 20].map((h, i) => (
@@ -91,21 +117,6 @@ export function ProgressSkeleton() {
           ))}
         </View>
       </Card>
-      <View style={styles.row}>
-        <View style={{ flex: 1 }}>
-          <Bone h={190} r={radius.lg} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Bone h={190} r={radius.lg} />
-        </View>
-      </View>
-      <Card h={200} />
-      <Bone w="35%" h={18} />
-      <View style={[styles.row, { flexWrap: "wrap" }]}>
-        {[0, 1, 2].map((i) => (
-          <Bone key={i} w="31%" h={110} r={radius.lg} />
-        ))}
-      </View>
     </SkeletonScreen>
   );
 }

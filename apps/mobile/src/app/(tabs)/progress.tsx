@@ -20,7 +20,8 @@ export default function Progress() {
   const journey = useQuery({ queryKey: ["journey"], queryFn: api.journey, retry: false });
   const reports = useQuery({ queryKey: ["reports"], queryFn: api.reports });
   const profile = useQuery({ queryKey: ["profile", profileId], queryFn: () => api.getProfile(profileId!), enabled: !!profileId });
-  if (progress.isLoading)
+  // First open: wait for everything that shapes the page, so cards don't pop in and push each other.
+  if (progress.isLoading || journey.isLoading || profile.isLoading)
     return (
       <Screen>
         <ProgressSkeleton />
