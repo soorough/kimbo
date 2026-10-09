@@ -9,7 +9,7 @@ import { createDb, migrate } from "./db/index.js";
 const databaseUrl = process.env.DATABASE_URL ?? "postgres://localhost:5432/kimbo";
 const port = Number(process.env.PORT ?? 3000);
 const apiKey = process.env.ANTHROPIC_API_KEY;
-const model = process.env.KIMBO_AI_MODEL ?? "claude-opus-5-5";
+const model = process.env.KIMBO_AI_MODEL ?? "claude-haiku-5-5";
 
 const db = createDb(databaseUrl);
 await migrate(db);
