@@ -18,6 +18,7 @@ export function Screen({
   footer,
   scroll = true,
   padded = true,
+  bottomClearance = true,
 }: {
   children: ReactNode;
   title?: string;
@@ -25,9 +26,13 @@ export function Screen({
   footer?: ReactNode;
   scroll?: boolean;
   padded?: boolean;
+  bottomClearance?: boolean;
 }) {
   const insets = useSafeAreaInsets();
-  const body = [padded && styles.padded, { paddingBottom: footer ? space.xl : insets.bottom + BOTTOM_CLEARANCE }];
+  const body = [
+    padded && styles.padded,
+    { paddingBottom: footer ? space.xl : insets.bottom + (bottomClearance ? BOTTOM_CLEARANCE : 0) },
+  ];
   return (
     <SafeAreaView style={styles.root} edges={["top", "left", "right"]}>
       {/* Keeps the sticky footer above the keyboard (edge-to-edge Android no longer resizes for it). */}

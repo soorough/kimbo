@@ -1,12 +1,12 @@
 import type { MealType } from "@kimbo/shared";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useRef, useState } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import { Kimbo } from "@/components/Kimbo";
-import { Button, Chip, Icon, Notice, Screen, Segmented, Sheet, Stepper, T, formatQty } from "@/components/ui";
+import { Button, Chip, Icon, Notice, Ring, Screen, Segmented, Sheet, Stepper, T, formatQty } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
-import { draftTotals, lineNutrition, toConfirmItems, useDraft, useFoodPicker, type DraftLine } from "@/lib/draft";
+import { draftTotals, lineNutrition, toConfirmItems, useDraft, type DraftLine } from "@/lib/draft";
 import { MEAL_LABEL, MEAL_ORDER } from "@/lib/format";
 import { useAfterWrite } from "@/lib/mutations";
 import { colors, fonts, radius, space } from "@/lib/theme";
@@ -19,12 +19,28 @@ const MEAL_OPTIONS = MEAL_ORDER.map((m) => ({ value: m, label: MEAL_LABEL[m] }))
  */
 export default function Review() {
   const draft = useDraft();
-  const setReplaceKey = useFoodPicker((s) => s.setReplaceKey);
+  const report = useQuery({ queryKey: ["reportInsights"], queryFn: api.reportInsights, staleTime: 60_000 });
   const afterWrite = useAfterWrite();
   const [editing, setEditing] = useState<string | null>(null);
   const totals = draftTotals(draft.lines);
   const editingLine = draft.lines.find((l) => l.key === editing) ?? null;
+  const insight = report.data?.insights;
+  const risky = insight?.cutBackOn.find((item) => draft.lines.some((line) => lineName(line).toLowerCase().includes(item.name.toLowerCase())));
+  const recommendation = insight?.helpers[0] ?? null;
+  const itemNames = draft.lines.map(lineName);
+  const mealAdvice = useQuery({
+    queryKey: ["mealAdvice", itemNames.join("|"), insight?.focus.key],
+    queryFn: () => api.ask({ text: `What goes well with these foods in my meal: ${itemNames.join(", ")}? Suggest one simple addition that supports my goals${insight?.focus ? ` and my ${insight.focus.title.toLowerCase()} focus` : ""}. Keep it to one short sentence.` }),
+    enabled: itemNames.length > 0,
+    staleTime: 60_000,
+  });
+  const addRecommendation = async () => {
+    if (!recommendation) return;
+    const { foods } = await api.searchFoods(recommendation);
+    if (foods[0]) useDraft.getState().addFood(foods[0]);
+  };
   const isAiDraft = !draft.mealId && (draft.source === "photo" || draft.source === "text" || draft.source === "voice");
+  const isManualDraft = !draft.mealId && draft.source === "manual";
   const [keep, setKeep] = useState(false);
   const [keepName, setKeepName] = useState("");
   // Saved once per screen, so retrying a failed meal save doesn't duplicate it in My meals.
@@ -63,27 +79,22 @@ export default function Review() {
 
   const openSearch = (replaceKey: string | null) => {
     setEditing(null);
-    setReplaceKey(replaceKey);
-    router.push("/food-search");
+    router.push({ pathname: "/food-search", params: replaceKey ? { replaceKey } : {} });
   };
 
   return (
     <Screen
       back
-      title={draft.mealId ? "Edit meal" : "Check your meal"}
+      title={draft.mealId ? "Edit meal" : isManualDraft ? "Create Meal" : "Check your meal"}
       footer={
         <View style={styles.footer}>
-          <View style={{ flex: 1 }}>
-            <T variant="number" style={{ fontSize: 24, lineHeight: 28 }}>
-              {totals.calories} <T variant="label">kcal</T>
-            </T>
-            <T variant="caption">
-              P {totals.protein} · C {totals.carbs} · F {totals.fat} · Fibre {totals.fibre} g
-            </T>
-          </View>
-          <View style={{ minWidth: 150 }}>
+          {!isManualDraft ? <View style={{ flex: 1 }}>
+            <T variant="number" style={{ fontSize: 24, lineHeight: 28 }}>{totals.calories} <T variant="label">kcal</T></T>
+            <T variant="caption">P {totals.protein} · C {totals.carbs} · F {totals.fat} · Fibre {totals.fibre} g</T>
+          </View> : null}
+          <View style={isManualDraft ? { flex: 1 } : { minWidth: 150 }}>
             <Button
-              label={draft.mealId ? "Save changes" : `Save ${draft.mealType}`}
+              label={draft.mealId ? "Save changes" : isManualDraft ? "Create Meal" : `Save ${draft.mealType}`}
               disabled={!draft.lines.length}
               loading={save.isPending}
               onPress={() => save.mutate()}
@@ -92,7 +103,16 @@ export default function Review() {
         </View>
       }
     >
-      {draft.lines.length ? (
+      {draft.lines.length > 0 && (risky || recommendation || mealAdvice.data?.reply.text) ? (
+        <View style={[styles.guidance, risky ? styles.guidanceWarn : styles.guidanceGood]}>
+          <Kimbo mood={risky ? "focus" : "proud"} size={34} />
+          <T variant="bodyStrong" numberOfLines={2} style={{ flex: 1 }}>
+            {risky ? `${risky.name} may work against your ${insight?.focus.title.toLowerCase() ?? "report focus"}.` : mealAdvice.data?.reply.text ?? `Kimbo suggests ${recommendation} to support today’s goal.`}
+          </T>
+          {recommendation ? <Pressable accessibilityRole="button" onPress={addRecommendation}><T variant="label" tone="leaf">Add</T></Pressable> : null}
+        </View>
+      ) : null}
+      {!isManualDraft && draft.lines.length ? (
         <View style={styles.note}>
           <Kimbo mood={draft.mealId ? "idle" : "happy"} size={44} />
           <T variant="label" style={{ flex: 1 }}>
@@ -103,27 +123,58 @@ export default function Review() {
                 : "Tap an item to set the portion."}
           </T>
         </View>
-      ) : (
-        <Notice mood="idle" title="What's on the plate?" message="Search Kimbo's list of Indian dishes." />
-      )}
+      ) : !isManualDraft ? (
+          <Notice mood="idle" title={isManualDraft ? "Meal Items" : "What's on the plate?"} message={isManualDraft ? "Add items to this meal." : "Search Kimbo's list of Indian dishes."} />
+      ) : null}
 
+      {isManualDraft ? (
+        <View style={styles.createSummary}>
+          <View style={styles.nameCard}>
+            <TextInput
+              value={keepName}
+              onChangeText={setKeepName}
+              placeholder="Tap to name"
+              placeholderTextColor={colors.inkSoft}
+              style={styles.nameInput}
+              accessibilityLabel="Meal name"
+            />
+            <Icon name="edit-2" size={20} color={colors.inkSoft} />
+          </View>
+          <View style={styles.calorieCard}>
+            <View style={{ flex: 1, gap: space.xs }}>
+              <T variant="label" tone="soft">Calories</T>
+              <T variant="number" style={{ fontSize: 38 }}>{totals.calories}</T>
+            </View>
+            <Ring value={totals.calories} max={2000} size={86} stroke={8} color={colors.leaf}>
+              <Icon name="zap" size={24} color={colors.leafDeep} />
+            </Ring>
+          </View>
+          <View style={styles.macroRow}>
+            <Macro label="Protein" value={`${totals.protein}g`} />
+            <Macro label="Carbs" value={`${totals.carbs}g`} />
+            <Macro label="Fats" value={`${totals.fat}g`} />
+          </View>
+        </View>
+      ) : null}
+
+      {isManualDraft ? <T variant="heading">Meal Items</T> : null}
       <View style={styles.list}>
         {draft.lines.map((line, i) => (
-          <ItemRow key={line.key} line={line} first={i === 0} onPress={() => setEditing(line.key)} />
+          <ItemRow key={line.key} line={line} first={i === 0} onPress={() => setEditing(line.key)} onRemove={() => draft.remove(line.key)} />
         ))}
         <Pressable accessibilityRole="button" onPress={() => openSearch(null)} style={styles.addRow}>
           <Icon name="plus-circle" size={20} color={colors.leaf} />
           <T variant="bodyStrong" tone="leaf">
-            Add a dish
+            {isManualDraft ? "Add items to this meal" : "Add a dish"}
           </T>
         </Pressable>
       </View>
 
-      <View style={{ gap: space.sm }}>
+      {!isManualDraft ? <View style={{ gap: space.sm }}>
         <T variant="label">Meal</T>
         <Segmented<MealType> options={MEAL_OPTIONS} value={draft.mealType} onChange={draft.setMealType} />
-      </View>
-      <View style={styles.timeRow}>
+      </View> : null}
+      {!isManualDraft ? <View style={styles.timeRow}>
         <Icon name="clock" size={18} color={colors.inkSoft} />
         <T variant="bodyStrong" style={{ flex: 1 }}>
           {formatTime(draft.eatenAt)}
@@ -134,9 +185,9 @@ export default function Review() {
           disabled={Date.now() - draft.eatenAt.getTime() < 60_000}
           onPress={() => draft.shiftTime(30)}
         />
-      </View>
+      </View> : null}
 
-      <View style={styles.keep}>
+      {!isManualDraft ? <View style={styles.keep}>
         <Pressable
           accessibilityRole="checkbox"
           accessibilityState={{ checked: keep }}
@@ -145,7 +196,7 @@ export default function Review() {
         >
           <Icon name={keep ? "check-square" : "square"} size={20} color={keep ? colors.leaf : colors.inkSoft} />
           <View style={{ flex: 1 }}>
-            <T variant="bodyStrong">Save to My meals</T>
+            <T variant="bodyStrong">Save to Saved foods</T>
             <T variant="caption">Log it again in one tap next time.</T>
           </View>
           <Icon name="bookmark" size={18} color={colors.inkFaint} />
@@ -161,7 +212,7 @@ export default function Review() {
             accessibilityLabel="Name for this saved meal"
           />
         ) : null}
-      </View>
+      </View> : null}
 
       {save.error ? (
         <T variant="label" tone="plum" align="center">
@@ -190,7 +241,7 @@ export default function Review() {
   );
 }
 
-function ItemRow({ line, first, onPress }: { line: DraftLine; first: boolean; onPress: () => void }) {
+function ItemRow({ line, first, onPress, onRemove }: { line: DraftLine; first: boolean; onPress: () => void; onRemove: () => void }) {
   const n = lineNutrition(line);
   const name = lineName(line);
   const heardDifferently = line.heardAs && line.heardAs.toLowerCase() !== name.toLowerCase();
@@ -218,7 +269,17 @@ function ItemRow({ line, first, onPress }: { line: DraftLine; first: boolean; on
         {heardDifferently ? <T variant="caption">You said "{line.heardAs}"</T> : null}
       </View>
       <T variant="bodyStrong">{n.calories} kcal</T>
-      <Icon name="chevron-right" size={18} color={colors.inkFaint} />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Remove ${name}`}
+        hitSlop={8}
+        onPress={(event) => {
+          event.stopPropagation();
+          onRemove();
+        }}
+      >
+        <Icon name="trash-2" size={18} color={colors.terracotta} />
+      </Pressable>
     </Pressable>
   );
 }
@@ -308,6 +369,10 @@ function PortionEditor({ line, onSwap, onDone }: { line: DraftLine; onSwap: () =
   );
 }
 
+function Macro({ label, value }: { label: string; value: string }) {
+  return <View style={styles.macro}><T variant="caption" tone="soft">{label}</T><T variant="bodyStrong">{value}</T></View>;
+}
+
 /** "Rajma, Steamed rice +1" — a sensible name when the user doesn't type one. */
 function defaultName(lines: DraftLine[]): string {
   const names = lines.map(lineName);
@@ -334,6 +399,15 @@ function formatTime(d: Date): string {
 }
 
 const styles = StyleSheet.create({
+  guidance: { flexDirection: "row", alignItems: "center", gap: space.sm, paddingHorizontal: space.md, paddingVertical: space.sm, borderRadius: radius.md },
+  guidanceWarn: { backgroundColor: colors.plumSoft },
+  guidanceGood: { backgroundColor: colors.leafSoft },
+  createSummary: { gap: space.sm },
+  nameCard: { flexDirection: "row", alignItems: "center", gap: space.sm, paddingHorizontal: space.lg, paddingVertical: space.md, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
+  nameInput: { flex: 1, fontFamily: fonts.bold, fontSize: 26, color: colors.ink, paddingVertical: space.xs },
+  calorieCard: { flexDirection: "row", alignItems: "center", padding: space.lg, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, gap: space.md },
+  macroRow: { flexDirection: "row", gap: space.sm },
+  macro: { flex: 1, padding: space.md, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, gap: space.xs },
   note: { flexDirection: "row", alignItems: "center", gap: space.md },
   list: { backgroundColor: colors.surface, borderRadius: radius.lg, overflow: "hidden" },
   row: {

@@ -67,7 +67,7 @@ export function TabBar({ state, descriptors, navigation, insets }: TabBarProps) 
 
 const OPTIONS: { label: string; icon: IconName; href: Href }[] = [
   { label: "Log exercise", icon: "activity", href: "/exercise" },
-  { label: "My meals", icon: "bookmark", href: "/my-meals" },
+  { label: "Saved foods", icon: "bookmark", href: "/saved-foods" },
   { label: "Search food", icon: "search", href: "/food-search" },
   { label: "Scan food", icon: "camera", href: "/scan" },
 ];

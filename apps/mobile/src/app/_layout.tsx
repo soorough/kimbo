@@ -79,8 +79,10 @@ export default function RootLayout() {
             <Stack.Screen name="blood-report" options={{ animation: "slide_from_right" }} />
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="log" options={sheet} />
-            <Stack.Screen name="food-search" options={sheet} />
-            <Stack.Screen name="my-meals" options={{ animation: "slide_from_right" }} />
+            <Stack.Screen name="food-search" options={{ animation: "none" }} />
+            <Stack.Screen name="my-foods" options={{ animation: "none" }} />
+            <Stack.Screen name="saved-foods" options={{ animation: "none" }} />
+            <Stack.Screen name="my-meals" options={{ animation: "none" }} />
             <Stack.Screen name="nutrition" options={{ animation: "slide_from_right" }} />
             <Stack.Screen name="edit-goal" options={{ animation: "slide_from_bottom" }} />
             <Stack.Screen name="review" options={{ animation: "slide_from_bottom" }} />

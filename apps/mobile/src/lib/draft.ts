@@ -198,11 +198,3 @@ export function toConfirmItems(lines: DraftLine[]): ConfirmItem[] {
       : { kind: "estimate", name: l.name, quantity: l.quantity, unit: l.unit, nutrition: lineNutrition(l) },
   );
 }
-
-/** Where the food-search screen should put the chosen food. */
-export const useFoodPicker = create<{ replaceKey: string | null; setReplaceKey: (k: string | null) => void }>(
-  (set) => ({
-    replaceKey: null,
-    setReplaceKey: (replaceKey) => set({ replaceKey }),
-  }),
-);

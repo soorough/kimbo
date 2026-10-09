@@ -101,7 +101,7 @@ export default function MealDetail() {
         </T>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={saved ? "Saved to My meals" : "Save to My meals"}
+          accessibilityLabel={saved ? "Saved to Saved foods" : "Save to Saved foods"}
           disabled={saved || save.isPending}
           onPress={() => save.mutate()}
           hitSlop={10}
@@ -111,7 +111,7 @@ export default function MealDetail() {
       </View>
       {saved ? (
         <T variant="caption" tone="leaf">
-          Saved to My meals
+          Saved to Saved foods
         </T>
       ) : save.error ? (
         <T variant="caption" tone="plum">
@@ -191,7 +191,7 @@ export default function MealDetail() {
           <MenuRow icon="edit-3" label="Edit meal" onPress={edit} />
           <MenuRow
             icon="bookmark"
-            label={saved ? "Saved to My meals" : "Save to My meals"}
+            label={saved ? "Saved to Saved foods" : "Save to Saved foods"}
             onPress={() => {
               setMenu(false);
               if (!saved) save.mutate();
