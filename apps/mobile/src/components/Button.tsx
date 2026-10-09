@@ -2,7 +2,7 @@ import { ActivityIndicator, Pressable, StyleSheet } from "react-native";
 import { colors, fonts, night, radius, space } from "@/lib/theme";
 import { T } from "./Text";
 
-type Kind = "primary" | "secondary" | "ghost" | "danger" | "light" | "outlineLight";
+type Kind = "primary" | "secondary" | "ghost" | "danger" | "light" | "outlineLight" | "ink";
 
 const KIND = {
   primary: { bg: colors.leaf, fg: colors.white, border: colors.leaf },
@@ -12,6 +12,8 @@ const KIND = {
   // For dark surfaces (the start screen).
   light: { bg: night.text, fg: night.bg, border: night.text },
   outlineLight: { bg: "transparent", fg: night.text, border: "rgba(255,255,255,0.55)" },
+  // Cal AI-style black pill for the Log food library.
+  ink: { bg: colors.ink, fg: colors.white, border: colors.ink },
 } as const;
 
 /** Buttons are text-only by design: the label says what happens; icons live in rows and tiles. */

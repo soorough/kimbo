@@ -79,7 +79,7 @@ export default function Review() {
 
   const openSearch = (replaceKey: string | null) => {
     setEditing(null);
-    router.push({ pathname: "/food-search", params: replaceKey ? { replaceKey } : {} });
+    router.push({ pathname: "/food-search", params: replaceKey ? { pick: "1", replaceKey } : { pick: "1" } });
   };
 
   return (

@@ -34,12 +34,18 @@ interface DraftState {
   touched: boolean;
   startFromAi: (draft: MealDraft, source: MealSource, mealType?: MealType) => void;
   startManual: (mealType: MealType) => void;
+  /** An empty draft for logging straight from the Log food library (opens review, not Create Meal). */
+  startQuick: (mealType: MealType) => void;
   startEdit: (meal: Meal, foods: Record<string, Food>) => void;
   update: (key: string, patch: Partial<{ quantity: number; unit: Unit; perUnitCalories: number }>) => void;
   remove: (key: string) => void;
   addFood: (food: Food, replaceKey?: string) => void;
   /** A dish Kimbo doesn't know yet: an editable estimate the user prices themselves. */
   addEstimate: (name: string, replaceKey?: string) => void;
+  /** One of My foods: the user's own label values for one serving. */
+  addCustom: (name: string, unit: string, perUnit: Nutrition, replaceKey?: string) => void;
+  /** Adds a saved/recent meal's items to the meal being built. */
+  appendDraft: (draft: MealDraft) => void;
   setMealType: (t: MealType) => void;
   shiftTime: (minutes: number) => void;
 }
@@ -62,6 +68,38 @@ const ESTIMATE_PER_SERVING: Nutrition = { calories: 250, protein: 8, carbs: 30, 
 let seq = 0;
 const nextKey = () => `line-${++seq}`;
 
+function estimateLine(name: string, unit: string, perUnit: Nutrition): DraftLine {
+  return { key: nextKey(), kind: "estimate", name, heardAs: null, quantity: 1, unit, perUnit };
+}
+
+/** Draft lines for an AI parse or a saved/recent meal. */
+function linesFrom(draft: MealDraft): DraftLine[] {
+  return draft.items.map((item) =>
+    item.kind === "catalogue"
+      ? {
+          key: nextKey(),
+          kind: "catalogue",
+          food: item.food,
+          heardAs: item.heardAs,
+          quantity: item.quantity,
+          unit: item.unit,
+        }
+      : {
+          key: nextKey(),
+          kind: "estimate",
+          name: item.name,
+          heardAs: item.heardAs,
+          quantity: item.quantity,
+          unit: item.unit,
+          perUnit: perOne(item.nutrition, item.quantity),
+        },
+  );
+}
+
+function withLine(lines: DraftLine[], line: DraftLine, replaceKey?: string) {
+  return { touched: true, lines: replaceKey ? lines.map((l) => (l.key === replaceKey ? line : l)) : [...lines, line] };
+}
+
 export const useDraft = create<DraftState>((set) => ({
   mealId: null,
   source: "text",
@@ -76,29 +114,12 @@ export const useDraft = create<DraftState>((set) => ({
       mealType: mealType ?? draft.suggestedMealType,
       eatenAt: new Date(),
       touched: false,
-      lines: draft.items.map((item) =>
-        item.kind === "catalogue"
-          ? {
-              key: nextKey(),
-              kind: "catalogue",
-              food: item.food,
-              heardAs: item.heardAs,
-              quantity: item.quantity,
-              unit: item.unit,
-            }
-          : {
-              key: nextKey(),
-              kind: "estimate",
-              name: item.name,
-              heardAs: item.heardAs,
-              quantity: item.quantity,
-              unit: item.unit,
-              perUnit: perOne(item.nutrition, item.quantity),
-            },
-      ),
+      lines: linesFrom(draft),
     }),
   startManual: (mealType) =>
     set({ mealId: null, source: "manual", mealType, eatenAt: new Date(), touched: false, lines: [] }),
+  startQuick: (mealType) =>
+    set({ mealId: null, source: "repeat", mealType, eatenAt: new Date(), touched: false, lines: [] }),
   startEdit: (meal, foods) =>
     set({
       mealId: meal.id,
@@ -158,21 +179,10 @@ export const useDraft = create<DraftState>((set) => ({
       };
     }),
   addEstimate: (name, replaceKey) =>
-    set((s) => {
-      const line: DraftLine = {
-        key: nextKey(),
-        kind: "estimate",
-        name,
-        heardAs: null,
-        quantity: 1,
-        unit: "serving",
-        perUnit: { ...ESTIMATE_PER_SERVING },
-      };
-      return {
-        touched: true,
-        lines: replaceKey ? s.lines.map((l) => (l.key === replaceKey ? line : l)) : [...s.lines, line],
-      };
-    }),
+    set((s) => withLine(s.lines, estimateLine(name, "serving", { ...ESTIMATE_PER_SERVING }), replaceKey)),
+  addCustom: (name, unit, perUnit, replaceKey) =>
+    set((s) => withLine(s.lines, estimateLine(name, unit, { ...perUnit }), replaceKey)),
+  appendDraft: (draft) => set((s) => ({ touched: true, lines: [...s.lines, ...linesFrom(draft)] })),
   setMealType: (mealType) => set({ mealType }),
   shiftTime: (minutes) =>
     set((s) => {
